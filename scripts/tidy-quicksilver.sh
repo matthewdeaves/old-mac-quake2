@@ -38,13 +38,15 @@ LEGACY_BINARIES=(
   "ref_soft.lib"
 )
 
-# Tier 2 — HFS+ system / Finder cruft:
+# Tier 2 — Finder cruft only. We deliberately do NOT touch
+# ".HFS+ Private Directory Data" or the null-prefix HFS+ metadata dir —
+# those are filesystem-internal artifacts the OS manages, invisible in
+# Finder, and deleting them can break the volume's journaling/hardlinks.
+# Leave them alone.
 SYSTEM_CRUFT=(
   ".DS_Store"
   ".Spotlight-V100"
   ".fseventsd"
-  ".HFS+ Private Directory Data"
-  $'\x00\x00\x00\x00HFS+ Private Data'   # the null-prefix HFS metadata dir
   "TheVolumeSettingsFolder"
 )
 

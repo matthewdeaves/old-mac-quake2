@@ -10,3 +10,4 @@ timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_f
 2026-05-11T21:14:30Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,80.9,79.9,81.7,80.80,Phase A + per-machine autoexec | bench: Phase A.5 baseline numbers for lion + g4 + g3
 2026-05-11T21:15:19Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,640x480,59.4,59.4,59.4,59.40,Phase A + per-machine autoexec | bench: Phase A.5 baseline numbers for lion + g4 + g3
 2026-05-11T21:17:45Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T21:18:40Z,9789210,per-target,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,Phase A baseline | build: Phase A pipeline — fat universal + per-machine autoexec layer

@@ -129,9 +129,31 @@ R_ScreenShot(void)
 	buffer[14] = vid.height & 255;
 	buffer[15] = vid.height >> 8;
 	buffer[16] = 24; /* pixel size */
+	/*
+	 * Image descriptor byte: bit 5 = 1 means rows stored top-to-bottom.
+	 * glReadPixels returns rows bottom-to-top, so we flip in place below
+	 * and declare top-down here. Without this, some TGA decoders ignore
+	 * the origin bit and render the image upside down.
+	 */
+	buffer[17] = 0x20;
 
 	qglReadPixels(0, 0, vid.width, vid.height, GL_RGB,
 			GL_UNSIGNED_BYTE, buffer + 18);
+
+	{
+		int row_bytes = vid.width * 3;
+		byte *tmp_row = malloc(row_bytes);
+		int r;
+		for (r = 0; r < vid.height / 2; r++)
+		{
+			byte *top = buffer + 18 + r * row_bytes;
+			byte *bot = buffer + 18 + (vid.height - 1 - r) * row_bytes;
+			memcpy(tmp_row, top, row_bytes);
+			memcpy(top, bot, row_bytes);
+			memcpy(bot, tmp_row, row_bytes);
+		}
+		free(tmp_row);
+	}
 
 	/* swap rgb to bgr */
 	c = 18 + vid.width * vid.height * 3;

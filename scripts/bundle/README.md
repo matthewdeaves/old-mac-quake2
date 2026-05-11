@@ -1,7 +1,7 @@
 # scripts/bundle/
 
 Static assets staged into the `Quake2.app` bundle by `scripts/deploy.sh`,
-plus the per-machine `autoexec.cfg` layer.
+plus the per-machine `autoexec.cfg` layer that ships inside the bundle.
 
 ## Contents
 
@@ -9,49 +9,62 @@ plus the per-machine `autoexec.cfg` layer.
 |---|---|
 | `Info.plist` | CFBundle metadata. Read by Tiger/Panther/Lion/Sequoia Finder for icon + bundle recognition. |
 | `set-bundle-bit.c` | C helper (HFS+ kHasBundle bit setter). Unused in current fleet — every Mac we ship to recognises `.app` by extension. Kept around in case a future HFS-volume target needs it. |
-| `autoexec-<machine>.cfg` | Per-machine console-command stack, exec'd at engine boot. See below. |
+| `autoexec-<machine>.cfg` × 6 | Per-machine console-command stack, queued by the engine at boot via CFBundle. See below. |
 
 ## The autoexec layer
 
-`yquake2` execs `<basedir>/baseq2/autoexec.cfg` once during `CL_Init`,
-after `Cbuf_AddEarlyCommands` (cmdline `+set` sweep) and before
-`Cbuf_AddLateCommands` (cmdline `+demomap` / `+map` / `+timedemo`). This
-means **autoexec OVERRIDES any cvar set via `+set` on the engine command
-line.** Deliberate consequences:
+All six per-machine cfgs ship inside `Quake2.app/Contents/Resources/`.
+The engine (`yquake2/src/common/misc.c:Qcommon_Init` → `Q2_ExecConfigFromBundle`)
+reads the matching cfg at boot, layered AFTER the standard
+`default.cfg` → `yq2.cfg` → `config.cfg` chain, so it always wins.
+Machine identity is resolved at runtime via `sysctlbyname("hw.model", …)`:
+
+| `hw.model` | Cfg picked | Machine |
+|---|---|---|
+| `PowerMac1,1` | `autoexec-yosemite.cfg` | PPC 750 @ 449 MHz, Rage 128 16 MB, Panther |
+| `PowerMac3,1` | `autoexec-sawtooth.cfg` | PPC 7400 @ 500 MHz, GeForce2 MX 32 MB, Tiger |
+| `PowerMac3,5` | `autoexec-quicksilver.cfg` | PPC 7450 @ 733 MHz, Radeon 9000 Pro 64 MB, Tiger |
+| `PowerMac10,1` | `autoexec-mini-g4.cfg` | PPC 7447A @ 1.25 GHz, Radeon 9200 32 MB, Tiger |
+| `Macmini2,1` | `autoexec-mini-intel.cfg` | Core 2 Duo @ 2.33 GHz, GMA 950 64 MB, Lion |
+| `iMac19,1` | `autoexec-imac-2019.cfg` | i5-9600K @ 3.7 GHz, Radeon Pro 580X 8 GB, Sequoia |
+
+This means **autoexec OVERRIDES any cvar set via `+set` on the engine
+command line.** Deliberate consequences:
 
 - `scripts/bench.sh` forces `+set gl_mode -1 +set gl_customwidth $W
   +set gl_customheight $H +set gl_swapinterval 0` for its per-res sweep.
   Per-machine autoexecs therefore **must not** touch those four cvars,
   or the bench's resolution control breaks. Resolution defaults live in
   `~/.yq2/baseq2/config.cfg` (persisted from the in-game video menu).
-- Conversely, anything we DO set in autoexec sticks across launches —
-  no need to also seed `config.cfg`.
+- Bench/screenshot scripts that need full cvar control can pass
+  `-noarchautoexec` on the cmdline — the engine hook is gated on it.
+- Anything we DO set in autoexec sticks across launches — no need to
+  also seed `config.cfg`.
 
-### Per-machine config (not per-arch)
+### Why bundle-Resources, not baseq2/autoexec.cfg
 
-Unlike the sister QuakeSpasm project (which uses a `__VEC__`/`__ppc__`
-compile-time dispatch in `host.c` to pick a per-arch autoexec), the
-Q2 fat binary picks its tuning via `deploy.sh`'s `TARGET` argument:
+Previously the per-machine cfg was staged as `baseq2/autoexec.cfg` and
+the engine picked it up via the gamedir filesystem (same flow as the
+user's own autoexec). Two problems with that:
 
-| `deploy.sh` target | Machine | CPU | GPU | OS |
-|---|---|---|---|---|
-| `yosemite` | PowerMac1,1 (1999) | PPC 750 @ 449 MHz | ATI Rage 128 16 MB | 10.3.9 Panther |
-| `sawtooth` | PowerMac3,1 (1999) | PPC 7400 @ 500 MHz | GeForce2 MX 32 MB | 10.4.11 Tiger |
-| `quicksilver` | PowerMac3,5 (2001) | PPC 7450 @ 733 MHz | Radeon 9000 Pro 64 MB | 10.4.11 Tiger |
-| `mini-g4` | PowerMac10,1 (2005) | PPC 7447A @ 1.25 GHz | Radeon 9200 32 MB | 10.4.11 Tiger |
-| `mini-intel` | Macmini2,1 (2007) | Core 2 Duo @ 2.33 GHz | Intel GMA 950 64 MB | 10.7.5 Lion |
-| `imac-2019` | iMac19,1 (2019) | i5-9600K @ 3.7 GHz | Radeon Pro 580X 8 GB | 15.7 Sequoia |
+1. Mixed engine-shipped config with user game data — "drop the .app
+   + your paks" wasn't actually enough; the deploy script also had to
+   write into baseq2/.
+2. The .app was no longer a self-contained distribution unit.
 
-`deploy.sh <target>` (or `deploy.sh fat <target>`) copies
-`autoexec-<target>.cfg` to `~/Desktop/quake2/baseq2/autoexec.cfg` on the
-target machine. The same fat binary picks up a different autoexec on
-each host — no engine-side CPU detection needed.
+CFBundle resolves Resources/ relative to the executable's own image
+path, so the bundle is the single unit of distribution. End users drop
+`Quake2.app` + their own `baseq2/pak*.pak` next to each other; the
+per-machine visual stack travels inside the .app.
 
-We did NOT mirror QS's per-arch autoexec scheme because the binary slice
-is too coarse for Q2: mini-intel (GMA 950, integrated, weak) and
-imac-2019 (Radeon Pro 580X, discrete, strong) share the x86_64 slice but
-have completely different GPU envelopes. Per-machine selection in
-`deploy.sh` cleanly separates them without a runtime CPU-detect hook.
+### Why per-machine, not per-arch
+
+Unlike the sister QuakeSpasm project (which uses both a `__VEC__`/`__ppc__`
+compile-time per-arch baseline AND a per-machine overlay), Q2 only uses
+per-machine. The binary slice is too coarse: mini-intel (GMA 950,
+integrated, weak) and imac-2019 (Radeon Pro 580X, discrete, strong)
+share the x86_64 slice but have completely different GPU envelopes.
+Single-layer per-machine is enough.
 
 ### Design rationale per file
 

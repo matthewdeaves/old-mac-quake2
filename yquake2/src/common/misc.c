@@ -28,6 +28,90 @@
 #include "header/zone.h"
 #include <setjmp.h>
 
+#if defined(__APPLE__) && !defined(DEDICATED_ONLY)
+/*
+ * PPC port: per-machine autoexec cfgs ship inside
+ * Quake2.app/Contents/Resources/, located at runtime via CFBundle. The
+ * .app is then a drop-in distribution unit — end users install by
+ * dropping Quake2.app + their own baseq2/pak*.pak next to each other,
+ * and the per-machine visual stack travels inside the bundle.
+ *
+ * CFBundle (not argv[0]) is the right resource locator: argv[0] can be
+ * a relative path or symlink, -basedir overrides CWD, and the bench
+ * scripts invoke the binary directly. CFBundleGetMainBundle resolves
+ * the .app from the executable's own image path, robust across all
+ * three launch modes (Finder double-click, bench ssh+exec, headless).
+ */
+#include <CoreFoundation/CoreFoundation.h>
+#include <sys/sysctl.h>
+
+static qboolean
+Q2_ExecConfigFromBundle(const char *basename)
+{
+	CFBundleRef bundle = CFBundleGetMainBundle();
+	if (!bundle)
+	{
+		return false;
+	}
+
+	CFStringRef cfname = CFStringCreateWithCString(NULL, basename, kCFStringEncodingUTF8);
+	if (!cfname)
+	{
+		return false;
+	}
+	CFURLRef url = CFBundleCopyResourceURL(bundle, cfname, CFSTR("cfg"), NULL);
+	CFRelease(cfname);
+	if (!url)
+	{
+		return false;
+	}
+
+	char path[1024];
+	Boolean ok = CFURLGetFileSystemRepresentation(url, true, (UInt8 *)path, sizeof(path));
+	CFRelease(url);
+	if (!ok)
+	{
+		return false;
+	}
+
+	FILE *fp = fopen(path, "rb");
+	if (!fp)
+	{
+		return false;
+	}
+
+	fseek(fp, 0, SEEK_END);
+	long len = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+	if (len <= 0 || len > 65536)
+	{
+		fclose(fp);
+		return false;
+	}
+
+	char *buf = (char *)malloc((size_t)len + 2);
+	if (!buf)
+	{
+		fclose(fp);
+		return false;
+	}
+	size_t got = fread(buf, 1, (size_t)len, fp);
+	fclose(fp);
+	if (got != (size_t)len)
+	{
+		free(buf);
+		return false;
+	}
+	buf[len] = '\n';
+	buf[len + 1] = '\0';
+
+	Cbuf_AddText(buf);
+	free(buf);
+	Com_Printf("Loaded %s.cfg from bundle\n", basename);
+	return true;
+}
+#endif
+
 FILE *log_stats_file;
 cvar_t *host_speeds;
 cvar_t *log_stats;
@@ -255,6 +339,57 @@ Qcommon_Init(int argc, char **argv)
 	SV_Init();
 #ifndef DEDICATED_ONLY
 	CL_Init();
+#endif
+
+#if defined(__APPLE__) && !defined(DEDICATED_ONLY)
+	/*
+	 * PPC port: per-machine autoexec layered AFTER the standard
+	 * default.cfg → yq2.cfg → config.cfg → cmdline +set chain, and
+	 * crucially AFTER SV_Init() + CL_Init() have registered all
+	 * engine cvars (cl_maxfps, gl_picmip, gl_dynamic, etc.). At this
+	 * point any cvar the cfg references is guaranteed to exist, so
+	 * the cfg's `cvar value` lines route through Cvar_Command instead
+	 * of being silently dropped as unknown commands. Compare:
+	 * QuakeSpasm sister project does the same — Host_Init runs the
+	 * bundle exec at the very end, after VID_Init / CL_Init.
+	 *
+	 * The fat universal's per-arch dispatch (ppc750 / ppc7400 /
+	 * x86_64) can't tell mini-intel (GMA 950) from iMac19,1 (Pro
+	 * 580X) — both are x86_64; nor among the three G4s. hw.model
+	 * sysctl disambiguates: each known machine gets its hand-tuned
+	 * visual + resolution stack from Quake2.app/Contents/Resources/.
+	 * Unknown models fall through silently.
+	 *
+	 * -noarchautoexec cmdline arg suppresses the hook entirely —
+	 * used by bench/screenshot scripts whose own +set / +cmd would
+	 * otherwise be clobbered by the autoexec's production defaults.
+	 */
+	if (!COM_CheckParm("-noarchautoexec"))
+	{
+		static const struct { const char *model; const char *cfg; } q2_machine_map[] = {
+			{ "PowerMac1,1",  "autoexec-yosemite"    },
+			{ "PowerMac3,1",  "autoexec-sawtooth"    },
+			{ "PowerMac3,5",  "autoexec-quicksilver" },
+			{ "PowerMac10,1", "autoexec-mini-g4"     },
+			{ "Macmini2,1",   "autoexec-mini-intel"  },
+			{ "iMac19,1",     "autoexec-imac-2019"   },
+		};
+		char model[64];
+		size_t mlen = sizeof(model);
+		size_t i;
+		memset(model, 0, sizeof(model));
+		if (sysctlbyname("hw.model", model, &mlen, NULL, 0) == 0)
+		{
+			for (i = 0; i < sizeof(q2_machine_map)/sizeof(q2_machine_map[0]); i++)
+			{
+				if (strcmp(model, q2_machine_map[i].model) == 0)
+				{
+					Q2_ExecConfigFromBundle(q2_machine_map[i].cfg);
+					break;
+				}
+			}
+		}
+	}
 #endif
 
 	/* add + commands from command line */

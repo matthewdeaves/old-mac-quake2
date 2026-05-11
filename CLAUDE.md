@@ -242,9 +242,61 @@ subtype. Symptom: G3 binary becomes `ppc7400`, Panther loads it, then
 crashes during NIB init on a 750. `scripts/build.sh` will take a flock
 to serialize — don't bypass.
 
+## Deploy is fat-only (no per-target mode)
+
+`scripts/deploy.sh <machine>` ships ONE thing — the universal `Quake2.app`
+from `build/q2-fat/`. The previous dual-mode design (per-target flat
+layout vs fat .app) had a foot-gun: both modes wrote to the same
+`~/Desktop/quake2/` with `rsync --delete`, so running the wrong one
+wiped out the .app. Per-target mode is gone. `scripts/build.sh g3|g4|lion`
+still exists for fast single-slice iteration during dev, but those slices
+only feed `scripts/build-fat.sh` — they don't deploy independently.
+
+## Bundle is self-contained (CFBundle-loaded autoexec)
+
+Per-machine cfgs (`autoexec-<machine>.cfg`) ship INSIDE
+`Quake2.app/Contents/Resources/`. The engine reads the right one at
+boot via `CFBundleCopyResourceURL` + `sysctlbyname("hw.model", ...)`.
+See `yquake2/src/common/misc.c:Q2_ExecConfigFromBundle` and the call
+site in `Qcommon_Init` AFTER `CL_Init()` (the call site placement is
+load-bearing — renderer cvars like `gl_picmip` don't exist until
+`CL_Init` has loaded `ref_gl.so`, so an earlier hook would silently
+drop those cvar lines as unknown commands).
+
+The cfgs use `set CVAR VALUE` syntax (not bare `CVAR VALUE`). This
+matters because Q2's command parser only routes bare assignments
+through `Cvar_Command`, which IGNORES unknown cvars — but `set` creates
+the cvar if it doesn't yet exist, so renderer cvars that aren't
+registered until `ref_gl.so` lazy-loads still take effect when the
+DLL eventually pulls them in via `Cvar_Get` (which honours the
+existing value).
+
+End-user install: drop `Quake2.app` + your own `baseq2/pak*.pak` next
+to each other. The .app travels with all six machines' per-machine
+cfgs inside it — same .app runs on G3 Panther, G4 Tiger, Intel Lion,
+and modern Sequoia.
+
+## Bench / screenshot scripts pass -noarchautoexec
+
+`scripts/bench.sh` and `scripts/screenshot.sh` need full cmdline cvar
+control (the per-resolution sweep, the cmd-buffer wait chains). The
+engine accepts `-noarchautoexec` to suppress the bundle hook entirely.
+Use that flag whenever you need a deterministic measurement that
+shouldn't be coloured by the per-machine production defaults.
+
+To A/B a single cvar tweak against the production cfg, use `+cmd "set
+X Y"` instead — `+cmd` runs as a LATE command, after the bundle exec,
+so it overrides cleanly. If the tweak wins, fold the new value into
+`scripts/bundle/autoexec-<machine>.cfg`, redeploy, re-bench.
+
 ## Status
 
-- 2026-05-11: project initialized. Phase A bring-up not started.
+- 2026-05-11: Phase A landed. Self-contained fat universal `Quake2.app`
+  ships to all 5 alive bench machines (yosemite/sawtooth/quicksilver/
+  mini-g4/mini-intel); imac-2019 not yet benched. Per-machine autoexec
+  layer loaded via CFBundle works on both PPC (Tiger + Panther) and
+  Intel Lion. TGA screenshot writer patched for top-down orientation.
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).
+- Phase B / C: not started.

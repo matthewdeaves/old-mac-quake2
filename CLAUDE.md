@@ -131,6 +131,42 @@ The Panther slice came from `~/quakespasm/MacOSX/SDL-panther.dylib`
 --disable-altivec --disable-cdrom`). Regeneration recipe is in
 `~/quakespasm/CLAUDE.md` under "How the fat SDL was built".
 
+## Multi-tenancy on mini-intel (shared with the QuakeSpasm sister project)
+
+`mini-intel` is the cross-build host for **both** this Q2 port and the
+QuakeSpasm sister project at `~/quakespasm/`. The two projects coexist
+on the same Lion box by using **separate upload directories** for source
+rsync and **workstation-local** build artifacts. Don't conflate them.
+
+| Resource | QuakeSpasm uses | Q2 uses (must) |
+|---|---|---|
+| Source rsync target on mini-intel | `mini-intel:quakespasm/` | `mini-intel:quake2/` |
+| `make` cwd on mini-intel | `mini-intel:quakespasm/Quake/` | `mini-intel:quake2/` (Q2's makefile is at the top level) |
+| Local flock for build serialization | `~/quakespasm/build/.build.lock` | `~/quake2/build/.build.lock` |
+| Local build outputs | `~/quakespasm/build/quakespasm-*` | `~/quake2/build/q2-*` |
+
+**Shared (read-only)**: `/Developer/SDKs/MacOSX10.3.9.sdk`,
+`/Developer/SDKs/MacOSX10.4u.sdk`, `/usr/bin/gcc-4.0`, `/usr/bin/clang`.
+**Never modify** anything under `/Developer/SDKs/` or the system
+toolchain — QS depends on the current install and re-installing Xcode
+3.2.6 + 2.5 from the vendored DMGs is a multi-hour recovery operation.
+
+**Concurrent builds are safe given the above isolation** — each project
+flocks on its own workstation-side lock, rsyncs to its own dir on
+mini-intel, and `make -jN` operates in its own dir. The only contention
+is CPU/memory on the dual-core Core 2 Duo, which means concurrent
+compiles take ~2× wall clock but produce correct binaries. If mini-intel
+is already mid-compile for QS when Q2 wants to build, prefer to wait
+(serial is faster than 2× concurrent on a 2-core box) — but it's not a
+correctness issue.
+
+**Tell-tale of accidental conflation**: if `scripts/build.sh` ends up
+rsyncing to `mini-intel:~/` (no project prefix) or to
+`mini-intel:quakespasm/`, the Q2 build will overwrite QS source and
+break the sister project. The first version of Q2's `build.sh` should
+hard-code `mini-intel:quake2/` and assert the path is project-local
+before rsync.
+
 ## Bench-and-commit cadence (carry over from QuakeSpasm)
 
 Same discipline: smoke bench on dirty tree, commit code change, then
@@ -151,6 +187,28 @@ matching Q1's three.
 Same discipline as QuakeSpasm: every per-target visual / perf decision
 must be flippable at runtime (cvar) or at launch (`-flag`). Inventory
 table goes here as features land.
+
+## Icon pipeline philosophy
+
+`scripts/make-icon.py` ships **conservative defaults**: edge-flood-fill
+bg removal that preserves all interior detail, no auto-scrubbing of
+interior bg-coloured pockets. The `--scrub-interior` knob exists for AI-
+generated artwork that has bg leaking through logo glyph gaps or
+detail-sparse areas, but the heuristics (size + score-purity + annulus
+darkness) can't reliably distinguish bg-bleed from saturated specular
+highlights on metallic surfaces.
+
+**Use Photoshop touch-up over algorithmic perfection.** The proven
+workflow for the Q1+Q2 icons we shipped:
+1. Run `make-icon.py` with defaults to produce a conservative
+   transparent-bg master + a magenta-composited preview.
+2. User opens the master in Photoshop, paints any visible bg pockets
+   to alpha=0 using the magenta preview as a guide.
+3. User saves back as RGBA PNG, hands it back via `--keep-bg` to
+   regenerate the ICNS without re-running bg removal.
+
+Don't burn cycles trying to make `--scrub-interior` work perfectly on a
+new artwork — if defaults leave visible bg pockets, ship to Photoshop.
 
 ## Game data location
 

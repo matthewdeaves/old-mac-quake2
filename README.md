@@ -9,7 +9,9 @@
   <img src="docs/screenshots/icon.png" width="128" alt="Quake II icon" />
 </p>
 
-A yquake2 5.11 port tuned to run on **six retro Macs spanning 1999–2019**. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + Intel x86_64) inside a single `Quake2.app` bundle, with per-machine `autoexec.cfg` picked by the deploy script. Sister project of [`old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm).
+A yquake2 5.11 port tuned to run on **six retro Macs spanning 1999–2019**. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + Intel x86_64) inside a single self-contained `Quake2.app` bundle, with per-machine `autoexec.cfg` shipped inside the .app and dispatched by `sysctl hw.model` at boot. Sister project of [`old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm).
+
+> **Status:** this is an early-stage build. The fleet is benching cleanly with a per-machine cfg layer, but no engine-level optimisation rounds have landed yet — Phase B GL1 cherry-picks (water warp, multitexturing, group draw call, dlight optimisation) are still ahead. Treat the numbers below as the starting line, not the ceiling.
 
 ## The fleet
 
@@ -26,7 +28,7 @@ dyld picks the right slice per host. Four GPU eras: fixed-function (Rage 128, Ge
 
 ## Phase A baseline — demo1, fat binary, per-machine autoexec
 
-`timedemo demo1.dm2`, median of run 2 + run 3 (drops the cold first run). Each machine's `autoexec-<machine>.cfg` is in effect — see [`scripts/bundle/README.md`](scripts/bundle/README.md) for the per-machine cvar choices. Live data: [`benchmarks/results.csv`](benchmarks/results.csv).
+`timedemo demo1.dm2`, median of run 2 + run 3 (drops the cold first run). Each machine's `autoexec-<machine>.cfg` is loaded by the engine via CFBundle at boot — see [`scripts/bundle/README.md`](scripts/bundle/README.md) for the per-machine cvar choices. Live data: [`benchmarks/results.csv`](benchmarks/results.csv).
 
 | Machine | 640×480 | 1024×768 |
 |---|---:|---:|
@@ -44,48 +46,54 @@ Three observations from the per-machine autoexec round:
 - **Yosemite went 14 → 31 fps at 1024×768** — same recipe, same kind of GPU. Now comfortably above the 20 fps "playable" floor at 1024 and 60+ fps at 640.
 - **Quicksilver and mini-g4 lost a little fps** because their autoexec turns quality *up* (4× AF, trilinear, retexturing, dlights) — they had plenty of GPU headroom (both CPU-bound near 80–127 fps).
 
-<p align="center">
-  <img src="docs/screenshots/yosemite.png" width="32%" alt="yosemite (G3 / Rage 128 / Panther)" />
-  <img src="docs/screenshots/sawtooth.png" width="32%" alt="sawtooth (G4 AGP / GeForce2 MX / Tiger)" />
-  <img src="docs/screenshots/quicksilver.png" width="32%" alt="quicksilver (G4 QS / Radeon 9000 / Tiger)" />
-</p>
-<p align="center">
-  <img src="docs/screenshots/mini-g4.png" width="32%" alt="mini-g4 (G4 / Radeon 9200 / Tiger)" />
-  <img src="docs/screenshots/mini-intel.png" width="32%" alt="mini-intel (Core 2 Duo / GMA 950 / Lion)" />
-</p>
-
-Each machine ships a 10-shot demo1 capture in [`docs/screenshots/<machine>-NN.png`](docs/screenshots/) — same demo frame on every box for cross-machine comparison.
-
-## Build, deploy, bench
-
-The whole pipeline runs from any Linux / macOS workstation that can ssh to **mini-intel** (the cross-build host) and the bench machines. PPC slices cross-compile via gcc-4.0 + 10.3.9 / 10.4u SDKs on mini-intel; the x86_64 slice builds natively there with Lion's clang.
-
-```bash
-# One fat universal binary (ppc750 + ppc7400 + x86_64)
-scripts/build-fat.sh
-
-# Ship the bundle to one machine (per-machine autoexec.cfg picked by hostname)
-scripts/deploy.sh fat quicksilver
-
-# Run the demo1 matrix on every reachable machine in parallel
-scripts/parallel-bench.sh --reset --quick
-```
-
-`scripts/build.sh <g3|g4|lion>` builds a single-arch slice if you want one. Per-target build artefacts live in `build/q2-<target>/`; the fat universal is `build/q2-fat/`.
+In-game screenshots are intentionally not in this README yet — the Q2 TGA writer has a colour/orientation bug that needs sorting before we ship visual proofs.
 
 ## How the binary picks its config
 
-Each deploy ships `scripts/bundle/autoexec-<machine>.cfg` as `~/Desktop/quake2/baseq2/autoexec.cfg`. The Q2 engine reads it at boot (after `default.cfg` + `config.cfg`), and the file sets cvars appropriate for the host's CPU/GPU envelope — `gl_picmip`, `gl_dynamic`, `cl_particles`, `gl_anisotropic`, etc. See [`scripts/bundle/README.md`](scripts/bundle/README.md) for the cvar inventory and per-machine rationale.
+<p align="center">
+  <img src="docs/images/architecture.svg" width="92%" alt="Architecture: Ubuntu orchestrator drives mini-intel cross-builds; deploy.sh ships one Quake2.app to all six bench machines; sysctl hw.model dispatches the per-machine autoexec at boot" />
+</p>
 
-The fat binary's per-arch dispatch is handled by macOS dyld — same Mach-O, different slice per host CPU. Per-machine tuning is layered on top via the deploy script picking the right autoexec.
+All six per-machine cfgs ship inside `Quake2.app/Contents/Resources/`. The engine ([`yquake2/src/common/misc.c`](yquake2/src/common/misc.c) → `Q2_ExecConfigFromBundle`) reads the one matching the host via `sysctlbyname("hw.model", ...)`, layered AFTER the standard `default.cfg` → `yq2.cfg` → `config.cfg` chain so its cvars win. The .app is then a drop-in distribution unit — end users only need it plus their own `baseq2/pak*.pak` next to it.
+
+The fat binary's per-arch dispatch is handled by macOS dyld — same Mach-O, different slice per host CPU. Per-machine tuning is layered on top via the runtime sysctl lookup.
+
+## How it's built
+
+<p align="center">
+  <img src="docs/images/build-pipeline.svg" width="92%" alt="Build pipeline: edit on Ubuntu, rsync to mini-intel, three flock-serialised sub-builds (g3 + g4 + lion), lipo into one Mach-O universal in build/q2-fat" />
+</p>
+
+Cross-builds run on the Mac mini Intel — the last machine with a working `gcc-4.0` + `MacOSX10.3.9.sdk` + `MacOSX10.4u.sdk` toolchain (Xcode 3.2.6 era). Three sub-builds (G3 with 10.3.9 SDK, G4 with 10.4u SDK + `-maltivec`, Intel with Lion default SDK), glued with `lipo -create` into one fat `build/q2-fat/quake2`. The `.app` bundle ships identically to all six machines.
+
+## How it's benched
+
+<p align="center">
+  <img src="docs/images/bench-loop.svg" width="92%" alt="Bench loop: ssh kills stale processes, launches quake2 with timedemo, polls qconsole.log for the result line, fetches the raw log, appends one row to results.csv tagged with the commit hash" />
+</p>
+
+```bash
+scripts/build-fat.sh                              # 3-arch universal binary
+scripts/deploy.sh <machine>                       # ship to one of the 6 hosts
+scripts/bench.sh <machine> demo1 1024x768 3       # 3 timedemo runs, append to CSV
+scripts/parallel-bench.sh                         # full matrix, all reachable legs concurrent
+```
+
+Every phase that lands gets a smoke bench (demo1 × 2 res × 3 runs) committed alongside the code change. CSV in [`benchmarks/results.csv`](benchmarks/results.csv) is a rolling history — every cell tagged with the commit hash that produced it.
 
 ## Run it from any Quake 2 folder
 
-The bundle is self-contained and location-independent: `Quake2.app` ships with the engine binary and `SDL.framework`, `ref_gl.so` + `baseq2/` live alongside in the same parent dir. Move that whole parent dir anywhere on the Mac — `/Applications/Games/`, `~/Documents/`, `/Volumes/External/` — and double-click `Quake2.app` to launch.
+The bundle is self-contained and location-independent: `Quake2.app` ships with the engine binary, `SDL.framework`, the icon, and all six per-machine autoexec cfgs inside `Contents/Resources/`. `ref_gl.so` + `baseq2/` live alongside in the same parent dir. Move that whole parent dir anywhere on the Mac — `/Applications/Games/`, `~/Documents/`, `/Volumes/External/` — and double-click `Quake2.app` to launch.
 
 ```
 <your dir>/
   Quake2.app/
+    Contents/
+      Info.plist
+      MacOS/quake2                   (fat: ppc750 + ppc7400 + x86_64)
+      MacOS/SDL.framework/           (fat: ppc + i386 + x86_64)
+      Resources/Quake2.icns
+      Resources/autoexec-*.cfg × 6   (the per-machine tuning, picked by sysctl)
   ref_gl.so
   baseq2/
     game.so
@@ -101,13 +109,14 @@ yquake2/         engine source (vendored at QUAKE2_5_11 tag, 033550cd)
 scripts/
   build.sh           single-arch build via mini-intel
   build-fat.sh       3-arch lipo merge → build/q2-fat/
-  deploy.sh          rsync to one machine + per-machine autoexec.cfg
+  deploy.sh          rsync fat .app to one machine (only deploy mode)
   bench.sh           one demo × resolution
   parallel-bench.sh  whole grid in parallel
-  screenshot.sh      capture in-game PNGs from one host
-  bundle/            Info.plist + autoexec-<machine>.cfg files
+  screenshot.sh      capture in-game PNGs from one host (currently has a TGA writer bug)
+  bundle/            Info.plist + autoexec-<machine>.cfg files (shipped inside .app)
 benchmarks/      results.csv + raw qconsole.log per run
-docs/            screenshots, design notes
+docs/
+  images/        SVG architecture diagrams (rendered above)
 MacOSX/          fat SDL.framework (ppc + i386 + x86_64), Quake2.icns
 ```
 
@@ -115,6 +124,6 @@ MacOSX/          fat SDL.framework (ppc + i386 + x86_64), Quake2.icns
 
 ## Status
 
-**Phase A (baseline + per-machine autoexec):** in progress.
+**Phase A (baseline + per-machine autoexec):** done. Fleet benches cleanly; bundle is self-contained.
 
-Next: Phase B GL1 cherry-picks from yquake2 latest (water warp, multitexturing, group draw call, dlight optimization). The Rage 128 on yosemite is GL-submission-overhead bound, so group draw + multitex are expected to be the big wins there.
+**Next:** Phase B GL1 cherry-picks from yquake2 latest (water warp, multitexturing, group draw call, dlight optimisation). The Rage 128 on yosemite is GL-submission-overhead bound, so group draw + multitex are expected to be the big wins there.

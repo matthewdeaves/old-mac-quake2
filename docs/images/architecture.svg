@@ -1,0 +1,324 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 1080" font-family="-apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arr-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3a3a3a"/>
+    </marker>
+    <marker id="arr-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e95420"/>
+    </marker>
+    <marker id="arr-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b6dd5"/>
+    </marker>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f8a5f"/>
+    </marker>
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1320" height="1080" fill="#faf6ef"/>
+
+  <!-- ====== ZONE BACKGROUNDS ====== -->
+  <!-- orchestrator zone -->
+  <rect x="32" y="100" width="1256" height="160" rx="14" fill="#fbf1e6" stroke="#ecd9bd" stroke-width="1"/>
+  <text x="52" y="124" font-size="11" font-weight="700" fill="#b85a14" letter-spacing="1.4">ORCHESTRATOR</text>
+
+  <!-- cross-build zone -->
+  <rect x="32" y="290" width="1256" height="290" rx="14" fill="#eef4fc" stroke="#c8dbf2" stroke-width="1"/>
+  <text x="52" y="314" font-size="11" font-weight="700" fill="#2a5cae" letter-spacing="1.4">CROSS-BUILD HOST  ·  three toolchains, one fat binary</text>
+
+  <!-- bench rack zone -->
+  <rect x="32" y="610" width="1256" height="380" rx="14" fill="#f2f8f4" stroke="#c9e1d3" stroke-width="1"/>
+  <text x="52" y="634" font-size="11" font-weight="700" fill="#0f8a5f" letter-spacing="1.4">BENCH RACK  ·  six Macs on a shelf</text>
+
+  <!-- Title -->
+  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Old-Mac Quake II — devops architecture</text>
+  <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666">One Ubuntu workstation orchestrates · the Lion mini cross-builds for PPC and benches itself · four PPC + two Intel Macs run timedemo</text>
+
+  <!-- ============================================================ -->
+  <!-- ZONE 1 :: Ubuntu workstation                                   -->
+  <!-- ============================================================ -->
+  <g transform="translate(440, 142)">
+    <rect x="0" y="0" width="440" height="106" rx="10" fill="#ffffff" stroke="#e0d8c0" stroke-width="1" filter="url(#card-shadow)"/>
+    <rect x="0" y="0" width="440" height="6" rx="3" fill="#e95420"/>
+    <text x="22" y="34" font-size="16" font-weight="700" fill="#1a1a1a">Ubuntu workstation</text>
+    <text x="22" y="54" font-size="12" fill="#777">x86_64 Linux · the only machine touched directly</text>
+    <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="11" fill="#444">
+      <text x="22" y="78">git · vim · scripts/build.sh · scripts/bench.sh</text>
+      <text x="22" y="94">scripts/parallel-bench.sh · benchmarks/results.csv</text>
+    </g>
+    <!-- workstation glyph -->
+    <g transform="translate(386, 26)" stroke="#888" stroke-width="1.4" fill="none">
+      <rect x="0" y="0" width="40" height="28" rx="2"/>
+      <line x1="14" y1="32" x2="26" y2="32"/>
+      <line x1="9" y1="36" x2="31" y2="36"/>
+    </g>
+  </g>
+
+  <!-- Down arrows: Ubuntu → mini-intel build host -->
+  <g stroke="#e95420" stroke-width="2" fill="none">
+    <path d="M 580 248 L 580 348" marker-end="url(#arr-orange)"/>
+  </g>
+  <g stroke="#3b6dd5" stroke-width="2" fill="none">
+    <path d="M 740 348 L 740 250" marker-end="url(#arr-blue)"/>
+  </g>
+  <text x="565" y="298" text-anchor="end" font-size="11" font-weight="600" fill="#e95420">rsync sources</text>
+  <text x="755" y="298" font-size="11" font-weight="600" fill="#3b6dd5">scp binary back</text>
+
+  <!-- ============================================================ -->
+  <!-- ZONE 2 :: Cross-build host (mini-intel)                        -->
+  <!-- ============================================================ -->
+  <g transform="translate(60, 350)">
+    <rect x="0" y="0" width="1200" height="222" rx="12" fill="#ffffff" stroke="#a8c5e2" stroke-width="1.4" filter="url(#card-shadow)"/>
+    <rect x="0" y="0" width="1200" height="6" rx="3" fill="#4c83c4"/>
+
+    <text x="22" y="32" font-size="16" font-weight="700" fill="#1a1a1a">mini-intel — cross-build host</text>
+    <text x="22" y="52" font-size="12" fill="#777">Macmini2,1 · 2.33 GHz Core 2 Duo · GMA 950 · OS X 10.7.5 Lion · Apple's last Mac with PPC-targeting GCC 4.0.1 in <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#444">/usr/bin</tspan></text>
+
+    <!-- Toolchain sub-cards -->
+    <g transform="translate(28, 76)">
+      <!-- g3 toolchain -->
+      <rect x="0" y="0" width="368" height="124" rx="8" fill="#fbfbfb" stroke="#dcd4bd" stroke-width="1"/>
+      <rect x="0" y="0" width="6" height="124" rx="3" fill="#5fb1d8"/>
+      <text x="20" y="22" font-size="13" font-weight="700" fill="#1a1a1a">target: g3</text>
+      <text x="20" y="40" font-size="11" fill="#777">PowerPC 750 · Panther 10.3.9</text>
+      <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#333">
+        <text x="20" y="64">CC = gcc-4.0  +  MacOSX10.3.9.sdk</text>
+        <text x="20" y="80">-mcpu=750 -O3</text>
+        <text x="20" y="96">-arch ppc -mmacosx-version-min=10.3</text>
+      </g>
+      <text x="20" y="116" font-size="10.5" fill="#0f8a5f" font-weight="700">→ ppc750 slice</text>
+
+      <!-- g4 toolchain -->
+      <rect x="388" y="0" width="368" height="124" rx="8" fill="#fbfbfb" stroke="#dcd4bd" stroke-width="1"/>
+      <rect x="388" y="0" width="6" height="124" rx="3" fill="#8b5cf6"/>
+      <text x="408" y="22" font-size="13" font-weight="700" fill="#1a1a1a">target: g4</text>
+      <text x="408" y="40" font-size="11" fill="#777">PowerPC 7400 · Tiger 10.4.11 · AltiVec</text>
+      <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#333">
+        <text x="408" y="64">CC = gcc-4.0  +  MacOSX10.4u.sdk</text>
+        <text x="408" y="80">-mcpu=7400 -maltivec -mabi=altivec</text>
+        <text x="408" y="96">-mtune=7450 -O3 -arch ppc</text>
+      </g>
+      <text x="408" y="116" font-size="10.5" fill="#0f8a5f" font-weight="700">→ ppc7400 slice (one binary, three G4s)</text>
+
+      <!-- lion toolchain -->
+      <rect x="776" y="0" width="368" height="124" rx="8" fill="#fbfbfb" stroke="#dcd4bd" stroke-width="1"/>
+      <rect x="776" y="0" width="6" height="124" rx="3" fill="#10b981"/>
+      <text x="796" y="22" font-size="13" font-weight="700" fill="#1a1a1a">target: lion</text>
+      <text x="796" y="40" font-size="11" fill="#777">x86_64 Core 2 Duo · Lion 10.7 · native</text>
+      <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#333">
+        <text x="796" y="64">CC = clang  (Apple LLVM 2.9-based)</text>
+        <text x="796" y="80">-arch x86_64 -O3</text>
+        <text x="796" y="96">-mmacosx-version-min=10.7</text>
+      </g>
+      <text x="796" y="116" font-size="10.5" fill="#0f8a5f" font-weight="700">→ x86_64 slice</text>
+    </g>
+  </g>
+
+  <!-- lipo summary band sitting outside the build-host card, in the zone -->
+  <g transform="translate(60, 583)">
+    <text x="600" y="0" text-anchor="middle" font-size="13" fill="#1a1a1a">
+      <tspan font-weight="700">build-fat.sh</tspan>
+      <tspan> runs the three sub-builds serially under flock, then </tspan>
+      <tspan font-family="ui-monospace, Menlo, Consolas, monospace" font-weight="700" fill="#3b6dd5">lipo -create</tspan>
+      <tspan> on Lion → </tspan>
+      <tspan font-family="ui-monospace, Menlo, Consolas, monospace" font-weight="700" fill="#0f8a5f">build/q2-fat</tspan>
+    </text>
+  </g>
+
+  <!-- Connector from build host zone down to bench rack -->
+  <g stroke="#3a3a3a" stroke-width="1.8" fill="none">
+    <path d="M 660 600 L 660 668" marker-end="url(#arr-ink)"/>
+  </g>
+  <g transform="translate(660, 624)">
+    <rect x="0" y="-14" width="540" height="28" rx="6" fill="#ffffff" stroke="#cbcbcb" stroke-width="1"/>
+    <text x="12" y="5" font-size="11" font-weight="600" fill="#3a3a3a">deploy.sh &lt;machine&gt;</text>
+    <text x="138" y="5" font-size="11" fill="#666">— stages .app with all six per-machine cfgs in Contents/Resources/, rsyncs to target</text>
+  </g>
+
+  <!-- cfg dispatch annotation — explains how the fat binary picks its
+       per-machine cfg once it lands on a target. Sits in the gap between
+       the deploy.sh band and the bench rack title row. Q2 uses a single
+       per-machine layer (no per-arch baseline); machine identity comes
+       from sysctl hw.model and the cfg ships inside the .app bundle. -->
+  <g transform="translate(60, 660)">
+    <text x="600" y="0" text-anchor="middle" font-size="11" fill="#444">
+      <tspan font-style="italic">on .app boot:</tspan>
+      <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#1a1a1a"> sysctl hw.model </tspan>
+      <tspan>→ </tspan>
+      <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#1a1a1a">autoexec-&lt;machine&gt;.cfg</tspan>
+      <tspan>  (CFBundle reads from </tspan>
+      <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#1a1a1a">Quake2.app/Contents/Resources/</tspan>
+      <tspan> · </tspan>
+      <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#1a1a1a">yquake2/src/common/misc.c</tspan>
+      <tspan>)</tspan>
+    </text>
+  </g>
+
+  <!-- ============================================================ -->
+  <!-- ZONE 3 :: Bench rack — six machines                            -->
+  <!-- ============================================================ -->
+  <g transform="translate(60, 678)">
+    <text x="0" y="0" font-size="13" fill="#666">Each runs <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#333">+timedemo demotimedemo demo&lt;n&gt;lt;ntimedemo demo&lt;n&gt;gt;.dm2</tspan>; qconsole.log returns to Ubuntu, parsed into a CSV row tagged with the commit hash</text>
+
+    <!-- 6 machine cards -->
+    <!-- card width 200, gap 10, total 6*200 + 5*10 = 1250 -->
+    <g transform="translate(-12, 24)">
+      <!-- yosemite -->
+      <g transform="translate(0,0)">
+        <rect x="0" y="0" width="200" height="262" rx="10" fill="#ffffff" stroke="#e0d8c0" stroke-width="1" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="200" height="6" rx="3" fill="#5fb1d8"/>
+        <text x="14" y="32" font-size="14" font-weight="700" fill="#1a1a1a">yosemite</text>
+        <text x="14" y="50" font-size="10.5" fill="#888">PowerMac G3 B&amp;W · 1999</text>
+        <g font-size="10.5" fill="#333">
+          <text x="14" y="76">CPU: PPC 750 @ 449 MHz</text>
+          <text x="14" y="94">GPU: ATI Rage 128 · 16 MB</text>
+          <text x="14" y="112">OS: 10.3.9 Panther</text>
+          <text x="14" y="130">Pipeline: fixed-function</text>
+        </g>
+        <line x1="14" y1="150" x2="186" y2="150" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="170" font-size="10" fill="#888">runs:</text>
+        <text x="14" y="188" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#1a1a1a">q2-g3</text>
+        <text x="14" y="206" font-size="10" fill="#888">slice: ppc750</text>
+        <line x1="14" y1="218" x2="186" y2="218" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="238" font-size="10.5" fill="#1a1a1a" font-weight="700">floor: 20 fps</text>
+        <text x="14" y="252" font-size="10" fill="#888" font-style="italic">GPU-bound</text>
+      </g>
+      <!-- sawtooth -->
+      <g transform="translate(210,0)">
+        <rect x="0" y="0" width="200" height="262" rx="10" fill="#ffffff" stroke="#e0d8c0" stroke-width="1" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="200" height="6" rx="3" fill="#8b5cf6"/>
+        <text x="14" y="32" font-size="14" font-weight="700" fill="#1a1a1a">sawtooth</text>
+        <text x="14" y="50" font-size="10.5" fill="#888">PowerMac G4 AGP · 1999</text>
+        <g font-size="10.5" fill="#333">
+          <text x="14" y="76">CPU: PPC 7400 @ 500 MHz</text>
+          <text x="14" y="94">GPU: GeForce2 MX · 32 MB</text>
+          <text x="14" y="112">OS: 10.4.11 · AltiVec</text>
+          <text x="14" y="130">Pipeline: fixed-function</text>
+        </g>
+        <line x1="14" y1="150" x2="186" y2="150" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="170" font-size="10" fill="#888">runs:</text>
+        <text x="14" y="188" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#1a1a1a">q2-g4</text>
+        <text x="14" y="206" font-size="10" fill="#888">slice: ppc7400</text>
+        <line x1="14" y1="218" x2="186" y2="218" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="238" font-size="10.5" fill="#1a1a1a" font-weight="700">floor: 30 fps</text>
+        <text x="14" y="252" font-size="10" fill="#888" font-style="italic">fillrate-bound</text>
+      </g>
+      <!-- quicksilver -->
+      <g transform="translate(420,0)">
+        <rect x="0" y="0" width="200" height="262" rx="10" fill="#ffffff" stroke="#e0d8c0" stroke-width="1" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="200" height="6" rx="3" fill="#8b5cf6"/>
+        <text x="14" y="32" font-size="14" font-weight="700" fill="#1a1a1a">quicksilver</text>
+        <text x="14" y="50" font-size="10.5" fill="#888">PowerMac G4 QS · 2001</text>
+        <g font-size="10.5" fill="#333">
+          <text x="14" y="76">CPU: PPC 7450 @ 733 MHz</text>
+          <text x="14" y="94">GPU: Radeon 9000 Pro · 64 MB</text>
+          <text x="14" y="112">OS: 10.4.11 · AltiVec</text>
+          <text x="14" y="130">Pipeline: prog. (no SM2)</text>
+        </g>
+        <line x1="14" y1="150" x2="186" y2="150" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="170" font-size="10" fill="#888">runs:</text>
+        <text x="14" y="188" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#1a1a1a">q2-g4</text>
+        <text x="14" y="206" font-size="10" fill="#888">slice: ppc7400</text>
+        <line x1="14" y1="218" x2="186" y2="218" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="238" font-size="10.5" fill="#1a1a1a" font-weight="700">floor: 60 fps</text>
+      </g>
+      <!-- mini-g4 -->
+      <g transform="translate(630,0)">
+        <rect x="0" y="0" width="200" height="262" rx="10" fill="#ffffff" stroke="#e0d8c0" stroke-width="1" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="200" height="6" rx="3" fill="#8b5cf6"/>
+        <text x="14" y="32" font-size="14" font-weight="700" fill="#1a1a1a">mini-g4</text>
+        <text x="14" y="50" font-size="10.5" fill="#888">Mac mini G4 · 2005</text>
+        <g font-size="10.5" fill="#333">
+          <text x="14" y="76">CPU: PPC 7447A @ 1.25 GHz</text>
+          <text x="14" y="94">GPU: Radeon 9200 · 32 MB</text>
+          <text x="14" y="112">OS: 10.4.11 · AltiVec</text>
+          <text x="14" y="130">Pipeline: prog. (no SM2)</text>
+        </g>
+        <line x1="14" y1="150" x2="186" y2="150" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="170" font-size="10" fill="#888">runs:</text>
+        <text x="14" y="188" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#1a1a1a">q2-g4</text>
+        <text x="14" y="206" font-size="10" fill="#888">slice: ppc7400</text>
+        <line x1="14" y1="218" x2="186" y2="218" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="238" font-size="10.5" fill="#1a1a1a" font-weight="700">floor: 60 fps</text>
+      </g>
+      <!-- mini-intel — dual role -->
+      <g transform="translate(840,0)">
+        <rect x="0" y="0" width="200" height="262" rx="10" fill="#ffffff" stroke="#4c83c4" stroke-width="1.6" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="200" height="6" rx="3" fill="#10b981"/>
+        <text x="14" y="32" font-size="14" font-weight="700" fill="#1a1a1a">mini-intel</text>
+        <text x="14" y="50" font-size="10.5" fill="#888">Mac mini Intel · 2007</text>
+        <g font-size="10.5" fill="#333">
+          <text x="14" y="76">CPU: Core 2 Duo @ 2.33 GHz</text>
+          <text x="14" y="94">GPU: Intel GMA 950 · shared</text>
+          <text x="14" y="112">OS: 10.7.5 Lion</text>
+          <text x="14" y="130">Pipeline: GL 1.4, no GLSL</text>
+        </g>
+        <line x1="14" y1="150" x2="186" y2="150" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="170" font-size="10" fill="#888">runs:</text>
+        <text x="14" y="188" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#1a1a1a">q2-lion</text>
+        <text x="14" y="206" font-size="10" fill="#888">slice: x86_64</text>
+        <line x1="14" y1="218" x2="186" y2="218" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="238" font-size="10.5" fill="#4c83c4" font-weight="700">↑ also the build host</text>
+      </g>
+      <!-- imac-2019 — modern outlier -->
+      <g transform="translate(1050,0)">
+        <rect x="0" y="0" width="200" height="262" rx="10" fill="#ffffff" stroke="#e0d8c0" stroke-width="1" filter="url(#card-shadow)"/>
+        <rect x="0" y="0" width="200" height="6" rx="3" fill="#10b981"/>
+        <text x="14" y="32" font-size="14" font-weight="700" fill="#1a1a1a">imac-2019</text>
+        <text x="14" y="50" font-size="10.5" fill="#888">iMac 27" Retina · 2019</text>
+        <g font-size="10.5" fill="#333">
+          <text x="14" y="76">CPU: i5-9600K @ 3.7 GHz</text>
+          <text x="14" y="94">GPU: Radeon Pro 580X · 8 GB</text>
+          <text x="14" y="112">OS: 15.7.5 Sequoia</text>
+          <text x="14" y="130">Pipeline: GL 1.x via Lion SDK</text>
+        </g>
+        <line x1="14" y1="150" x2="186" y2="150" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="170" font-size="10" fill="#888">runs:</text>
+        <text x="14" y="188" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#1a1a1a">q2-lion</text>
+        <text x="14" y="206" font-size="10" fill="#888">slice: x86_64</text>
+        <line x1="14" y1="218" x2="186" y2="218" stroke="#e8e1cb" stroke-width="1"/>
+        <text x="14" y="238" font-size="10.5" fill="#1a1a1a" font-weight="700">~2000 fps</text>
+        <text x="14" y="252" font-size="10" fill="#888" font-style="italic">CPU-limited at idle</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- "same machine" tie connector — descends along the right edge of the cross-build zone
+       (clear of deploy.sh), then sweeps left through the gap between zones to land on top
+       of the mini-intel bench card. Curve stays clear of the imac-2019 column at y≥702. -->
+  <g stroke="#3b6dd5" stroke-width="2.4" stroke-dasharray="7 5" fill="none" opacity="1">
+    <path d="M 1260 480 C 1260 670 1100 670 988 698" marker-end="url(#arr-blue)"/>
+  </g>
+  <!-- small dot at the connector origin to anchor the visual on the cross-build card -->
+  <circle cx="1260" cy="480" r="4" fill="#3b6dd5"/>
+  <g transform="translate(1090, 614)">
+    <rect x="0" y="-12" width="148" height="22" rx="4" fill="#eef4fc" stroke="#4c83c4" stroke-width="1"/>
+    <text x="74" y="3" text-anchor="middle" font-size="11" font-style="italic" fill="#2a5cae">same physical machine</text>
+  </g>
+
+  <!-- Footer / legend -->
+  <g transform="translate(60, 1020)">
+    <line x1="0" y1="-14" x2="1200" y2="-14" stroke="#e0d8c0" stroke-width="1"/>
+    <g font-size="11" fill="#555">
+      <circle cx="6" cy="0" r="4" fill="#e95420"/>
+      <text x="16" y="3">Ubuntu — orchestrator</text>
+
+      <circle cx="200" cy="0" r="4" fill="#5fb1d8"/>
+      <text x="210" y="3">G3 / Panther / Rage 128</text>
+
+      <circle cx="380" cy="0" r="4" fill="#8b5cf6"/>
+      <text x="390" y="3">G4 / Tiger / AltiVec</text>
+
+      <circle cx="540" cy="0" r="4" fill="#10b981"/>
+      <text x="550" y="3">Intel / Lion</text>
+
+      <circle cx="650" cy="0" r="4" fill="#4c83c4"/>
+      <text x="660" y="3">cross-build host (Lion mini, dual role)</text>
+    </g>
+    <text x="1200" y="3" text-anchor="end" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10" fill="#888">scripts/{build,build-fat,deploy,bench,parallel-bench}.sh</text>
+  </g>
+</svg>

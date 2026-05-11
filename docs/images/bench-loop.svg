@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1320 1240" font-family="-apple-system, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="bl-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e95420"/>
+    </marker>
+    <marker id="bl-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3b6dd5"/>
+    </marker>
+    <marker id="bl-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f8a5f"/>
+    </marker>
+    <marker id="bl-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3a3a3a"/>
+    </marker>
+    <filter id="bl-shadow" x="-5%" y="-5%" width="110%" height="115%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+
+  <rect width="1320" height="1240" fill="#faf6ef"/>
+
+  <!-- Title -->
+  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Bench loop — Ubuntu drives, target executes, qconsole.log returns</text>
+  <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/bench.sh &lt;target&gt; &lt;demo&gt; &lt;WxH&gt;</tspan> · one cell = three independent timedemos · median(run2, run3) drops the cold-cache run 1</text>
+
+  <!-- =========================================================== -->
+  <!-- ACTORS at top                                                 -->
+  <!-- =========================================================== -->
+  <!-- Ubuntu actor -->
+  <g transform="translate(120, 110)">
+    <rect x="0" y="0" width="280" height="70" rx="10" fill="#ffffff" stroke="#e7c79c" stroke-width="1.4" filter="url(#bl-shadow)"/>
+    <rect x="0" y="0" width="6" height="70" rx="3" fill="#e95420"/>
+    <text x="22" y="28" font-size="15" font-weight="700" fill="#1a1a1a">Ubuntu workstation</text>
+    <text x="22" y="48" font-size="11.5" fill="#777">orchestrator · runs scripts/bench.sh</text>
+    <text x="22" y="62" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#888">writes benchmarks/results.csv</text>
+  </g>
+
+  <!-- Target actor -->
+  <g transform="translate(910, 110)">
+    <rect x="0" y="0" width="280" height="70" rx="10" fill="#ffffff" stroke="#a8c5e2" stroke-width="1.4" filter="url(#bl-shadow)"/>
+    <rect x="0" y="0" width="6" height="70" rx="3" fill="#3b6dd5"/>
+    <text x="22" y="28" font-size="15" font-weight="700" fill="#1a1a1a">Target machine</text>
+    <text x="22" y="48" font-size="11.5" fill="#777">e.g. yosemite (G3 · Panther)</text>
+    <text x="22" y="62" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#888">~/Desktop/quake2/Quake2.app</text>
+  </g>
+
+  <!-- Lifelines -->
+  <g stroke="#bdb59a" stroke-width="1.4" stroke-dasharray="4 4">
+    <line x1="260" y1="186" x2="260" y2="1100"/>
+    <line x1="1050" y1="186" x2="1050" y2="1100"/>
+  </g>
+
+  <!-- Time arrow on left -->
+  <g transform="translate(60, 200)">
+    <line x1="0" y1="0" x2="0" y2="800" stroke="#cbc4ad" stroke-width="2"/>
+    <path d="M -5 800 L 0 815 L 5 800 z" fill="#cbc4ad"/>
+    <text x="-30" y="400" font-size="11" font-weight="600" fill="#888" letter-spacing="2" transform="rotate(-90, -30, 400)">TIME →</text>
+  </g>
+
+  <!-- Activation bar on target lifeline (when Quake is running) -->
+  <rect x="1044" y="280" width="12" height="380" rx="2" fill="#3b6dd5" opacity="0.18"/>
+  <rect x="1044" y="280" width="12" height="380" rx="2" fill="none" stroke="#3b6dd5" stroke-width="1"/>
+
+  <!-- =========================================================== -->
+  <!-- STEP 1 :: pre-cleanup                                         -->
+  <!-- =========================================================== -->
+  <g transform="translate(0, 220)">
+    <!-- numbered marker on Ubuntu side -->
+    <circle cx="260" cy="0" r="14" fill="#e95420" stroke="#fff" stroke-width="2.5"/>
+    <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+
+    <!-- arrow Ubuntu → Target -->
+    <line x1="280" y1="0" x2="1036" y2="0" stroke="#e95420" stroke-width="2" marker-end="url(#bl-orange)"/>
+
+    <!-- command label above the arrow -->
+    <text x="660" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">ssh</tspan>  killall -TERM quake2; sleep 2; killall -KILL quake2</text>
+    <text x="660" y="18" text-anchor="middle" font-size="11" fill="#888" font-style="italic">pre-run cleanup — reap any stale process from a prior cell</text>
+  </g>
+
+  <!-- callout: Why TERM-then-KILL -->
+  <g transform="translate(80, 252)">
+    <rect x="0" y="0" width="160" height="58" rx="6" fill="#fdf3f3" stroke="#e7b6b6" stroke-width="1"/>
+    <text x="10" y="18" font-size="11" font-weight="700" fill="#a02020">⚠ no bare KILL</text>
+    <text x="10" y="34" font-size="10" fill="#553030">Hard-kill of fullscreen Quake</text>
+    <text x="10" y="46" font-size="10" fill="#553030">trips Rage 128 LUT corruption</text>
+  </g>
+
+  <!-- =========================================================== -->
+  <!-- STEP 2 :: launch quake2                                   -->
+  <!-- =========================================================== -->
+  <g transform="translate(0, 320)">
+    <circle cx="260" cy="0" r="14" fill="#e95420" stroke="#fff" stroke-width="2.5"/>
+    <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">2</text>
+
+    <line x1="280" y1="0" x2="1036" y2="0" stroke="#e95420" stroke-width="2" marker-end="url(#bl-orange)"/>
+
+    <text x="660" y="-30" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">ssh</tspan>  cd ~/Desktop/quake2; rm -f qconsole.log;</text>
+    <text x="660" y="-14" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#1a1a1a">./Quake2.app/Contents/MacOS/quake2 -nolauncher -noarchautoexec +set logfile 2 +set s_initsound 0 +set vid_fullscreen 1 +set gl_mode -1 +set gl_customwidth W +set gl_customheight H +set timedemo 1 +demomap demoN.dm2 &amp;</text>
+    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">launch quake2 in the background — ssh returns immediately · <tspan font-family="ui-monospace, Menlo, Consolas, monospace">-noarchautoexec</tspan> suppresses the per-machine cfg overlay for deterministic measurement</text>
+  </g>
+
+  <!-- target reaction box: Quake running -->
+  <g transform="translate(870, 360)">
+    <rect x="0" y="0" width="430" height="44" rx="6" fill="#eef4fb" stroke="#a8c5e2" stroke-width="1"/>
+    <text x="14" y="20" font-size="11" font-weight="700" fill="#1a1a1a">Target is now active</text>
+    <text x="14" y="36" font-size="10.5" fill="#3a3a3a">Quake comes up at fullscreen and starts the timedemo. Engine writes qconsole.log.</text>
+  </g>
+
+  <!-- =========================================================== -->
+  <!-- STEP 3 :: poll loop                                           -->
+  <!-- =========================================================== -->
+  <g transform="translate(0, 460)">
+    <circle cx="260" cy="0" r="14" fill="#e95420" stroke="#fff" stroke-width="2.5"/>
+    <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
+
+    <!-- self-loop arrow on Ubuntu side -->
+    <path d="M 268 -8 C 320 -28 320 28 268 8" stroke="#e95420" stroke-width="1.8" fill="none" marker-end="url(#bl-orange)"/>
+    <text x="328" y="-2" font-size="11" font-weight="700" fill="#e95420">poll every 1s</text>
+
+    <!-- across the lifeline: ssh grep -->
+    <line x1="365" y1="0" x2="1036" y2="0" stroke="#e95420" stroke-width="2" stroke-dasharray="6 3" marker-end="url(#bl-orange)"/>
+
+    <text x="700" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">ssh</tspan>  grep -q 'frames.*seconds.*fps' qconsole.log</text>
+    <text x="700" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">Ubuntu polls the log file via ssh until the timedemo result line appears (or TIMEOUT)</text>
+  </g>
+
+  <!-- callout: integer sleep -->
+  <g transform="translate(80, 432)">
+    <rect x="0" y="0" width="160" height="58" rx="6" fill="#fff8e6" stroke="#dcc28a" stroke-width="1"/>
+    <text x="10" y="18" font-size="11" font-weight="700" fill="#9c5d00">⏱ integer sleep only</text>
+    <text x="10" y="34" font-size="10" fill="#5a4515">Panther /bin/sleep can't parse</text>
+    <text x="10" y="46" font-size="10" fill="#5a4515">0.2 — would busy-spin to TIMEOUT</text>
+  </g>
+
+  <!-- =========================================================== -->
+  <!-- STEP 4 :: match found, target → ubuntu                        -->
+  <!-- =========================================================== -->
+  <g transform="translate(0, 580)">
+    <circle cx="1050" cy="0" r="14" fill="#3b6dd5" stroke="#fff" stroke-width="2.5"/>
+    <text x="1050" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">4</text>
+
+    <!-- arrow Target → Ubuntu (returning data) -->
+    <line x1="1030" y1="0" x2="280" y2="0" stroke="#3b6dd5" stroke-width="2" marker-end="url(#bl-blue)"/>
+
+    <text x="660" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a">"3148 frames 28.92 seconds 108.86 fps"</text>
+    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">timedemo result line appears in qconsole.log — Ubuntu's grep matches</text>
+  </g>
+
+  <!-- callout: raw write -->
+  <g transform="translate(1080, 552)">
+    <rect x="0" y="0" width="200" height="58" rx="6" fill="#eff7f1" stroke="#a3cfb3" stroke-width="1"/>
+    <text x="10" y="18" font-size="11" font-weight="700" fill="#0f6a4a">✓ raw write(), no buffering</text>
+    <text x="10" y="34" font-size="10" fill="#2d4d3c">qconsole.log uses bare write()</text>
+    <text x="10" y="46" font-size="10" fill="#2d4d3c">— polling actually catches it</text>
+  </g>
+
+  <!-- =========================================================== -->
+  <!-- STEP 5 :: clean shutdown                                      -->
+  <!-- =========================================================== -->
+  <g transform="translate(0, 660)">
+    <circle cx="260" cy="0" r="14" fill="#e95420" stroke="#fff" stroke-width="2.5"/>
+    <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">5</text>
+
+    <line x1="280" y1="0" x2="1036" y2="0" stroke="#e95420" stroke-width="2" marker-end="url(#bl-orange)"/>
+
+    <text x="660" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">ssh</tspan>  killall -TERM quake2; sleep 2; killall -KILL quake2</text>
+    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">TERM lets SDL_Quit unwind GL state · KILL reaps any SDL/CoreAudio thread that ignored TERM</text>
+  </g>
+
+  <!-- target deactivation note -->
+  <g transform="translate(870, 696)">
+    <rect x="0" y="0" width="430" height="36" rx="6" fill="#eef4fb" stroke="#a8c5e2" stroke-width="1"/>
+    <text x="14" y="22" font-size="10.5" fill="#3a3a3a">SDL_Quit restores display LUT · process exits · target lifeline deactivates</text>
+  </g>
+
+  <!-- =========================================================== -->
+  <!-- STEP 6 :: scp log back                                        -->
+  <!-- =========================================================== -->
+  <g transform="translate(0, 770)">
+    <circle cx="260" cy="0" r="14" fill="#e95420" stroke="#fff" stroke-width="2.5"/>
+    <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">6</text>
+
+    <line x1="1030" y1="0" x2="280" y2="0" stroke="#3b6dd5" stroke-width="2" marker-end="url(#bl-blue)"/>
+
+    <text x="660" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">scp</tspan>  target:~/.yq2/baseq2/qconsole.log  →  benchmarks/raw/&lt;commit&gt;_&lt;target&gt;_&lt;demo&gt;_&lt;res&gt;_run&lt;n&gt;.log</text>
+    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">log file copies up to Ubuntu, tagged with the commit hash exported from parallel-bench.sh</text>
+  </g>
+
+  <!-- =========================================================== -->
+  <!-- STEP 7 :: parse + append                                      -->
+  <!-- =========================================================== -->
+  <g transform="translate(0, 870)">
+    <circle cx="260" cy="0" r="14" fill="#0f8a5f" stroke="#fff" stroke-width="2.5"/>
+    <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">7</text>
+
+    <!-- self action on Ubuntu side -->
+    <rect x="280" y="-30" width="700" height="58" rx="8" fill="#eff7f1" stroke="#a3cfb3" stroke-width="1.2"/>
+    <text x="296" y="-10" font-size="13" font-weight="700" fill="#1a1a1a">Parse → CSV row (Ubuntu only)</text>
+    <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#2d4d3c">
+      <text x="296" y="8">FPS=$(grep 'frames.*seconds.*fps' qconsole.log | awk '{print $5}')</text>
+      <text x="296" y="22">echo "$TS,$COMMIT,$TARGET,$DEMO,$RES,$run1,$run2,$run3,$MEDIAN" &gt;&gt; results.csv</text>
+    </g>
+  </g>
+
+  <!-- =========================================================== -->
+  <!-- LOOP BRACKET (encompasses steps 1–6, repeats 3×)              -->
+  <!-- =========================================================== -->
+  <g stroke="#1a1a1a" stroke-width="1.6" fill="none">
+    <!-- right-side bracket -->
+    <path d="M 1240 220 L 1260 220 L 1260 800 L 1240 800"/>
+  </g>
+  <g transform="translate(1265, 510)">
+    <rect x="0" y="-22" width="50" height="44" rx="6" fill="#1a1a1a"/>
+    <text x="25" y="-2" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">3 ×</text>
+    <text x="25" y="14" text-anchor="middle" font-size="10" fill="#e7e7e7">runs</text>
+  </g>
+  <text x="1245" y="816" font-size="10.5" fill="#888" font-style="italic">repeat per cell</text>
+
+  <!-- =========================================================== -->
+  <!-- AFTER LOOP :: median + CSV row visualisation                  -->
+  <!-- =========================================================== -->
+  <g transform="translate(60, 950)">
+    <text x="0" y="-2" font-size="14" font-weight="700" fill="#1a1a1a">After 3 runs — median lands in the rolling CSV</text>
+
+    <!-- CSV row visualisation -->
+    <g transform="translate(0, 24)">
+      <rect x="0" y="0" width="1200" height="78" rx="10" fill="#ffffff" stroke="#cbc4ad" stroke-width="1.2" filter="url(#bl-shadow)"/>
+      <text x="20" y="22" font-size="12" font-weight="700" fill="#1a1a1a">benchmarks/results.csv  (one row, appended atomically — &lt; PIPE_BUF so concurrent legs never interleave)</text>
+
+      <!-- header row -->
+      <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5">
+        <g transform="translate(20, 38)">
+          <rect x="0" y="0" width="160" height="16" fill="#f3eed9"/><text x="6" y="12" fill="#666">timestamp</text>
+          <rect x="160" y="0" width="80" height="16" fill="#f3eed9"/><text x="166" y="12" fill="#666">commit</text>
+          <rect x="240" y="0" width="120" height="16" fill="#f3eed9"/><text x="246" y="12" fill="#666">machine</text>
+          <rect x="360" y="0" width="80" height="16" fill="#f3eed9"/><text x="366" y="12" fill="#666">demo</text>
+          <rect x="440" y="0" width="100" height="16" fill="#f3eed9"/><text x="446" y="12" fill="#666">res</text>
+          <rect x="540" y="0" width="100" height="16" fill="#f3eed9"/><text x="546" y="12" fill="#666">run1_fps</text>
+          <rect x="640" y="0" width="100" height="16" fill="#f3eed9"/><text x="646" y="12" fill="#666">run2_fps</text>
+          <rect x="740" y="0" width="100" height="16" fill="#f3eed9"/><text x="746" y="12" fill="#666">run3_fps</text>
+          <rect x="840" y="0" width="120" height="16" fill="#cfe7d3"/><text x="846" y="12" fill="#0f6a4a" font-weight="700">median_fps</text>
+        </g>
+        <!-- data row -->
+        <g transform="translate(20, 56)" fill="#1a1a1a">
+          <text x="6" y="12">2026-05-09T07:21Z</text>
+          <text x="166" y="12">b5982ea9</text>
+          <text x="246" y="12">yosemite</text>
+          <text x="366" y="12">demo3</text>
+          <text x="446" y="12">1024x768</text>
+          <text x="546" y="12">19.83</text>
+          <text x="646" y="12">20.05</text>
+          <text x="746" y="12">20.25</text>
+          <text x="846" y="12" fill="#0f6a4a" font-weight="700">20.15</text>
+        </g>
+      </g>
+    </g>
+    <text x="0" y="124" font-size="11" fill="#888" font-style="italic">median = mean(run2, run3) — drops the cold-cache run 1, which is treated as a warm-up</text>
+  </g>
+
+  <!-- =========================================================== -->
+  <!-- PARALLEL-BENCH note                                            -->
+  <!-- =========================================================== -->
+  <g transform="translate(60, 1110)">
+    <rect x="0" y="0" width="1200" height="78" rx="10" fill="#fbf1e6" stroke="#ecd9bd" stroke-width="1"/>
+    <text x="20" y="26" font-size="13" font-weight="700" fill="#1a1a1a">parallel-bench.sh — same loop, fanned out across all six Macs at once</text>
+    <text x="20" y="48" font-size="11.5" fill="#444">Six concurrent ssh sessions, six concurrent timedemos. Row appends (&gt;&gt;) are atomic for writes &lt; 4 KB on Linux/macOS,</text>
+    <text x="20" y="64" font-size="11.5" fill="#444">so rows from different machines never interleave. Wall time ≈ slowest leg (yosemite G3) — full matrix sweep done in the time one G3 leg takes.</text>
+  </g>
+
+  <!-- footer -->
+  <g transform="translate(60, 1212)">
+    <line x1="0" y1="-14" x2="1200" y2="-14" stroke="#e0d8c0" stroke-width="1"/>
+    <text x="0" y="4" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#888">scripts/bench.sh · scripts/parallel-bench.sh · scripts/parse_qconsole.py</text>
+    <text x="1200" y="4" text-anchor="end" font-size="10.5" fill="#888">$COMMIT pinned once at script start, exported to every leg → consistent commit tag across the matrix</text>
+  </g>
+</svg>

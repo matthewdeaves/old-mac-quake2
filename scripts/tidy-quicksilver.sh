@@ -29,10 +29,12 @@ fi
 
 # Paths to remove. Quoted carefully because the parent path contains a space.
 #
-# Tier 1 — legacy 1999 Classic Mac OS binaries + plugins (won't run on Tiger):
+# Tier 1 — legacy 1999 Classic Mac OS binaries + plugins (won't run on Tiger).
+# NOT included: Q2DedicatedServer — keep it. It's a 2006 PPC Mac OS X build
+# that does run on Tiger, and the user wants to keep the option to host
+# multiplayer from the G4.
 LEGACY_BINARIES=(
   "Quake 2™"
-  "Q2DedicatedServer"
   "Read Me.app"
   "ref_gl.lib"
   "ref_soft.lib"

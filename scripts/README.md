@@ -6,14 +6,23 @@ Don't reinvent.
 
 ## Status: pre-Phase-A
 
-Scripts will be ported as Phase A.1 / A.2 / A.4 land. Until then this
-directory holds:
+Build/deploy/bench scripts will be ported from QuakeSpasm as Phase A.1 /
+A.2 / A.4 land. Until then this directory holds:
 
+- `make-icon.py` — end-to-end Mac OS icon pipeline. Single Python tool
+  that takes a source PNG (white-bg, black-bg, or already-transparent),
+  removes the background with edge-flood-fill (so interior near-bg pixels
+  are preserved), and emits a **legacy-only ICNS** that renders on
+  Panther 10.3 + Tiger 10.4 + Lion 10.7 + Sequoia 15.7 Finder. No `iconutil`
+  (drops 1-bit chunks Panther needs), no modern PNG chunks (break Panther
+  Finder). Run with `--help` for the flag list. Pre-reqs: `~/quake2/.venv`
+  with numpy + Pillow + scipy.
 - `tidy-quicksilver.sh` — proposed cleanup of `quicksilver:~/Desktop/Quake 2/`
   (the user's existing Q2 install) into a clean game-data layout.
   **Do not run without user confirmation** — it deletes the legacy
-  1999/2006 Mac binaries that aren't reusable but are still the user's
-  property.
+  1999 Mac binaries that aren't reusable but are still the user's
+  property. Keeps `Q2DedicatedServer` (the 2006 PPC OSX server build)
+  in case the user wants to host multiplayer from the G4.
 
 ## To adapt from QuakeSpasm (Phase A.1)
 

@@ -29,6 +29,9 @@
  #define _GNU_SOURCE
 #endif
 
+/* Panther's 10.3.9 SDK <sys/mman.h> uses size_t/caddr_t without
+ * including <sys/types.h> itself, so we have to pull it in first. */
+#include <sys/types.h>
 #include <sys/mman.h>
 #include <errno.h>
 #include <sys/time.h>
@@ -42,7 +45,6 @@
 #endif
 
 #if defined(__APPLE__)
- #include <sys/types.h>
  #define MAP_ANONYMOUS MAP_ANON
 #endif
 

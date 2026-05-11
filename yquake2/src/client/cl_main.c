@@ -801,6 +801,15 @@ CL_Frame(int msec)
 
 	if (!cl.refresh_prepped && (cls.state == ca_active))
 	{
+		/* Mirror CL_Precache_f's no-args path so the collision module is
+		 * loaded before PrepRefresh registers inline models. Otherwise an
+		 * exec/wait queue that delays the server-stuffed `precache` until
+		 * after the first svc_frame triggers ca_active will cause
+		 * CM_InlineModel to fire `bad number` because numcmodels=0.
+		 * See screenshot.sh notes; protocol-34 demos are the trigger. */
+		unsigned map_checksum;
+		CM_LoadMap(cl.configstrings[CS_MODELS + 1], true, &map_checksum);
+		CL_RegisterSounds();
 		CL_PrepRefresh();
 	}
 

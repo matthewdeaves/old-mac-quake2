@@ -791,12 +791,21 @@ CL_ParseFrame(void)
 			cl.predicted_origin[2] = cl.frame.playerstate.pmove.origin[2] * 0.125f;
 			VectorCopy(cl.frame.playerstate.viewangles, cl.predicted_angles);
 
-			if ((cls.disable_servercount != cl.servercount) && cl.refresh_prepped)
-			{
-				SCR_EndLoadingPlaque();  /* get rid of loading plaque */
-			}
-
 			cl.sound_prepped = true;
+		}
+
+		/* Drop the loading plaque once the refresher is ready. This was
+		 * gated on the cls.state != ca_active transition above, but
+		 * refresh_prepped can flip true a frame or more AFTER that
+		 * transition (CL_Frame fallback path or delayed `precache`
+		 * stufftext drain when the cmd buffer is loaded with waits, as
+		 * happens during scripted screenshot capture). Re-checking each
+		 * valid frame closes that race without breaking the normal
+		 * single-shot transition behaviour. */
+		if (cls.disable_screen &&
+			(cls.disable_servercount != cl.servercount) && cl.refresh_prepped)
+		{
+			SCR_EndLoadingPlaque();  /* get rid of loading plaque */
 		}
 
 		/* fire entity events */

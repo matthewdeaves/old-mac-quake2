@@ -1,0 +1,22 @@
+# Build artifacts
+build/
+yquake2/build/
+yquake2/release/
+*.o
+*.d
+*.so
+*.dylib
+
+# Reference repos (read-only, large, separately versioned)
+reference/
+
+# Benchmark scratch
+benchmarks/raw/*.log
+benchmarks/results.csv.bak.*
+
+# Editor / OS cruft
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/

@@ -1,1 +1,7 @@
-commit,phase,machine,demo,res,runs,fps_1,fps_2,fps_3,fps_median,notes
+timestamp,commit,machine,demo,res,run1_fps,run2_fps,run3_fps,median_fps
+2026-05-11T19:31:27Z,cb880ad,mini-intel,demo1,640x480,59.4,59.4,59.4,59.40
+2026-05-11T19:32:28Z,cb880ad,mini-intel,demo1,1024x768,115.4,116.1,115.8,115.95
+2026-05-11T19:33:52Z,cb880ad,quicksilver,demo1,640x480,82.6,82.6,82.7,82.65
+2026-05-11T19:35:03Z,cb880ad,quicksilver,demo1,1024x768,80.8,81.8,82.4,82.10
+2026-05-11T19:37:57Z,cb880ad,yosemite,demo1,640x480,17.8,18.2,18.5,18.35
+2026-05-11T19:40:40Z,cb880ad,yosemite,demo1,1024x768,14.6,14.7,14.6,14.65

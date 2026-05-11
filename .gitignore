@@ -11,7 +11,6 @@ yquake2/release/
 reference/
 
 # Benchmark scratch
-benchmarks/raw/*.log
 benchmarks/results.csv.bak.*
 
 # Editor / OS cruft
@@ -23,3 +22,4 @@ benchmarks/results.csv.bak.*
 
 # Python venv for icon prep + helper scripts
 .venv/
+.game-data/

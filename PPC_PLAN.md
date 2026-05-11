@@ -183,15 +183,23 @@ above its playability threshold."
   - `patch: gate -rpath on 10.5+ deployment target` (Makefile)
   - `patch: link Darwin shared libs with -dynamiclib, not -shared` (Makefile)
   - `patch: include sys/types.h before sys/mman.h on Panther 10.3.9 SDK` (hunk.c)
-  Runtime-verified end-to-end on:
-  - **mini-intel** (Lion, Intel GMA 950) — `quake2 +quit` reaches
-    "Yamagi Quake II Initialized" via coreaudio + GL 1.4
-  - **quicksilver** (Tiger, PPC 7450, ATI Radeon 9000 Pro) — same;
-    big-endian path through the renderer is clean
-  G3 binary builds clean (ppc_750 Mach-O) but not yet runtime-verified
-  — waiting on yosemite. Phase A.1 is the minimum-deps build:
-  WITH_CDA=no, WITH_OGG=no, WITH_OPENAL=no, WITH_RETEXTURING=no
-  (sed-patched in `build.sh`; libjpeg isn't installed on mini-intel).
-  Revisit retexturing in A.3 once OpenAL/OGG/CDA dependency policy
-  is decided. Phase A.2 (proper .app bundle) and A.4/A.5 (deploy +
-  bench across all 6 machines) are next.
+- 2026-05-11 — Phase A.4/A.5 baseline benchmarks captured. `scripts/deploy.sh`
+  and `scripts/bench.sh` adapted from the QuakeSpasm sister project,
+  with two Q2-specific quirks documented in `bench.sh`:
+  - qconsole.log lives at `~/.yq2/baseq2/` (the writable user gamedir),
+    NOT next to the binary
+  - resolution control needs `gl_mode -1 + gl_customwidth/customheight`
+    (no `r_mode` cvar in 5.11; mode table only)
+  Baseline demo1 numbers, vanilla yquake2 5.11, no optimizations:
+
+  | Machine                      | 640×480     | 1024×768    | Notes |
+  |---|---|---|---|
+  | **mini-intel** (Lion, GMA 950)  |  59.4 fps* | 116.0 fps   | * Quartz vsync gates 640×480 at 60; 1024×768 doesn't match a native mode so SDL drops into a non-vsynced path |
+  | **quicksilver** (Tiger, Radeon 9000 / 7450) |  82.7 fps | 82.1 fps    | CPU-bound — same fps both resolutions |
+  | **yosemite** (Panther, Rage 128 / 750)  |  18.4 fps | 14.7 fps    | Under the 20 fps floor — Phase B group-draw + multitexture cherry-picks should help; G3 confirmed as "best effort" per the risk note above |
+
+  Phase A.1 is the minimum-deps build: WITH_CDA=no, WITH_OGG=no,
+  WITH_OPENAL=no, WITH_RETEXTURING=no (sed-patched in `build.sh`;
+  libjpeg isn't installed on mini-intel). Revisit retexturing in A.3
+  once OpenAL/OGG/CDA dependency policy is decided. Phase A.2 (proper
+  .app bundle) and demo2/demo3 grid fill are next, then Phase B.

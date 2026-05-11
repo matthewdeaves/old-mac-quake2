@@ -343,7 +343,12 @@ endif
 
 ifeq ($(OSTYPE), Darwin)
 ifeq ($(OSX_APP), yes)
+# ld's -rpath is 10.5+ only; skip when cross-building for Panther/Tiger
+# PPC. The SDL framework we ship has its own @executable_path install_name
+# so the rpath isn't load-bearing for our bundle layout anyway.
+ifeq ($(findstring mmacosx-version-min=10.3,$(OSX_ARCH))$(findstring mmacosx-version-min=10.4,$(OSX_ARCH)),)
 release/quake2 : LDFLAGS += -Xlinker -rpath -Xlinker @loader_path/../Frameworks
+endif
 endif
 endif
 

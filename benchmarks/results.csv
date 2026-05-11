@@ -1,7 +1,12 @@
-timestamp,commit,machine,demo,res,run1_fps,run2_fps,run3_fps,median_fps
-2026-05-11T19:31:27Z,cb880ad,mini-intel,demo1,640x480,59.4,59.4,59.4,59.40
-2026-05-11T19:32:28Z,cb880ad,mini-intel,demo1,1024x768,115.4,116.1,115.8,115.95
-2026-05-11T19:33:52Z,cb880ad,quicksilver,demo1,640x480,82.6,82.6,82.7,82.65
-2026-05-11T19:35:03Z,cb880ad,quicksilver,demo1,1024x768,80.8,81.8,82.4,82.10
-2026-05-11T19:37:57Z,cb880ad,yosemite,demo1,640x480,17.8,18.2,18.5,18.35
-2026-05-11T19:40:40Z,cb880ad,yosemite,demo1,1024x768,14.6,14.7,14.6,14.65
+timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_fps,median_fps,notes
+2026-05-11T20:51:25Z,b8915ac,fat,mini-g4,PPC 7447A @ 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,1024x768,101.8,99.1,99.2,99.15,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T20:51:25Z,b8915ac,fat,quicksilver,PPC 7450 @ 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,1024x768,68.7,68.3,68.7,68.50,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T20:51:25Z,b8915ac,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,1024x768,82.6,82.9,82.9,82.90,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T20:52:17Z,b8915ac,fat,mini-g4,PPC 7447A @ 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,640x480,127.0,126.8,127.0,126.90,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T20:51:25Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,1024x768,31.6,31.6,31.6,31.60,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T20:52:33Z,b8915ac,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,640x480,94.7,95.4,94.6,95.00,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T20:52:30Z,b8915ac,fat,quicksilver,PPC 7450 @ 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,640x480,72.0,72.5,72.3,72.40,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T20:53:19Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,640x480,65.6,66.1,64.2,65.15,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T21:14:30Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,80.9,79.9,81.7,80.80,Phase A + per-machine autoexec | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T21:15:19Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,640x480,59.4,59.4,59.4,59.40,Phase A + per-machine autoexec | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-11T21:17:45Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3

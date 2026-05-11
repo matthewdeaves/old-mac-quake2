@@ -424,7 +424,14 @@ build/refresher/%.o: %.c
 	${Q}$(CC) -c $(CFLAGS) $(SDLCFLAGS) $(X11CFLAGS) $(INCLUDE) -o $@ $<
 
 release/ref_gl.so : CFLAGS += -fPIC
+ifeq ($(OSTYPE), Darwin)
+# Apple gcc-4.0 + 10.4u ld64 doesn't honor `-shared` the way GNU ld does
+# (it falls through to a normal executable link and pulls in crt1.o,
+# producing "Undefined _main" errors). Use the proper macOS dyld form.
+release/ref_gl.so : LDFLAGS += -dynamiclib
+else
 release/ref_gl.so : LDFLAGS += -shared
+endif
 
 ifeq ($(WITH_X11GAMMA),yes)
 release/ref_gl.so : CFLAGS += -DX11GAMMA
@@ -468,7 +475,12 @@ build/baseq2/%.o: %.c
 	${Q}$(CC) -c $(CFLAGS) $(INCLUDE) -o $@ $<
 
 release/baseq2/game.so : CFLAGS += -fPIC
+ifeq ($(OSTYPE), Darwin)
+# See note on ref_gl.so above — same gcc-4.0 / 10.4u SDK -shared quirk.
+release/baseq2/game.so : LDFLAGS += -dynamiclib
+else
 release/baseq2/game.so : LDFLAGS += -shared
+endif
 endif
 
 # ----------

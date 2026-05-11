@@ -177,3 +177,21 @@ above its playability threshold."
 - 2026-05-11 — project initialized at yquake2 QUAKE2_5_11. Phase A
   not started. Scripts not yet adapted. Quicksilver `~/Desktop/Quake 2/`
   not yet tidied (proposal in `scripts/tidy-quicksilver.sh`).
+- 2026-05-11 — Phase A.1 baseline builds working for lion + g4 + g3.
+  All three targets cross-compile cleanly via `scripts/build.sh` on
+  mini-intel. Three Phase A patches applied as separate commits:
+  - `patch: gate -rpath on 10.5+ deployment target` (Makefile)
+  - `patch: link Darwin shared libs with -dynamiclib, not -shared` (Makefile)
+  - `patch: include sys/types.h before sys/mman.h on Panther 10.3.9 SDK` (hunk.c)
+  Runtime-verified end-to-end on:
+  - **mini-intel** (Lion, Intel GMA 950) — `quake2 +quit` reaches
+    "Yamagi Quake II Initialized" via coreaudio + GL 1.4
+  - **quicksilver** (Tiger, PPC 7450, ATI Radeon 9000 Pro) — same;
+    big-endian path through the renderer is clean
+  G3 binary builds clean (ppc_750 Mach-O) but not yet runtime-verified
+  — waiting on yosemite. Phase A.1 is the minimum-deps build:
+  WITH_CDA=no, WITH_OGG=no, WITH_OPENAL=no, WITH_RETEXTURING=no
+  (sed-patched in `build.sh`; libjpeg isn't installed on mini-intel).
+  Revisit retexturing in A.3 once OpenAL/OGG/CDA dependency policy
+  is decided. Phase A.2 (proper .app bundle) and A.4/A.5 (deploy +
+  bench across all 6 machines) are next.

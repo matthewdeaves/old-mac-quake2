@@ -20,3 +20,6 @@ benchmarks/results.csv.bak.*
 *~
 .vscode/
 .idea/
+
+# Python venv for icon prep + helper scripts
+.venv/

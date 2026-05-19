@@ -179,8 +179,11 @@ Q2's timedemo invocation differs from Q1:
 - Q2: `+timedemo demo1.dm2` (the `.dm2` is required — they're separate
   files in `baseq2/demos/`)
 
-Q2 ships three demos in `baseq2/demos/` (demo1.dm2, demo2.dm2, demo3.dm2)
-matching Q1's three.
+Q2 retail paks (pak0/pak1/pak2) ship TWO playable demos: `demo1.dm2`
+(intro flythrough) and `demo2.dm2` (gameplay). Despite Q1's three-demo
+heritage, Q2's `demo3.dm2` is NOT in any of the retail pak files —
+attempting to play it fails with "Couldn't open demos/demo3.dm2". Bench
+scripts default to demo1+demo2 only.
 
 ## Toggleable knobs (placeholder — populate as Phase B/C lands)
 

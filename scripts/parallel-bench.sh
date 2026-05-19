@@ -13,7 +13,8 @@
 #                results.csv + raw/. Use only when starting a brand
 #                new optimization round.
 #   --quick      demo1 only × both resolutions × 3 runs (default).
-#                demo2 and demo3 fill in only on a non-quick run.
+#                demo2 fills in only on a non-quick run. (demo3.dm2 doesn't
+#                ship in the retail pak0 — verified empirically.)
 #   --no-<host>  skip a specific machine
 #                (yosemite|sawtooth|quicksilver|mini-g4|mini-intel|imac-2019)
 #
@@ -107,7 +108,7 @@ if [ "$QUICK" -eq 1 ]; then
   RUNS="${RUNS:-3}"
   LABEL="quick"
 else
-  DEMOS="${DEMOS:-demo1 demo2 demo3}"
+  DEMOS="${DEMOS:-demo1 demo2}"   # demo3.dm2 absent from retail pak0; demo1+demo2 are the available set
   RESES="${RESES:-1024x768 640x480}"
   RUNS="${RUNS:-3}"
   LABEL="full"

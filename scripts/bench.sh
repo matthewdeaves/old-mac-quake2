@@ -14,6 +14,11 @@
 #                experiment. Default: "Phase A baseline".
 #   COMMIT       override the recorded commit hash (parallel-bench.sh
 #                exports this so a long matrix run tags consistently).
+#   EXTRA        extra +cmd "set X Y" tokens appended to the engine
+#                cmdline. Used for A/B'ing cvars against the production
+#                autoexec without rebuild/redeploy. +cmd executes AFTER
+#                the bundle's autoexec hook, so it overrides cleanly.
+#                Example: EXTRA='+cmd "set gl_overbrightbits 4"'
 #
 # CSV columns (results.csv):
 #   timestamp     UTC ISO-8601, captured at row-write time
@@ -158,6 +163,7 @@ for i in $(seq 1 $RUNS); do
       +set s_initsound 0 \\
       +set logfile 2 \\
       +set timedemo 1 \\
+      ${EXTRA:-} \\
       +demomap $DEMO.dm2 > /dev/null 2>&1 &
     PID=\$!
     j=0

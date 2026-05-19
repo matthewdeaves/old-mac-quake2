@@ -292,10 +292,14 @@ so it overrides cleanly. If the tweak wins, fold the new value into
 ## Status
 
 - 2026-05-11: Phase A landed. Self-contained fat universal `Quake2.app`
-  ships to all 5 alive bench machines (yosemite/sawtooth/quicksilver/
-  mini-g4/mini-intel); imac-2019 not yet benched. Per-machine autoexec
-  layer loaded via CFBundle works on both PPC (Tiger + Panther) and
-  Intel Lion. TGA screenshot writer patched for top-down orientation.
+  ships to all 6 bench machines (yosemite/sawtooth/quicksilver/mini-g4/
+  mini-intel/imac-2019). Per-machine autoexec layer loaded via CFBundle
+  works on PPC (Tiger + Panther), Intel Lion, and Intel Sequoia. TGA
+  screenshot writer patched for top-down orientation.
+- 2026-05-19: imac-2019 baseline captured — 701.6 fps @ 1024×768,
+  709.2 fps @ 640×480 (Polaris 20 totally unbound by GL1 fixed-func).
+  Phase A baseline now complete across all 6 machines; tagged `v1.0.0`
+  as the canonical re-bench reference build.
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).

@@ -12,3 +12,5 @@ timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_f
 2026-05-11T21:17:45Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
 2026-05-11T21:18:40Z,9789210,per-target,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,Phase A baseline | build: Phase A pipeline — fat universal + per-machine autoexec layer
 2026-05-11T20:20:21Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,640x480,18.3,66.1,64.2,65.15,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
+2026-05-19T18:11:59Z,5fca91a,fat,imac-2019,i5-9600K @ 3.7GHz,AMD Radeon Pro 580X 8GB,15.7 Sequoia,demo1,1024x768,688.3,700.9,702.3,701.60,Phase A baseline | bench: late yosemite row from background --reset parallel-bench
+2026-05-19T18:12:25Z,5fca91a,fat,imac-2019,i5-9600K @ 3.7GHz,AMD Radeon Pro 580X 8GB,15.7 Sequoia,demo1,640x480,709.6,709.6,708.8,709.20,Phase A baseline | bench: late yosemite row from background --reset parallel-bench

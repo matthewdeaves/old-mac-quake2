@@ -194,7 +194,10 @@ above its playability threshold."
 
   | Machine                      | 640×480     | 1024×768    | Notes |
   |---|---|---|---|
+  | **imac-2019** (Sequoia, Radeon Pro 580X) | 709.2 fps | 701.6 fps | Polaris 20 totally unbound by GL1 fixed-function; capacity for any Phase C work |
+  | **mini-g4** (Tiger, Radeon 9200 / 7447A) | 126.9 fps | 99.2 fps | Headroom king of the PPC fleet |
   | **mini-intel** (Lion, GMA 950)  |  59.4 fps* | 116.0 fps   | * Quartz vsync gates 640×480 at 60; 1024×768 doesn't match a native mode so SDL drops into a non-vsynced path |
+  | **sawtooth** (Tiger, GeForce2 MX / 7400) | 95.0 fps | 82.9 fps | Real hw T&L compensates for the 500 MHz 7400 |
   | **quicksilver** (Tiger, Radeon 9000 / 7450) |  82.7 fps | 82.1 fps    | CPU-bound — same fps both resolutions |
   | **yosemite** (Panther, Rage 128 / 750)  |  18.4 fps | 14.7 fps    | Under the 20 fps floor — Phase B group-draw + multitexture cherry-picks should help; G3 confirmed as "best effort" per the risk note above |
 

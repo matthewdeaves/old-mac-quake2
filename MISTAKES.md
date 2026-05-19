@@ -46,6 +46,37 @@ Bench data: see commit immediately following this entry.
 
 ---
 
+## 2026-05-19 — Lightmap subrect doesn't unlock dlights on sawtooth either (try-2)
+
+What we tried: after landing the lightmap subrect upload (Phase B #1, commit
+937a870), retried `gl_dynamic 1` on sawtooth — the QS subrect commit
+predicted ~4-12% wins on AGP-bound dynamic uploads, and the GF2 MX is one
+of those candidate cards. Theory: less data per `glTexSubImage2D` =
+breathing room on the 1999 AGP bus.
+
+What went wrong: 15.25 fps demo1 1024×768. AND 15.3 fps demo1 640×480 —
+identical at half the pixel count, which is the smoking gun: the
+bottleneck is NOT GPU/AGP. The cost is CPU-side `R_BuildLightMap` +
+`R_AddDynamicLights` per-luxel float math, which runs once per
+dlight-touched surface per frame regardless of resolution. The subrect
+optimization helps the GPU TRANSFER, not the CPU REBUILD. Wrong knob.
+
+What we learned: when a regression scales the same at different
+resolutions, it is CPU-bound, full stop. A bandwidth optimization can't
+fix CPU. The actionable fix for `gl_dynamic 1` on a 500 MHz G4 is one
+of: (a) AltiVec the `R_BuildLightMap` scaled-add inner loop + the
+`R_AddDynamicLights` per-luxel branch; (b) ship `gl_flashblend 1`
+instead (billboard halos, no per-surface relight at all).
+
+Bench: 937a870_sawtooth_demo1_1024x768_run{1,2,3}.log + the 640x480
+single-run probe. See results.csv row dated 2026-05-19T19:27:35Z.
+
+Resolution: sawtooth ships with `gl_flashblend 1` (try-3, billboard
+halos visible at ~69 fps demo1 1024) — the cheap-visual path that
+maintains 60+ fps floor while still showing dlight presence.
+
+---
+
 ## 2026-05-19 — Lightmap subrect upload port is gated to the wrong machine
 
 What we tried (or rather, was on the candidate list): port QS commit

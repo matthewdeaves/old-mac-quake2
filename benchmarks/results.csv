@@ -72,3 +72,6 @@ timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_f
 2026-05-19T19:23:36Z,b8a2718,fat,quicksilver,PPC 7450 @ 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,640x480,73.9,74.0,72.6,73.30,Phase B #1: lightmap subrect upload
 2026-05-19T19:23:43Z,b8a2718,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,640x480,77.7,78.3,77.8,78.05,Phase B #1: lightmap subrect upload
 2026-05-19T19:24:24Z,b8a2718,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,640x480,66.0,65.9,66.5,66.20,Phase B #1: lightmap subrect upload
+2026-05-19T19:27:35Z,937a870,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,1024x768,14.3,15.3,15.2,15.25,sawtooth dlights retry with subrect | refactor(refresh): lightmap subrect upload — track + upload only dirty columns
+2026-05-19T19:44:30Z,937a870,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,1024x768,68.3,69.5,69.2,69.35,sawtooth dlight try-3: gl_flashblend 1 cheap halo path | refactor(refresh): lightmap subrect upload — track + upload only dirty columns
+2026-05-19T19:45:54Z,937a870,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,640x480,78.1,78.2,78.2,78.20,sawtooth dlight try-3: gl_flashblend 1 cheap halo path | refactor(refresh): lightmap subrect upload — track + upload only dirty columns

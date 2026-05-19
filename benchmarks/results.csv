@@ -1,16 +1,16 @@
 timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_fps,median_fps,notes
-2026-05-11T20:51:25Z,b8915ac,fat,mini-g4,PPC 7447A @ 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,1024x768,101.8,99.1,99.2,99.15,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T20:51:25Z,b8915ac,fat,quicksilver,PPC 7450 @ 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,1024x768,68.7,68.3,68.7,68.50,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T20:51:25Z,b8915ac,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,1024x768,82.6,82.9,82.9,82.90,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T20:52:17Z,b8915ac,fat,mini-g4,PPC 7447A @ 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,640x480,127.0,126.8,127.0,126.90,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T20:51:25Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,1024x768,31.6,31.6,31.6,31.60,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T20:52:33Z,b8915ac,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,640x480,94.7,95.4,94.6,95.00,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T20:52:30Z,b8915ac,fat,quicksilver,PPC 7450 @ 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,640x480,72.0,72.5,72.3,72.40,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T20:53:19Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,640x480,65.6,66.1,64.2,65.15,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T21:14:30Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,80.9,79.9,81.7,80.80,Phase A + per-machine autoexec | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T21:15:19Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,640x480,59.4,59.4,59.4,59.40,Phase A + per-machine autoexec | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T21:17:45Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-11T21:18:40Z,9789210,per-target,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,Phase A baseline | build: Phase A pipeline — fat universal + per-machine autoexec layer
-2026-05-11T20:20:21Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,640x480,18.3,66.1,64.2,65.15,Phase A baseline | bench: Phase A.5 baseline numbers for lion + g4 + g3
-2026-05-19T18:11:59Z,5fca91a,fat,imac-2019,i5-9600K @ 3.7GHz,AMD Radeon Pro 580X 8GB,15.7 Sequoia,demo1,1024x768,688.3,700.9,702.3,701.60,Phase A baseline | bench: late yosemite row from background --reset parallel-bench
-2026-05-19T18:12:25Z,5fca91a,fat,imac-2019,i5-9600K @ 3.7GHz,AMD Radeon Pro 580X 8GB,15.7 Sequoia,demo1,640x480,709.6,709.6,708.8,709.20,Phase A baseline | bench: late yosemite row from background --reset parallel-bench
+2026-05-11T20:51:25Z,b8915ac,fat,mini-g4,PPC 7447A @ 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,1024x768,101.8,99.1,99.2,99.15,v1.0.0 Phase A baseline
+2026-05-11T20:51:25Z,b8915ac,fat,quicksilver,PPC 7450 @ 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,1024x768,68.7,68.3,68.7,68.50,v1.0.0 Phase A baseline
+2026-05-11T20:51:25Z,b8915ac,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,1024x768,82.6,82.9,82.9,82.90,v1.0.0 Phase A baseline
+2026-05-11T20:52:17Z,b8915ac,fat,mini-g4,PPC 7447A @ 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,640x480,127.0,126.8,127.0,126.90,v1.0.0 Phase A baseline
+2026-05-11T20:51:25Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,1024x768,31.6,31.6,31.6,31.60,v1.0.0 Phase A baseline
+2026-05-11T20:52:33Z,b8915ac,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,640x480,94.7,95.4,94.6,95.00,v1.0.0 Phase A baseline
+2026-05-11T20:52:30Z,b8915ac,fat,quicksilver,PPC 7450 @ 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,640x480,72.0,72.5,72.3,72.40,v1.0.0 Phase A baseline
+2026-05-11T20:53:19Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,640x480,65.6,66.1,64.2,65.15,v1.0.0 Phase A baseline
+2026-05-11T21:14:30Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,80.9,79.9,81.7,80.80,v1.0.0 Phase A baseline
+2026-05-11T21:15:19Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,640x480,59.4,59.4,59.4,59.40,v1.0.0 Phase A baseline
+2026-05-11T21:17:45Z,b8915ac,fat,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,v1.0.0 Phase A baseline (partial; 2/3 runs NA)
+2026-05-11T21:18:40Z,9789210,per-target,mini-intel,Core 2 Duo @ 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,1024x768,101.3,NA,NA,101.3,v1.0.0 Phase A baseline (legacy per-target build; partial)
+2026-05-11T20:20:21Z,b8915ac,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,640x480,18.3,66.1,64.2,65.15,v1.0.0 Phase A baseline (anomalous run1)
+2026-05-19T18:11:59Z,5fca91a,fat,imac-2019,i5-9600K @ 3.7GHz,AMD Radeon Pro 580X 8GB,15.7 Sequoia,demo1,1024x768,688.3,700.9,702.3,701.60,v1.0.0 Phase A baseline
+2026-05-19T18:12:25Z,5fca91a,fat,imac-2019,i5-9600K @ 3.7GHz,AMD Radeon Pro 580X 8GB,15.7 Sequoia,demo1,640x480,709.6,709.6,708.8,709.20,v1.0.0 Phase A baseline

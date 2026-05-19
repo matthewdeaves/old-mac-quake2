@@ -50,3 +50,7 @@ timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_f
 2026-05-19T18:58:34Z,c3d1de3,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,640x480,95.3,95.4,95.1,95.25,waterwarp + fog (Phase C #2)
 2026-05-19T18:58:32Z,c3d1de3,fat,quicksilver,PPC 7450 @ 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,640x480,71.8,71.5,72.3,71.90,waterwarp + fog (Phase C #2)
 2026-05-19T18:59:23Z,c3d1de3,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo1,640x480,66.2,66.0,65.8,65.90,waterwarp + fog (Phase C #2)
+2026-05-19T19:02:58Z,2c39855,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,1024x768,14.5,15.0,15.3,15.15,sawtooth visual unlock | feat(refresh): gl_waterwarp — underwater frustum sine-warp (Phase C #2)
+2026-05-19T19:06:02Z,2c39855,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,640x480,15.1,15.5,15.5,15.50,sawtooth visual unlock | feat(refresh): gl_waterwarp — underwater frustum sine-warp (Phase C #2)
+2026-05-19T19:09:44Z,2c39855,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,1024x768,69.2,69.7,69.9,69.80,sawtooth: picmip 0 + trilinear + shadows; dlights still off | feat(refresh): gl_waterwarp — underwater frustum sine-warp (Phase C #2)
+2026-05-19T19:10:59Z,2c39855,fat,sawtooth,PPC 7400 @ 500MHz,NVIDIA GeForce2 MX 32MB,10.4.11 Tiger,demo1,640x480,77.9,78.2,78.3,78.25,sawtooth: picmip 0 + trilinear + shadows; dlights still off | feat(refresh): gl_waterwarp — underwater frustum sine-warp (Phase C #2)

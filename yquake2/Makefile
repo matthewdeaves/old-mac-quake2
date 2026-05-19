@@ -673,6 +673,7 @@ OPENGL_OBJS_ = \
 	src/backends/sdl/input.o \
 	src/backends/sdl/refresh.o \
 	src/refresh/r_draw.o \
+	src/refresh/r_fog.o \
 	src/refresh/r_image.o \
 	src/refresh/r_light.o \
 	src/refresh/r_lightmap.o \

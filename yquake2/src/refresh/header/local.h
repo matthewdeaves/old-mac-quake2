@@ -193,6 +193,19 @@ extern cvar_t *gl_lerpmodels;
 extern cvar_t *gl_lightlevel;
 extern cvar_t *gl_overbrightbits;
 
+/* cvar-driven GL_FOG (yquake2-ppc Phase C — see src/refresh/r_fog.c) */
+extern cvar_t *gl_fog;
+extern cvar_t *gl_fog_mode;
+extern cvar_t *gl_fog_density;
+extern cvar_t *gl_fog_start;
+extern cvar_t *gl_fog_end;
+extern cvar_t *gl_fog_red;
+extern cvar_t *gl_fog_green;
+extern cvar_t *gl_fog_blue;
+void R_SetFog(void);
+void R_UnsetFog(void);
+void R_RegisterFogCvars(void);
+
 extern cvar_t *gl_vertex_arrays;
 
 extern cvar_t *gl_ext_swapinterval;

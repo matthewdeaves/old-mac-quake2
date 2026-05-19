@@ -880,6 +880,8 @@ R_RenderView(refdef_t *fd)
 
 	R_MarkLeaves(); /* done here so we know if we're in water */
 
+	R_SetFog();     /* yquake2-ppc Phase C — enable GL_FOG for 3D pass if gl_fog cvar is set */
+
 	R_DrawWorld();
 
 	R_DrawEntitiesOnList();
@@ -891,6 +893,8 @@ R_RenderView(refdef_t *fd)
 	R_DrawAlphaSurfaces();
 
 	R_Flash();
+
+	R_UnsetFog();   /* disable GL_FOG before 2D HUD pass so HUD isn't fogged */
 
 	if (gl_speeds->value)
 	{
@@ -980,6 +984,8 @@ R_Register(void)
 
 	gl_lightlevel = ri.Cvar_Get("gl_lightlevel", "0", 0);
 	gl_overbrightbits = ri.Cvar_Get("gl_overbrightbits", "2", CVAR_ARCHIVE);
+
+	R_RegisterFogCvars();   /* yquake2-ppc Phase C — gl_fog + range/color/mode cvars */
 
 	gl_nosubimage = ri.Cvar_Get("gl_nosubimage", "0", 0);
 	gl_allow_software = ri.Cvar_Get("gl_allow_software", "0", 0);

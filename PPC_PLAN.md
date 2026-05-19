@@ -183,6 +183,61 @@ above its playability threshold."
   - `patch: gate -rpath on 10.5+ deployment target` (Makefile)
   - `patch: link Darwin shared libs with -dynamiclib, not -shared` (Makefile)
   - `patch: include sys/types.h before sys/mman.h on Panther 10.3.9 SDK` (hunk.c)
+
+## Working approach (revised 2026-05-19)
+
+After the initial Phase B/C breakdown above, Round 1 discoveries
+narrowed the practical pipeline considerably:
+
+- **Phase B multitex is a no-op** — 5.11 already calls
+  `R_RenderLightmappedPoly` via the SGIS multitex path when available
+  (r_surf.c:1172-1228). yquake2-latest adds a runtime toggle cvar
+  but no new FPS code on the hot path.
+- **Phase B group-draw is a 2024 multi-file refactor** by Jaime
+  Moreira (`reference/yquake2-latest/src/client/refresh/gl1/gl1_buffer.c`
+  + GLBUFFER_VERTEX/MULTITEX macros baked into every call site). Each
+  cherry-pick conflicts with the directory rename (`refresh/` → `gl1/`)
+  and the intermingled "Client & GL1 refactor" commits. Hand-port
+  budget: multiple days. **Out of scope until Phase B becomes the
+  bottleneck.**
+- **QS lightmap subrect upload would not help G3** — the per-frame
+  dynamic-lightmap upload at `r_lightmap.c:71` is gated by
+  `gl_dynamic` which yosemite's autoexec already sets to 0. The +4.2%
+  QS measurement came from a box with dlights on.
+- **KMQuake2 decals are game-DLL-driven** — `R_AddDecal` is called
+  from `g_combat.c`/`p_weapon.c` impact handlers. Pure renderer port
+  doesn't deliver decals without modifying our `baseq2/game.so` source
+  too. Bigger increment; deferred.
+- **demo3.dm2 doesn't exist in retail paks** — Q2's demo set is
+  `demo1.dm2` (intro) + `demo2.dm2` (gameplay) only. Bench scripts
+  default to these two now.
+
+### Round cadence
+
+Each commit on master is **either**:
+1. A new graphical feature gated behind a cvar, with the cvar wired
+   into per-machine `scripts/bundle/autoexec-*.cfg` so each box opts
+   in/out. Default OFF for safety; turn ON in autoexec for the GPU
+   classes that can afford it.
+2. A refactor / hotspot fix that reclaims FPS, which is then "spent"
+   in a later commit on more visuals on machines that gained margin.
+
+Every commit is benched A/B vs the previous round's commit (parallel-
+bench `--quick` = demo1 × 2 res × 3 runs across all 6 machines), and
+the bench rows ship in the same commit as the code change. Regressions
+worse than -5% on any machine block the commit.
+
+### Live feature inventory
+
+| Feature | Cvar | Toggle | Per-machine defaults | Round commit |
+|---|---|---|---|---|
+| GL_FOG (linear/exp/exp2 + color + range) | `gl_fog`, `gl_fog_mode`, `gl_fog_start`, `gl_fog_end`, `gl_fog_density`, `gl_fog_red/green/blue` | autoexec | yos=OFF, others=ON linear far=2048-4096 | `c3d1de3` |
+| Underwater frustum sine-warp | `gl_waterwarp` (magnitude 0..1) | autoexec | ALL=1 (one sin() per frame, only when RDF_UNDERWATER set — free) | (this round) |
+
+(More rows landed as each round ships.)
+
+---
+
 - 2026-05-11 — Phase A.4/A.5 baseline benchmarks captured. `scripts/deploy.sh`
   and `scripts/bench.sh` adapted from the QuakeSpasm sister project,
   with two Q2-specific quirks documented in `bench.sh`:

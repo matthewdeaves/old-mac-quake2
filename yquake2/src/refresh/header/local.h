@@ -193,6 +193,9 @@ extern cvar_t *gl_lerpmodels;
 extern cvar_t *gl_lightlevel;
 extern cvar_t *gl_overbrightbits;
 
+/* yquake2-ppc Phase C #2 — gl_waterwarp underwater frustum warp */
+extern cvar_t *gl_waterwarp;
+
 /* cvar-driven GL_FOG (yquake2-ppc Phase C — see src/refresh/r_fog.c) */
 extern cvar_t *gl_fog;
 extern cvar_t *gl_fog_mode;

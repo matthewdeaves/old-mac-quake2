@@ -102,6 +102,7 @@ cvar_t *gl_farsee;
 
 cvar_t *gl_lightlevel;
 cvar_t *gl_overbrightbits;
+cvar_t *gl_waterwarp;       /* yquake2-ppc Phase C #2 — underwater frustum warp magnitude */
 
 cvar_t *gl_nosubimage;
 cvar_t *gl_allow_software;
@@ -697,10 +698,28 @@ R_MYgluPerspective(GLdouble fovy, GLdouble aspect,
 	GLdouble xmin, xmax, ymin, ymax;
 
 	ymax = zNear * tan(fovy * M_PI / 360.0);
-	ymin = -ymax;
 
-	xmin = ymin * aspect;
-	xmax = ymax * aspect;
+	/* yquake2-ppc Phase C #2 — gl_waterwarp: when the eye is in liquid
+	 * (RDF_UNDERWATER set by the engine), sinusoidally modulate the
+	 * frustum's x/y maxima to swim/breathe the view. Pure projection-
+	 * matrix change; fixed-function, works on every GPU including the
+	 * Rage 128. Cost: one sin() per frame. Adapted from
+	 * reference/yquake2-latest/src/client/refresh/gl1/gl1_main.c:743. */
+	if (gl_waterwarp && gl_waterwarp->value &&
+	    (r_newrefdef.rdflags & RDF_UNDERWATER))
+	{
+		const double warp = sin(r_newrefdef.time * 1.5) * 0.03 * gl_waterwarp->value;
+		ymax *= 1.0 - warp;
+		xmax = ymax * aspect * (1.0 + warp);
+		xmin = -ymax * aspect * (1.0 + warp);
+		ymin = -ymax;
+	}
+	else
+	{
+		ymin = -ymax;
+		xmin = ymin * aspect;
+		xmax = ymax * aspect;
+	}
 
 	xmin += -(2 * gl_state.camera_separation) / zNear;
 	xmax += -(2 * gl_state.camera_separation) / zNear;
@@ -986,6 +1005,7 @@ R_Register(void)
 	gl_overbrightbits = ri.Cvar_Get("gl_overbrightbits", "2", CVAR_ARCHIVE);
 
 	R_RegisterFogCvars();   /* yquake2-ppc Phase C — gl_fog + range/color/mode cvars */
+	gl_waterwarp = ri.Cvar_Get("gl_waterwarp", "0", CVAR_ARCHIVE);   /* Phase C #2 — underwater frustum warp */
 
 	gl_nosubimage = ri.Cvar_Get("gl_nosubimage", "0", 0);
 	gl_allow_software = ri.Cvar_Get("gl_allow_software", "0", 0);

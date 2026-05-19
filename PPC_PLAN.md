@@ -233,7 +233,10 @@ worse than -5% on any machine block the commit.
 |---|---|---|---|---|
 | GL_FOG (linear/exp/exp2 + color + range) | `gl_fog`, `gl_fog_mode`, `gl_fog_start`, `gl_fog_end`, `gl_fog_density`, `gl_fog_red/green/blue` | autoexec | yos=OFF, others=ON linear far=2048-4096 | `c3d1de3` |
 | Underwater frustum sine-warp | `gl_waterwarp` (magnitude 0..1) | autoexec | ALL=1 (one sin() per frame, only when RDF_UNDERWATER set — free) | `2c39855` |
-| Dynamic lightmap subrect upload | `gl_lightmap_subrect` | autoexec | ALL=1 (track dirty xmin/xmax in LM_AllocBlock, upload only [xmin,xmax)×[0,h) with GL_UNPACK_ROW_LENGTH) | (this round) |
+| Dynamic lightmap subrect upload | `gl_lightmap_subrect` | autoexec | ALL=1 (track dirty xmin/xmax in LM_AllocBlock, upload only [xmin,xmax)×[0,h) with GL_UNPACK_ROW_LENGTH) | `937a870` |
+| Sawtooth dlight policy: billboard halos | `gl_dynamic 0` + `gl_flashblend 1` | autoexec | sawtooth (GF2 MX is CPU-bound on R_BuildLightMap; flashblend skips the surface relight entirely → 69 fps demo1 1024 vs 15 fps with gl_dynamic 1) | `7051a09` |
+| 2× anisotropic on bottom-of-fleet | `gl_anisotropic 2` | autoexec | sawtooth + yosemite (chip max for GF2 MX / R128 Tier; cheap quality on receding floors/walls; silently no-ops if driver missing the ext) | `d82d3fa` |
+| Q3-style overbright lightmaps (`GL_RGB_SCALE_EXT 4`) | `gl_overbrightbits 4` | autoexec | quicksilver + mini-g4 + mini-intel + imac-2019 (4 multitex+combine boxes; same cost as default 2x, more punch on dlight-touched walls) | `044b6f7` |
 
 (More rows landed as each round ships.)
 

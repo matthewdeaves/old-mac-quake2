@@ -232,7 +232,8 @@ worse than -5% on any machine block the commit.
 | Feature | Cvar | Toggle | Per-machine defaults | Round commit |
 |---|---|---|---|---|
 | GL_FOG (linear/exp/exp2 + color + range) | `gl_fog`, `gl_fog_mode`, `gl_fog_start`, `gl_fog_end`, `gl_fog_density`, `gl_fog_red/green/blue` | autoexec | yos=OFF, others=ON linear far=2048-4096 | `c3d1de3` |
-| Underwater frustum sine-warp | `gl_waterwarp` (magnitude 0..1) | autoexec | ALL=1 (one sin() per frame, only when RDF_UNDERWATER set — free) | (this round) |
+| Underwater frustum sine-warp | `gl_waterwarp` (magnitude 0..1) | autoexec | ALL=1 (one sin() per frame, only when RDF_UNDERWATER set — free) | `2c39855` |
+| Dynamic lightmap subrect upload | `gl_lightmap_subrect` | autoexec | ALL=1 (track dirty xmin/xmax in LM_AllocBlock, upload only [xmin,xmax)×[0,h) with GL_UNPACK_ROW_LENGTH) | (this round) |
 
 (More rows landed as each round ships.)
 

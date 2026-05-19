@@ -193,6 +193,9 @@ extern cvar_t *gl_lerpmodels;
 extern cvar_t *gl_lightlevel;
 extern cvar_t *gl_overbrightbits;
 
+/* yquake2-ppc Phase B #1 — subrect upload toggle for dynamic lightmaps */
+extern cvar_t *gl_lightmap_subrect;
+
 /* yquake2-ppc Phase C #2 — gl_waterwarp underwater frustum warp */
 extern cvar_t *gl_waterwarp;
 
@@ -430,6 +433,16 @@ typedef struct
 	msurface_t *lightmap_surfaces[MAX_LIGHTMAPS];
 
 	int allocated[BLOCK_WIDTH];
+
+	/* yquake2-ppc Phase B #1 — subrect upload tracking.
+	 * dynamic_xmin/xmax bracket the dirty columns since the most
+	 * recent LM_InitBlock; LM_UploadBlock(true) uploads only
+	 * [dynamic_xmin, dynamic_xmax) × [0, max-height) instead of
+	 * the full BLOCK_WIDTH-wide row. Saves AGP bandwidth on the
+	 * gl_dynamic=1 cohort (quicksilver, mini-g4, mini-intel,
+	 * imac-2019). Gated behind cvar gl_lightmap_subrect. */
+	int dynamic_xmin;
+	int dynamic_xmax;
 
 	/* the lightmap texture data needs to be kept in
 	   main memory so texsubimage can update properly */

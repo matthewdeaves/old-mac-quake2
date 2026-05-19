@@ -35,6 +35,12 @@ void
 LM_InitBlock(void)
 {
 	memset(gl_lms.allocated, 0, sizeof(gl_lms.allocated));
+	/* yquake2-ppc Phase B #1 — reset subrect tracking. An empty rect
+	 * is xmin > xmax (i.e. xmin=BLOCK_WIDTH, xmax=0). LM_AllocBlock
+	 * widens the bounds on each successful allocation; LM_UploadBlock
+	 * uses them to upload only the touched columns. */
+	gl_lms.dynamic_xmin = BLOCK_WIDTH;
+	gl_lms.dynamic_xmax = 0;
 }
 
 void
@@ -68,9 +74,30 @@ LM_UploadBlock(qboolean dynamic)
 			}
 		}
 
-		qglTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BLOCK_WIDTH, 
-				height, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE,
-				gl_lms.lightmap_buffer);
+		/* yquake2-ppc Phase B #1 — subrect upload. When the toggle
+		 * is on AND we have a non-empty dirty rect, upload only
+		 * the touched columns and use GL_UNPACK_ROW_LENGTH so the
+		 * driver strides correctly out of our BLOCK_WIDTH-wide
+		 * source buffer. Fallback path preserves byte-for-byte
+		 * pre-port behaviour. */
+		if (gl_lightmap_subrect && gl_lightmap_subrect->value &&
+		    gl_lms.dynamic_xmax > gl_lms.dynamic_xmin && height > 0)
+		{
+			const int xmin = gl_lms.dynamic_xmin;
+			const int width = gl_lms.dynamic_xmax - xmin;
+			qglPixelStorei(GL_UNPACK_ROW_LENGTH, BLOCK_WIDTH);
+			qglTexSubImage2D(GL_TEXTURE_2D, 0,
+					xmin, 0, width, height,
+					GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE,
+					gl_lms.lightmap_buffer + xmin * LIGHTMAP_BYTES);
+			qglPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+		}
+		else
+		{
+			qglTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, BLOCK_WIDTH,
+					height, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE,
+					gl_lms.lightmap_buffer);
+		}
 	}
 	else
 	{
@@ -130,6 +157,19 @@ LM_AllocBlock(int w, int h, int *x, int *y)
 	for (i = 0; i < w; i++)
 	{
 		gl_lms.allocated[*x + i] = best + h;
+	}
+
+	/* yquake2-ppc Phase B #1 — widen the dirty subrect to include
+	 * the columns this allocation just dirtied. The y/height of the
+	 * upload is derived later from gl_lms.allocated[] in
+	 * LM_UploadBlock; here we only track horizontal extent. */
+	if (*x < gl_lms.dynamic_xmin)
+	{
+		gl_lms.dynamic_xmin = *x;
+	}
+	if (*x + w > gl_lms.dynamic_xmax)
+	{
+		gl_lms.dynamic_xmax = *x + w;
 	}
 
 	return true;

@@ -102,7 +102,8 @@ cvar_t *gl_farsee;
 
 cvar_t *gl_lightlevel;
 cvar_t *gl_overbrightbits;
-cvar_t *gl_waterwarp;       /* yquake2-ppc Phase C #2 — underwater frustum warp magnitude */
+cvar_t *gl_waterwarp;          /* yquake2-ppc Phase C #2 — underwater frustum warp magnitude */
+cvar_t *gl_lightmap_subrect;   /* yquake2-ppc Phase B #1 — subrect dynamic lightmap upload */
 
 cvar_t *gl_nosubimage;
 cvar_t *gl_allow_software;
@@ -1006,6 +1007,7 @@ R_Register(void)
 
 	R_RegisterFogCvars();   /* yquake2-ppc Phase C — gl_fog + range/color/mode cvars */
 	gl_waterwarp = ri.Cvar_Get("gl_waterwarp", "0", CVAR_ARCHIVE);   /* Phase C #2 — underwater frustum warp */
+	gl_lightmap_subrect = ri.Cvar_Get("gl_lightmap_subrect", "1", CVAR_ARCHIVE);   /* Phase B #1 — subrect dynamic lightmap upload */
 
 	gl_nosubimage = ri.Cvar_Get("gl_nosubimage", "0", 0);
 	gl_allow_software = ri.Cvar_Get("gl_allow_software", "0", 0);

@@ -284,6 +284,9 @@ R_EmitWaterPolys(msurface_t *fa)
 	float scroll;
 	float rdt = r_newrefdef.time;
 
+	/* Group-draw drain: per-poly immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
+
 	if (fa->texinfo->flags & SURF_FLOWING)
 	{
 		scroll = -64 * ((r_newrefdef.time * 0.5) - (int)(r_newrefdef.time * 0.5));
@@ -642,6 +645,9 @@ void
 R_DrawSkyBox(void)
 {
 	int i;
+
+	/* Group-draw drain: 6-face sky immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
 
 	if (skyrotate)
 	{   /* check for no sky at all */

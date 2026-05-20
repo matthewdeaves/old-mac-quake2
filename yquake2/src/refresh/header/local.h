@@ -74,6 +74,73 @@
 #define MAX_LIGHTMAPS 128
 #define GL_LIGHTMAP_FORMAT GL_RGBA
 
+/* Group-draw buffer (Phase B #3 — ported from yquake2-latest):
+ * accumulate many surfaces' vertex data into one big array, fire one
+ * glDrawElements per batch. Massive submission-overhead reduction on
+ * 1999-era drivers (R128, GF2 MX). MAX_VERTICES at 16384 matches latest;
+ * total buffer footprint is ~832KB which is fine for any of our targets.
+ * MAX_TEXTURE_UNITS=2 covers the multitex (color + lightmap) case;
+ * higher slot count would need different combine logic anyway. */
+#define MAX_VERTICES        16384
+#define MAX_INDICES         (MAX_VERTICES * 4)
+#define MAX_TEXTURE_UNITS   2
+
+typedef enum
+{
+	buf_2d,
+	buf_singletex,
+	buf_mtex,
+	buf_alpha,
+	buf_alias,
+	buf_flash,
+	buf_shadow
+} buffered_draw_t;
+
+typedef struct
+{
+	buffered_draw_t type;
+
+	GLfloat  vtx[MAX_VERTICES * 3];                  /* xyz */
+	GLfloat  tex[MAX_TEXTURE_UNITS][MAX_VERTICES * 2]; /* per-TMU st */
+	GLubyte  clr[MAX_VERTICES * 4];                  /* rgba */
+	GLushort idx[MAX_INDICES];                       /* draw indices */
+
+	GLuint   vt, tx, cl;     /* write cursors into vtx/tex/clr (GLfloat / GLubyte counts) */
+
+	int      texture[MAX_TEXTURE_UNITS];
+	int      flags;          /* entity / surface flags relevant to this batch */
+	float    alpha;
+} glbuffer_t;
+
+extern glbuffer_t gl_buf;
+
+void R_ResetGLBuffer(void);
+void R_ApplyGLBuffer(void);
+void R_UpdateGLBuffer(buffered_draw_t type, int colortex, int lighttex,
+		int flags, float alpha);
+void R_SetBufferIndices(GLenum primitive, GLuint vertices_num);
+
+/* Append-one-vertex macros. Caller must precede a sequence of N of these
+ * with one R_SetBufferIndices(prim, N) call so triangulation indices land
+ * correctly. */
+#define GLBUFFER_VERTEX(X, Y, Z) \
+	gl_buf.vtx[gl_buf.vt] = (X); gl_buf.vtx[gl_buf.vt+1] = (Y); \
+	gl_buf.vtx[gl_buf.vt+2] = (Z); gl_buf.vt += 3;
+
+#define GLBUFFER_SINGLETEX(S, T) \
+	gl_buf.tex[0][gl_buf.tx] = (S); gl_buf.tex[0][gl_buf.tx+1] = (T); \
+	gl_buf.tx += 2;
+
+#define GLBUFFER_MULTITEX(CS, CT, LS, LT) \
+	gl_buf.tex[0][gl_buf.tx] = (CS); gl_buf.tex[0][gl_buf.tx+1] = (CT); \
+	gl_buf.tex[1][gl_buf.tx] = (LS); gl_buf.tex[1][gl_buf.tx+1] = (LT); \
+	gl_buf.tx += 2;
+
+#define GLBUFFER_COLOR(R, G, B, A) \
+	gl_buf.clr[gl_buf.cl] = (R); gl_buf.clr[gl_buf.cl+1] = (G); \
+	gl_buf.clr[gl_buf.cl+2] = (B); gl_buf.clr[gl_buf.cl+3] = (A); \
+	gl_buf.cl += 4;
+
 /* up / down */
 #define PITCH 0
 

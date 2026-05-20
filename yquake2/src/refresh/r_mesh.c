@@ -94,6 +94,9 @@ R_DrawAliasFrameLerp(dmdl_t *paliashdr, float backlerp)
 	int count;
 	float frontlerp;
 	float alpha;
+
+	/* Group-draw drain: per-alias-model immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
 	vec3_t move, delta, vectors[3];
 	vec3_t frontv, backv;
 	int i;
@@ -318,6 +321,9 @@ R_DrawAliasShadow(dmdl_t *paliashdr, int posenum)
 	vec3_t point;
 	float height = 0, lheight;
 	int count;
+
+	/* Group-draw drain: per-shadow immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
 
 	lheight = currententity->origin[2] - lightspot[2];
 	order = (int *)((byte *)paliashdr + paliashdr->ofs_glcmds);

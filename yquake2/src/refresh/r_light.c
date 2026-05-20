@@ -85,6 +85,9 @@ R_RenderDlights(void)
 		return;
 	}
 
+	/* Group-draw drain: each dlight emits an immediate-mode billboard. */
+	R_ApplyGLBuffer();
+
 	/* because the count hasn't advanced yet for this frame */
 	r_dlightframecount = r_framecount + 1;
 

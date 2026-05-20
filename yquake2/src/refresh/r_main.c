@@ -211,6 +211,9 @@ R_DrawSpriteModel(entity_t *e)
 	float *up, *right;
 	dsprite_t *psprite;
 
+	/* Group-draw drain: immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
+
 	/* don't even bother culling, because it's just
 	   a single polygon without a surface cache */
 	psprite = (dsprite_t *)currentmodel->extradata;
@@ -287,6 +290,9 @@ R_DrawNullModel(void)
 {
 	vec3_t shadelight;
 	int i;
+
+	/* Group-draw drain: immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
 
 	if (currententity->flags & RF_FULLBRIGHT)
 	{
@@ -439,6 +445,9 @@ R_DrawParticles2(int num_particles, const particle_t particles[],
 	float scale;
 	byte color[4];
 
+	/* Group-draw drain: immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
+
 	R_Bind(r_particletexture->texnum);
 	qglDepthMask(GL_FALSE); /* no z buffering */
 	qglEnable(GL_BLEND);
@@ -493,6 +502,9 @@ R_DrawParticles2(int num_particles, const particle_t particles[],
 void
 R_DrawParticles(void)
 {
+	/* Group-draw drain: both inner branches emit immediate-mode. */
+	R_ApplyGLBuffer();
+
 	if (gl_ext_pointparameters->value && qglPointParameterfEXT)
 	{
 		int i;
@@ -543,6 +555,9 @@ R_PolyBlend(void)
 	{
 		return;
 	}
+
+	/* Group-draw drain: immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
 
 	qglDisable(GL_ALPHA_TEST);
 	qglEnable(GL_BLEND);
@@ -927,6 +942,13 @@ R_RenderView(refdef_t *fd)
 void
 R_SetGL2D(void)
 {
+	/* Drain any pending 3D batch before switching projection — the
+	 * subsequent 2D HUD draws use ortho + GL_ALPHA_TEST and their own
+	 * qglBegin/End emit pattern that the buffer doesn't track. One
+	 * drain here covers all the Draw_Char / Draw_Pic / Draw_Fill /
+	 * Draw_StretchRaw / Draw_FadeScreen call sites that follow. */
+	R_ApplyGLBuffer();
+
 	/* set 2D virtual screen size */
 	qglViewport(0, 0, vid.width, vid.height);
 	qglMatrixMode(GL_PROJECTION);
@@ -1152,6 +1174,12 @@ R_Init(void *hinstance, void *hWnd)
 	{
 		r_turbsin[j] *= 0.5;
 	}
+
+	/* Initialize the group-draw buffer state. R_ResetGLBuffer zeroes
+	 * the write cursors so first R_UpdateGLBuffer cleanly transitions
+	 * into the first batch. The buffer itself (vtx/tex/idx/clr) is
+	 * BSS-zero from program load. */
+	R_ResetGLBuffer();
 
 	/* Options */
 	ri.Con_Printf(PRINT_ALL, "Refresher build options:\n");
@@ -1552,6 +1580,9 @@ R_DrawBeam(entity_t *e)
 	vec3_t direction, normalized_direction;
 	vec3_t start_points[NUM_BEAM_SEGS], end_points[NUM_BEAM_SEGS];
 	vec3_t oldorigin, origin;
+
+	/* Group-draw drain: immediate-mode emit ahead. */
+	R_ApplyGLBuffer();
 
 	oldorigin[0] = e->oldorigin[0];
 	oldorigin[1] = e->oldorigin[1];

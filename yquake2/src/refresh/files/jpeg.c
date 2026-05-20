@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 1997-2001 Id Software, Inc.
+ * Copyright (C) 2015 Daniel Gibson  (stb_image wrapper pattern)
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,7 +20,11 @@
  *
  * =======================================================================
  *
- * The JPEG image format
+ * JPEG image loader. Originally used libjpeg; this rewrite drops the
+ * external dependency in favour of stb_image (public-domain, single-
+ * header, MIT-style license). Same LoadJPG signature so callers in
+ * r_image.c are unaffected. Resolves the long-standing build-host
+ * libjpeg requirement that forced WITH_RETEXTURING=no in build.sh.
  *
  * =======================================================================
  */
@@ -28,154 +33,82 @@
 
 #include "../header/local.h"
 
-#ifdef __APPLE__
-#include <libjpeg/jpeglib.h>
-#include <libjpeg/jerror.h>
-#else
-#include <jpeglib.h>
-#include <jerror.h>
-#endif
+/* stb_image needs a few configuration macros set before its
+ * implementation include. We only want the JPEG decoder here (TGA stays
+ * in tga.c, PNG can be added later as a separate function). Disable
+ * HDR / linear-light paths since Q2 textures are sRGB 8-bit. Use the
+ * standard malloc family so the engine's later free() on the returned
+ * buffer works without surprises. */
+#define STBI_NO_HDR
+#define STBI_NO_LINEAR
+#define STBI_NO_PSD
+#define STBI_NO_GIF
+#define STBI_NO_PIC
+#define STBI_NO_PNM
+#define STBI_NO_BMP
+#define STBI_NO_THREAD_LOCALS
+#define STBI_MALLOC(sz)    malloc(sz)
+#define STBI_REALLOC(p,sz) realloc(p,sz)
+#define STBI_FREE(p)       free(p)
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
-void jpeg_memory_src(j_decompress_ptr cinfo,
-		unsigned char *inbuffer,
-		unsigned long insize);
-
-void
-jpg_null(j_decompress_ptr cinfo)
-{
-}
-
-boolean
-jpg_fill_input_buffer(j_decompress_ptr cinfo)
-{
-	ri.Con_Printf(PRINT_ALL, "Premature end of JPEG data\n");
-	return 1;
-}
-
-void
-jpg_skip_input_data(j_decompress_ptr cinfo, long num_bytes)
-{
-	cinfo->src->next_input_byte += (size_t)num_bytes;
-	cinfo->src->bytes_in_buffer -= (size_t)num_bytes;
-}
-
-void
-jpeg_mem_src(j_decompress_ptr cinfo, unsigned char *mem, unsigned long len)
-{
-	cinfo->src =
-		(struct jpeg_source_mgr *)(*cinfo->mem->alloc_small)((j_common_ptr)
-				cinfo,
-				JPOOL_PERMANENT, sizeof(struct jpeg_source_mgr));
-	cinfo->src->init_source = jpg_null;
-	cinfo->src->fill_input_buffer = jpg_fill_input_buffer;
-	cinfo->src->skip_input_data = jpg_skip_input_data;
-	cinfo->src->resync_to_restart = jpeg_resync_to_restart;
-	cinfo->src->term_source = jpg_null;
-	cinfo->src->bytes_in_buffer = len;
-	cinfo->src->next_input_byte = mem;
-}
-
+/*
+ * Load a JPEG file into RGBA8 pixel data.
+ *
+ * origname: filename (with or without .jpg extension)
+ * pic:      out — malloc'd RGBA8 buffer, caller frees with free()
+ * width:    out — image width
+ * height:   out — image height
+ *
+ * On failure, *pic is set to NULL and width/height are untouched.
+ */
 void
 LoadJPG(char *origname, byte **pic, int *width, int *height)
 {
-	struct jpeg_decompress_struct cinfo;
 	char filename[256];
-	struct jpeg_error_mgr jerr;
-	byte *rawdata, *rgbadata, *scanline, *p, *q;
-	unsigned int rawsize, i;
+	byte *rawdata;
+	int rawsize;
+	int w, h, channels;
+	byte *decoded;
+
+	*pic = NULL;
 
 	Q_strlcpy(filename, origname, sizeof(filename));
 
-	/* Add the extension */
+	/* Add the extension if the caller passed a bare name. */
 	if (strcmp(COM_FileExtension(filename), "jpg"))
 	{
 		Q_strlcat(filename, ".jpg", sizeof(filename));
 	}
 
-	*pic = NULL;
-
-	/* Load JPEG file into memory */
+	/* Pull the file into memory via the engine's filesystem. The engine
+	 * owns the rawdata buffer and we MUST FS_FreeFile when done. */
 	rawsize = ri.FS_LoadFile(filename, (void **)&rawdata);
 
-	if (!rawdata)
+	if (!rawdata || rawsize <= 0)
 	{
 		return;
 	}
 
-	if ((rawsize < 10) || (rawdata[6] != 'J') || (rawdata[7] != 'F') ||
-		(rawdata[8] != 'I') || (rawdata[9] != 'F'))
+	/* Decode. STBI_rgb_alpha forces 4-channel output regardless of
+	 * source channel count, so we always emit RGBA — matching what the
+	 * libjpeg path did via the manual RGB→RGBA expand loop. */
+	decoded = stbi_load_from_memory(rawdata, rawsize, &w, &h, &channels,
+			STBI_rgb_alpha);
+
+	ri.FS_FreeFile(rawdata);
+
+	if (!decoded)
 	{
-		ri.Con_Printf(PRINT_ALL, "Invalid JPEG header: %s\n", filename);
-		ri.FS_FreeFile(rawdata);
+		ri.Con_Printf(PRINT_ALL, "LoadJPG: stbi_load failed for %s: %s\n",
+				filename, stbi_failure_reason());
 		return;
 	}
 
-	cinfo.err = jpeg_std_error(&jerr);
-	jpeg_create_decompress(&cinfo);
-	jpeg_mem_src(&cinfo, (unsigned char *)rawdata, (unsigned long)rawsize);
-	jpeg_read_header(&cinfo, true);
-	jpeg_start_decompress(&cinfo);
-
-	if ((cinfo.output_components != 3) && (cinfo.output_components != 4))
-	{
-		ri.Con_Printf(PRINT_ALL, "Invalid JPEG colour components\n");
-		jpeg_destroy_decompress(&cinfo);
-		ri.FS_FreeFile(rawdata);
-		return;
-	}
-
-	/* Allocate Memory for decompressed image */
-	rgbadata = malloc(cinfo.output_width * cinfo.output_height * 4);
-
-	if (!rgbadata)
-	{
-		ri.Con_Printf(PRINT_ALL, "Insufficient memory for JPEG buffer\n");
-		jpeg_destroy_decompress(&cinfo);
-		ri.FS_FreeFile(rawdata);
-		return;
-	}
-
-	/* Pass sizes to output */
-	*width = cinfo.output_width;
-	*height = cinfo.output_height;
-
-	/* Allocate Scanline buffer */
-	scanline = malloc(cinfo.output_width * 3);
-
-	if (!scanline)
-	{
-		ri.Con_Printf(PRINT_ALL,
-				"Insufficient memory for JPEG scanline buffer\n");
-		free(rgbadata);
-		jpeg_destroy_decompress(&cinfo);
-		ri.FS_FreeFile(rawdata);
-		return;
-	}
-
-	/* Read Scanlines, and expand from RGB to RGBA */
-	q = rgbadata;
-
-	while (cinfo.output_scanline < cinfo.output_height)
-	{
-		p = scanline;
-		jpeg_read_scanlines(&cinfo, &scanline, 1);
-
-		for (i = 0; i < cinfo.output_width; i++)
-		{
-			q[0] = p[0];
-			q[1] = p[1];
-			q[2] = p[2];
-			q[3] = 255;
-			p += 3;
-			q += 4;
-		}
-	}
-
-	free(scanline);
-	jpeg_finish_decompress(&cinfo);
-	jpeg_destroy_decompress(&cinfo);
-
-	*pic = rgbadata;
+	*pic = decoded;
+	*width = w;
+	*height = h;
 }
 
 #endif /* RETEXTURE */

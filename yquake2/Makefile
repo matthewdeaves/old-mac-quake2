@@ -410,7 +410,10 @@ release/ref_gl.dll : LDFLAGS += -shared
 
 ifeq ($(WITH_RETEXTURING),yes)
 release/ref_gl.dll : CFLAGS += -DRETEXTURE
-release/ref_gl.dll : LDFLAGS += -ljpeg
+# 2026-05: jpeg.c now uses stb_image (single-header) instead of libjpeg,
+# so no -ljpeg / -framework libjpeg is needed. Same applies to the .so
+# block below. Resolves the dependency that forced WITH_RETEXTURING=no
+# on the mini-intel build host.
 endif
 else
 refresher:
@@ -439,11 +442,7 @@ endif
 
 ifeq ($(WITH_RETEXTURING),yes)
 release/ref_gl.so : CFLAGS += -DRETEXTURE
-ifeq ($(OSTYPE), Darwin)
-release/ref_gl.so : LDFLAGS += -framework libjpeg
-else
-release/ref_gl.so : LDFLAGS += -ljpeg
-endif
+# jpeg.c now uses stb_image — no system libjpeg required on any host.
 endif
 
 endif

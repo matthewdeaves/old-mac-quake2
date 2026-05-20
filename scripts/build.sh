@@ -92,22 +92,26 @@ rsync -a --partial --inplace --delete \
   "$REPO_ROOT/" "$BUILD_HOST:$REMOTE_PATH/" | tail -3
 
 echo "[build] compile $TARGET on $BUILD_HOST (vmin=$VMIN)"
-# Phase A.1 build config (per PPC_PLAN.md):
-#   WITH_OPENAL=no, WITH_OGG=no, WITH_CDA=no  → no extra deps for first build
-#   WITH_RETEXTURING=no                       → libjpeg not installed on mini-intel
-#                                                (PPC_PLAN.md A.1 says keep ON, but
-#                                                 disabling for first build to keep
-#                                                 scope minimal; revisit in A.3)
+# Build config:
+#   WITH_OPENAL=no, WITH_OGG=no, WITH_CDA=no  → no extra deps
+#   WITH_RETEXTURING=yes (2026-05)            → jpeg.c uses stb_image
+#                                                instead of libjpeg, so
+#                                                the no-libjpeg-on-mini-
+#                                                intel constraint that
+#                                                forced =no is gone.
+#                                                Enables hi-res TGA/JPG
+#                                                replacement textures
+#                                                across all 3 slices.
 #   WITH_ZIP=yes                              → libz is in every SDK
 #
-# Note: WITH_CDA / WITH_OGG / WITH_OPENAL / WITH_RETEXTURING are NOT recognized
-# by the Makefile as command-line overrides — they're :=-assigned at the top.
+# Note: WITH_CDA / WITH_OGG / WITH_OPENAL are NOT recognized by the
+# Makefile as command-line overrides — they're :=-assigned at the top.
 # So we edit the Makefile in-place on the build host via sed before make.
+# WITH_RETEXTURING is left at its Makefile default (yes).
 ssh "$BUILD_HOST" "cd $REMOTE_PATH && \
   sed -i.bak -e 's/^WITH_CDA:=yes/WITH_CDA:=no/' \
              -e 's/^WITH_OGG:=yes/WITH_OGG:=no/' \
              -e 's/^WITH_OPENAL:=yes/WITH_OPENAL:=no/' \
-             -e 's/^WITH_RETEXTURING:=yes/WITH_RETEXTURING:=no/' \
              yquake2/Makefile && \
   cd yquake2 && \
   make clean >/dev/null 2>&1 || true

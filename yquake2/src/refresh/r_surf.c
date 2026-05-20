@@ -493,8 +493,18 @@ R_RenderBrushPoly(msurface_t *fa)
 
 	if (is_dynamic)
 	{
-		if (((fa->styles[maps] >= 32) ||
-			 (fa->styles[maps] == 0)) && 
+		/* Fix upstream Q2 OOB: the cppcheck warning at r_surf.c:442
+		 * is real — if the loop above ran all the way to MAXLIGHTMAPS
+		 * (i.e. every slot held a non-terminator style), `maps` ==
+		 * MAXLIGHTMAPS here and fa->styles[maps] reads 1 byte past the
+		 * 4-byte array. Clamp the index so the read stays in-bounds.
+		 * When clamping kicks in, the value at MAXLIGHTMAPS-1 is by
+		 * definition non-255 (loop ran to completion), so the
+		 * `>=32 || ==0` check evaluates identically to the OOB read on
+		 * normal id1 levels — preserves behaviour. */
+		int safe_map = (maps < MAXLIGHTMAPS) ? maps : MAXLIGHTMAPS - 1;
+		if (((fa->styles[safe_map] >= 32) ||
+			 (fa->styles[safe_map] == 0)) &&
 			  (fa->dlightframe != r_framecount))
 		{
 			unsigned temp[34 * 34];
@@ -506,6 +516,7 @@ R_RenderBrushPoly(msurface_t *fa)
 			R_BuildLightMap(fa, (void *)temp, smax * 4);
 			R_SetCacheState(fa);
 
+			R_ApplyGLBuffer();
 			R_Bind(gl_state.lightmap_textures + fa->lightmaptexturenum);
 
 			qglTexSubImage2D(GL_TEXTURE_2D, 0, fa->light_s, fa->light_t,
@@ -757,9 +768,16 @@ R_RenderLightmappedPoly(msurface_t *surf)
 	{
 		unsigned temp[128 * 128];
 		int smax, tmax;
+		/* Mirror of the OOB fix in R_RenderBrushPoly above. If the
+		 * styles-scan loop above ran to completion, `map` is exactly
+		 * MAXLIGHTMAPS and reading surf->styles[map] is OOB. Clamp to
+		 * the last valid index — when the loop ran full, that slot
+		 * holds a non-terminator value, so the (>=32 || ==0) test
+		 * lands on the same answer as the OOB read on id1 levels. */
+		int safe_map = (map < MAXLIGHTMAPS) ? map : MAXLIGHTMAPS - 1;
 
-		if (((surf->styles[map] >= 32) ||
-			 (surf->styles[map] == 0)) &&
+		if (((surf->styles[safe_map] >= 32) ||
+			 (surf->styles[safe_map] == 0)) &&
 				(surf->dlightframe != r_framecount))
 		{
 			smax = (surf->extents[0] >> 4) + 1;

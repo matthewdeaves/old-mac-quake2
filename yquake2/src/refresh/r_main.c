@@ -437,7 +437,7 @@ R_DrawEntitiesOnList(void)
 
 void
 R_DrawParticles2(int num_particles, const particle_t particles[],
-		const unsigned colortable[768])
+		const unsigned colortable[256])
 {
 	const particle_t *p;
 	int i;

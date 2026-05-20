@@ -2090,6 +2090,33 @@ FS_InitFilesystem(void)
 	FS_AddGameDirectory(va("%s/" BASEDIRNAME, fs_basedir->string));
 	FS_AddHomeAsGameDirectory(BASEDIRNAME);
 
+#if defined(__APPLE__) && !defined(DEDICATED_ONLY)
+	/* If we're running from a Quake2.app bundle and the bundle ships
+	 * an HD texture pack under Contents/Resources/hd-pak/, splice
+	 * that path into the search chain. The engine will then look for
+	 * hi-res TGA/JPG replacements inside the bundle when
+	 * gl_retexturing is enabled, in addition to the user's baseq2.
+	 * Falls through silently if no bundle or no hd-pak — most cases.
+	 * fs_gamedir is restored to baseq2 afterward so writes (savegames,
+	 * config.cfg) still land in the user's gamedir, not the bundle. */
+	{
+		extern qboolean Q2_GetBundleHDPakPath(char *out, size_t outsz);
+		char hdpak[MAX_OSPATH];
+		char saved_gamedir[MAX_OSPATH];
+
+		Q_strlcpy(saved_gamedir, fs_gamedir, sizeof(saved_gamedir));
+
+		if (Q2_GetBundleHDPakPath(hdpak, sizeof(hdpak)))
+		{
+			FS_AddGameDirectory(hdpak);
+			Com_Printf("Added bundle HD texture path: %s\n", hdpak);
+			/* Restore the user-facing gamedir so writes don't try
+			 * to land in the read-only bundle. */
+			Q_strlcpy(fs_gamedir, saved_gamedir, sizeof(fs_gamedir));
+		}
+	}
+#endif
+
 	/* Any set gamedirs will be freed up to here. */
 	fs_baseSearchPaths = fs_searchPaths;
 	Q_strlcpy(fs_currentGame, BASEDIRNAME, sizeof(fs_currentGame));

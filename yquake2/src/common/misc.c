@@ -44,6 +44,8 @@
  */
 #include <CoreFoundation/CoreFoundation.h>
 #include <sys/sysctl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 static qboolean
 Q2_ExecConfigFromBundle(const char *basename)
@@ -108,6 +110,63 @@ Q2_ExecConfigFromBundle(const char *basename)
 	Cbuf_AddText(buf);
 	free(buf);
 	Com_Printf("Loaded %s.cfg from bundle\n", basename);
+	return true;
+}
+
+/*
+ * Build the absolute path to <Quake2.app>/Contents/Resources/hd-pak.
+ * Used by FS_InitFilesystem to inject the bundled HD texture pack into
+ * the filesystem search chain — the engine searches it (in addition to
+ * the user's baseq2/) when gl_retexturing is on and a hi-res TGA/JPG
+ * replacement texture is looked up. This lets us ship a fat .app that
+ * includes textures alongside the per-machine cfgs, so end users only
+ * need to drop their own baseq2/pak*.pak next to the .app.
+ *
+ * Returns true and writes the path to `out` on success. Returns false
+ * if we're not running from a bundle or the hd-pak subdirectory
+ * doesn't exist (the latter is the expected case when no HD pack is
+ * shipped — the engine then transparently falls back to the
+ * lower-resolution textures inside the user's pak0/pak1).
+ *
+ * The function ONLY checks for the directory's existence; whether it
+ * contains any actual TGA/JPG files is up to the gl_retexturing
+ * lookup path. An empty hd-pak/ folder is a valid configuration —
+ * future builds can ship one and it'll start working without an
+ * engine change.
+ */
+qboolean
+Q2_GetBundleHDPakPath(char *out, size_t outsz)
+{
+	struct stat st;
+
+	CFBundleRef bundle = CFBundleGetMainBundle();
+	if (!bundle)
+	{
+		return false;
+	}
+
+	CFURLRef url = CFBundleCopyResourceURL(bundle,
+			CFSTR("hd-pak"), NULL, NULL);
+	if (!url)
+	{
+		return false;
+	}
+
+	Boolean ok = CFURLGetFileSystemRepresentation(url, true,
+			(UInt8 *)out, outsz);
+	CFRelease(url);
+	if (!ok)
+	{
+		return false;
+	}
+
+	/* Sanity-check existence as a directory. CFBundleCopyResourceURL
+	 * sometimes returns a URL for a stat-able but missing target. */
+	if (stat(out, &st) != 0 || !S_ISDIR(st.st_mode))
+	{
+		return false;
+	}
+
 	return true;
 }
 #endif

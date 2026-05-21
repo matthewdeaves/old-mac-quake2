@@ -111,7 +111,16 @@ R_ApplyGLBuffer(void)
 
 	if (mtex)
 	{
-		R_EnableMultitexture(true);
+		/* DO NOT call R_EnableMultitexture(true) here — that resets
+		 * TMU1's TexEnv to GL_REPLACE, destroying the GL_COMBINE_EXT
+		 * combiner setup R_DrawWorld put in place before
+		 * R_RecursiveWorldNode. Visual bug: walls render as overbright
+		 * lightmap-only (with OBB4 → flat yellow/beige).
+		 *
+		 * Multitex is enabled by R_DrawWorld for the entire BSP walk
+		 * + drain; we just need to bind the two textures the batch
+		 * needs. The outer code disables multitex when the buffer
+		 * type transitions to singletex. */
 		R_MBind(QGL_TEXTURE1, gl_state.lightmap_textures + gl_buf.texture[1]);
 		R_MBind(QGL_TEXTURE0, gl_buf.texture[0]);
 	}
@@ -174,10 +183,13 @@ R_ApplyGLBuffer(void)
 
 	qglDisableClientState(GL_VERTEX_ARRAY);
 
-	if (mtex)
-	{
-		R_EnableMultitexture(false);
-	}
+	/* Symmetric with the no-toggle above: do NOT call
+	 * R_EnableMultitexture(false) on mtex flush exit. The outer code
+	 * (R_DrawWorld, R_DrawInlineBModel) owns the multitex enable
+	 * lifecycle and disables it explicitly when the BSP walk is done.
+	 * Toggling here would force-disable mtex mid-walk if a single batch
+	 * happened to flush before the walk completes (e.g. on a state
+	 * change between two adjacent surfaces). */
 
 	GLBUFFER_RESET;
 }

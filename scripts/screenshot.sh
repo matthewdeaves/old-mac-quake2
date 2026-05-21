@@ -109,6 +109,7 @@ ssh "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
     +set deathmatch 0 +set coop 0 \\
     +set logfile 2 \\
     +set timedemo 1 \\
+    ${EXTRA:-} \\
     +demomap demo1.dm2 +exec autoshot.cfg > /dev/null 2>&1 &
   PID=\$!
   # Wait for engine to produce the last shot, exit, or time out.

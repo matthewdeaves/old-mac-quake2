@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>yquake2 PPC port — screenshot gallery</title>
+<style>
+  :root {
+    --bg: #0d0e10;
+    --panel: #1a1c20;
+    --border: #2a2d33;
+    --text: #d8dae0;
+    --muted: #8a8e98;
+    --accent: #d65a31;
+    --good: #5cb85c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0;
+    background: var(--bg); color: var(--text);
+    font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  header {
+    padding: 24px 32px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #15171c 0%, var(--bg) 100%);
+  }
+  header h1 {
+    margin: 0 0 6px 0; font-size: 22px; font-weight: 600;
+    color: #fff;
+  }
+  header p {
+    margin: 0; color: var(--muted); font-size: 13px;
+  }
+  header code {
+    color: var(--accent); background: #14161a; padding: 2px 6px;
+    border-radius: 3px; font-size: 12px;
+  }
+  main { padding: 24px 32px; max-width: 1600px; margin: 0 auto; }
+  .machine {
+    margin-bottom: 48px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .machine-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; flex-wrap: wrap; gap: 24px; align-items: baseline;
+  }
+  .machine-header h2 {
+    margin: 0; font-size: 18px; font-weight: 600;
+    color: #fff;
+  }
+  .machine-header .spec {
+    color: var(--muted); font-size: 13px;
+  }
+  .machine-header .fps {
+    color: var(--good); font-size: 13px; font-variant-numeric: tabular-nums;
+  }
+  .machine-body {
+    padding: 18px 24px;
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 24px;
+  }
+  .meta {
+    font-size: 12px; color: var(--muted);
+  }
+  .meta h3 {
+    color: var(--text); font-size: 13px; font-weight: 600;
+    margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .meta dl { margin: 0 0 16px 0; }
+  .meta dt {
+    color: var(--text); font-weight: 500;
+    margin-top: 8px;
+  }
+  .meta dd { margin: 2px 0 0 0; color: var(--muted); }
+  .meta ul { padding-left: 16px; margin: 0; }
+  .meta li { margin: 2px 0; }
+  .hero {
+    grid-column: 1 / -1;
+    margin-bottom: 8px;
+  }
+  .hero img {
+    width: 100%; max-width: 1024px; display: block;
+    border: 1px solid var(--border); border-radius: 4px;
+  }
+  .hero-caption {
+    font-size: 12px; color: var(--muted); margin-top: 6px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    grid-column: 1 / -1;
+  }
+  .grid figure {
+    margin: 0; background: #0a0b0d;
+    border: 1px solid var(--border); border-radius: 4px;
+    overflow: hidden;
+  }
+  .grid img {
+    width: 100%; display: block; cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .grid img:hover { opacity: 0.85; }
+  .grid figcaption {
+    padding: 6px 10px;
+    font-size: 11px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+    border-top: 1px solid var(--border);
+  }
+  .lightbox {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 100; cursor: pointer;
+    padding: 24px;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 100%; max-height: 100%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+  footer {
+    padding: 20px 32px; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 12px;
+    text-align: center;
+  }
+  footer code {
+    color: var(--accent); background: #14161a; padding: 2px 6px;
+    border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>yquake2 5.11 PPC port — screenshot gallery</h1>
+  <p>
+    Captured 2026-05-21 from the post-<code>78c26f2</code> ULTIMATE shipping
+    build. Each machine's hero shot is <code>frame -04</code> (mid-demo
+    runtime in <code>demo1.dm2</code>). Per-machine 10-shot grids below.
+    Click any thumbnail for full-size.
+  </p>
+</header>
+
+<main>
+
+<!-- yosemite -->
+<section class="machine">
+  <div class="machine-header">
+    <h2>yosemite — G3 Panther</h2>
+    <span class="spec">PowerMac1,1 · PPC 750 @ 449 MHz · ATI Rage 128 16 MB · 10.3.9</span>
+    <span class="fps">demo1: 25.10 fps @ 1024 · 45.15 fps @ 640</span>
+  </div>
+  <div class="machine-body">
+    <div class="meta">
+      <h3>ULTIMATE config</h3>
+      <dl>
+        <dt>Textures</dt>
+        <dd>picmip 0, skymip 0, round_down 0, trilinear, AF 2x</dd>
+        <dt>Lighting</dt>
+        <dd>dlights OFF (heavy), flashblend OFF (R128 blend bug)</dd>
+        <dt>Shadows</dt>
+        <dd>alias drop shadows ON, stencil OFF (no hw)</dd>
+        <dt>Effects</dt>
+        <dd>GL_FOG wide-range, waterwarp ON, OBB 2</dd>
+        <dt>Retex</dt>
+        <dd>OFF (no HD pack on this box)</dd>
+        <dt>Notes</dt>
+        <dd>R128 + Panther — full visual unlock at 25 fps comfortably above the 20 fps floor</dd>
+      </dl>
+    </div>
+    <div class="hero">
+      <img src="yosemite-ULT-04.png" alt="yosemite hero">
+      <div class="hero-caption">frame 04 · cool-blue fog wash · cyan-tinted scene · no retex</div>
+    </div>
+    <div class="grid" id="grid-yosemite"></div>
+  </div>
+</section>
+
+<!-- mini-g4 -->
+<section class="machine">
+  <div class="machine-header">
+    <h2>mini-g4 — G4 Tiger</h2>
+    <span class="spec">PowerMac10,1 · PPC 7447A @ 1.25 GHz · ATI Radeon 9200 32 MB · 10.4.11</span>
+    <span class="fps">demo1: 98.45 fps @ 1024 · 123.80 fps @ 640</span>
+  </div>
+  <div class="machine-body">
+    <div class="meta">
+      <h3>ULTIMATE config</h3>
+      <dl>
+        <dt>Textures</dt>
+        <dd>picmip 0, skymip 0, round_down 0, trilinear, AF 16x</dd>
+        <dt>Lighting</dt>
+        <dd>full dlights ON, lightmap subrect upload</dd>
+        <dt>Shadows</dt>
+        <dd>alias drop shadows ON</dd>
+        <dt>Effects</dt>
+        <dd>GL_FOG (red-orange), waterwarp ON, OBB 4 (Q3-punchy)</dd>
+        <dt>Retex</dt>
+        <dd>HD textures ON (visible on wall paneling)</dd>
+        <dt>Group-draw</dt>
+        <dd>ON (texenv-fix made it correct)</dd>
+      </dl>
+    </div>
+    <div class="hero">
+      <img src="mini-g4-FIX-04.png" alt="mini-g4 hero">
+      <div class="hero-caption">frame 04 · red-orange fog · retex HD textures on brickwork · OBB 4 punchy lightmaps</div>
+    </div>
+    <div class="grid" id="grid-mini-g4"></div>
+  </div>
+</section>
+
+<!-- quicksilver -->
+<section class="machine">
+  <div class="machine-header">
+    <h2>quicksilver — G4 Tiger</h2>
+    <span class="spec">PowerMac3,5 · PPC 7450 @ 733 MHz · ATI Radeon 9000 Pro 64 MB · 10.4.11</span>
+    <span class="fps">demo1: 72.35 fps @ 1024 · 72.40 fps @ 640 (vsync)</span>
+  </div>
+  <div class="machine-body">
+    <div class="meta">
+      <h3>ULTIMATE config</h3>
+      <dl>
+        <dt>Textures</dt>
+        <dd>picmip 0, skymip 0, round_down 0, trilinear, AF 16x</dd>
+        <dt>Lighting</dt>
+        <dd>full dlights ON, lightmap subrect upload</dd>
+        <dt>Shadows</dt>
+        <dd>alias drop shadows ON</dd>
+        <dt>Effects</dt>
+        <dd>GL_FOG, waterwarp ON, OBB 4</dd>
+        <dt>Retex</dt>
+        <dd>HD textures ON</dd>
+        <dt>Group-draw</dt>
+        <dd>ON</dd>
+        <dt>Notes</dt>
+        <dd>R9000 Pro has 64 MB VRAM, so VRAM headroom for retex is best of the G4 fleet</dd>
+      </dl>
+    </div>
+    <div class="hero">
+      <img src="quicksilver-FIX-04.png" alt="quicksilver hero">
+      <div class="hero-caption">frame 04 · visually identical to mini-g4 (same autoexec)</div>
+    </div>
+    <div class="grid" id="grid-quicksilver"></div>
+  </div>
+</section>
+
+<!-- mini-intel -->
+<section class="machine">
+  <div class="machine-header">
+    <h2>mini-intel — Lion</h2>
+    <span class="spec">Macmini2,1 · Core 2 Duo @ 2.33 GHz · Intel GMA 950 64 MB · 10.7.5</span>
+    <span class="fps">demo1: 101.20 fps @ 1024 · 59.40 fps @ 640 (vsync)</span>
+  </div>
+  <div class="machine-body">
+    <div class="meta">
+      <h3>ULTIMATE config</h3>
+      <dl>
+        <dt>Textures</dt>
+        <dd>picmip 0, skymip 0, round_down 0, trilinear, AF 8x</dd>
+        <dt>Lighting</dt>
+        <dd>full dlights ON, lightmap subrect upload</dd>
+        <dt>Shadows</dt>
+        <dd>alias drop shadows ON</dd>
+        <dt>Effects</dt>
+        <dd>GL_FOG, waterwarp ON, OBB 4</dd>
+        <dt>Retex</dt>
+        <dd>HD textures ON</dd>
+        <dt>Group-draw</dt>
+        <dd>ON</dd>
+        <dt>Notes</dt>
+        <dd>GMA 950 is integrated; despite weak GPU class, fixed-function pipeline pins at vsync at 640</dd>
+      </dl>
+    </div>
+    <div class="hero">
+      <img src="mini-intel-FIX-04.png" alt="mini-intel hero">
+      <div class="hero-caption">frame 04 · same red-fog atmosphere as G4 fleet</div>
+    </div>
+    <div class="grid" id="grid-mini-intel"></div>
+  </div>
+</section>
+
+<!-- absent -->
+<section class="machine">
+  <div class="machine-header">
+    <h2 style="color: var(--muted)">sawtooth, imac-2019 — not in this run</h2>
+    <span class="spec">sawtooth is headless (no screen output capable) · imac-2019 was off during the screenshot run</span>
+  </div>
+</section>
+
+</main>
+
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('open')">
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<footer>
+  Generated 2026-05-21 · post-<code>78c26f2</code> texenv fix ·
+  yquake2 5.11 + Phase B/C cherry-picks
+</footer>
+
+<script>
+  // Populate grids
+  const machines = {
+    'yosemite':    { prefix: 'yosemite-ULT-',    count: 10 },
+    'mini-g4':     { prefix: 'mini-g4-FIX-',     count: 10 },
+    'quicksilver': { prefix: 'quicksilver-FIX-', count: 10 },
+    'mini-intel':  { prefix: 'mini-intel-FIX-',  count: 10 },
+  };
+  for (const [name, info] of Object.entries(machines)) {
+    const grid = document.getElementById('grid-' + name);
+    if (!grid) continue;
+    for (let i = 0; i < info.count; i++) {
+      const n = String(i).padStart(2, '0');
+      const file = info.prefix + n + '.png';
+      const fig = document.createElement('figure');
+      fig.innerHTML = `<img src="${file}" loading="lazy" onclick="openLightbox('${file}')"><figcaption>${name} · frame ${n}</figcaption>`;
+      grid.appendChild(fig);
+    }
+  }
+  function openLightbox(src) {
+    const lb = document.getElementById('lightbox');
+    document.getElementById('lightbox-img').src = src;
+    lb.classList.add('open');
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('lightbox').classList.remove('open');
+  });
+</script>
+
+</body>
+</html>

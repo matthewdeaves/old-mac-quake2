@@ -237,6 +237,10 @@ worse than -5% on any machine block the commit.
 | Sawtooth dlight policy: billboard halos | `gl_dynamic 0` + `gl_flashblend 1` | autoexec | sawtooth (GF2 MX is CPU-bound on R_BuildLightMap; flashblend skips the surface relight entirely → 69 fps demo1 1024 vs 15 fps with gl_dynamic 1) | `7051a09` |
 | 2× anisotropic on bottom-of-fleet | `gl_anisotropic 2` | autoexec | sawtooth + yosemite (chip max for GF2 MX / R128 Tier; cheap quality on receding floors/walls; silently no-ops if driver missing the ext) | `d82d3fa` |
 | Q3-style overbright lightmaps (`GL_RGB_SCALE_EXT 4`) | `gl_overbrightbits 4` | autoexec | quicksilver + mini-g4 + mini-intel + imac-2019 (4 multitex+combine boxes; same cost as default 2x, more punch on dlight-touched walls) | `044b6f7` |
+| stb_image JPEG loader (drops libjpeg dep, enables `WITH_RETEXTURING`) | `gl_retexturing` | autoexec | quicksilver + mini-g4 + mini-intel + imac-2019 = ON (no HD pack shipped yet, latent — see docs/HD_PACK.md); yosemite + sawtooth = OFF (VRAM / CPU constraints) | `3b594e1` |
+| Group-draw vertex-array dispatch (Phase B #3) | `gl_groupdraw` | autoexec | mini-g4 + quicksilver + mini-intel + imac-2019 + sawtooth = 1 (default ON for G4 + x86); yosemite = 0 (no visible benefit, small cost). Compile-time default is per-slice via `__ALTIVEC__` probe. | `594eeba` + `78c26f2` fix |
+| HD texture pack search path inside Quake2.app bundle | (no cvar — CFBundle hook in `Q2_GetBundleHDPakPath`) | always-on if `Contents/Resources/hd-pak/baseq2/` exists | all Mac builds. Lets the .app ship a self-contained HD pack alongside the per-machine cfgs. | `b9588bc` |
+| Yosemite ULTIMATE — full-detail textures + trilinear + alias shadows + GL_FOG | `gl_picmip 0` `gl_round_down 0` `gl_texturemode GL_LINEAR_MIPMAP_LINEAR` `gl_shadows 1` `gl_fog 1` | autoexec-yosemite | yosemite only. Cost: 31.50 → 25.10 fps demo1 1024, 65.30 → 45.15 fps demo1 640 (5.8 fps + 20.1 fps spent on visuals; both well above 20 fps floor). Unlocked by the texenv fix. | `e8ae174` |
 
 (More rows landed as each round ships.)
 

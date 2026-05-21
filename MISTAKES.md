@@ -16,6 +16,59 @@ quirks.
 
 ---
 
+## 2026-05-21 — `R_ApplyGLBuffer` toggling multitex destroys the GL_COMBINE_EXT setup
+
+What we tried: the initial port of yquake2-latest's `gl1_buffer.c` into
+`yquake2/src/refresh/r_buffer.c` followed the upstream pattern of
+calling `R_EnableMultitexture(true)` on flush entry when the batch type
+is `buf_mtex`, and `R_EnableMultitexture(false)` on flush exit. The
+inner loop also called `R_TexEnv(GL_REPLACE)` on the second TMU as
+part of multitex setup.
+
+What went wrong: walls / floors / ceilings rendered flat yellow / beige
+(with `gl_overbrightbits 4`) or flat grey-cyan (with OBB 2) on every
+multitex platform — `mini-g4`, `quicksilver`, `mini-intel`. Took a
+while to find because the initial diagnosis pointed at retex / driver
+quirk / HD-texture-missing rather than at the buffer port. Manual user
+inspection on `mini-g4` ruled out retex misses (textures were missing
+even on areas the demo never tried to lookup-replace) and `gl_groupdraw
+0` immediately fixed the visuals — narrowing it to the buffer flush
+path.
+
+Root cause: `R_DrawWorld` configures TMU1's TexEnv to
+`GL_COMBINE_EXT` with `RGB_SCALE_EXT = gl_overbrightbits` BEFORE
+`R_RecursiveWorldNode` walks the BSP. The buffer accumulates batches
+across many surfaces, then flushes. Each flush was re-running
+`R_EnableMultitexture(true)`, which calls `R_TexEnv(GL_REPLACE)` on
+TMU1 — destroying the combiner state. The subsequent draw ran with TMU1
+sampling lightmap-only, no colormap modulate. With `OBB4`'s `RGB_SCALE
+4` baked into the combiner that the flush had just overwritten, the
+output was lightmap × 1.0 (no scale) instead of (colormap × lightmap)
+× 4 — looked like flat lightmap shading on a uniform colour.
+
+Fix (commit `78c26f2`): the buffer flush MUST trust the outer code to
+own the multitex enable lifecycle. Removed the
+`R_EnableMultitexture(true)/false)` calls from `R_ApplyGLBuffer`;
+replaced with a load-bearing comment block (`r_buffer.c:113-123` and
+`r_buffer.c:186-192`) explaining why these toggles are forbidden.
+`R_DrawWorld` (and `R_DrawInlineBModel`) enable mtex once for the whole
+BSP walk + drain, and disable it after; the buffer is just a batching
+layer that bind/draws without re-configuring TexEnv.
+
+What we learned: **fixed-function GL TexEnv state is a global the
+buffer cannot afford to touch**. The upstream `gl1_buffer.c` came from
+a yquake2-latest tree that had already refactored `R_DrawWorld` to NOT
+pre-configure TMU1 — the port worked there because the outer code did
+no setup. In our 5.11 base the outer code DOES set up the combiner,
+so the buffer's "helpful" re-toggle was actively destructive. Any
+future port from yquake2-latest must check whether the inner state-
+configuration was hoisted out into the buffer, or whether it stayed
+in `R_DrawWorld`.
+
+Bench: see commits `78c26f2` + `9527595` for the post-fix grid.
+
+---
+
 ## 2026-05-19 — `gl_dynamic 1` on GeForce2 MX (sawtooth) is a catastrophic regression
 
 What we tried: as part of the "sawtooth visual unlock" round (the box has

@@ -85,15 +85,14 @@ server, can disable), `ref_gl.so` (GL renderer, loaded at runtime).
 but on macOS the build system bundles it into the .app — same end
 result, different mechanics from QuakeSpasm.**
 
-Makefile knobs at the top of `yquake2/Makefile`:
-- `WITH_CDA` — CD audio. Disable (we have no CD).
-- `WITH_OGG` — OGG/Vorbis music. Disable for Phase A (extra dep), revisit later.
-- `WITH_OPENAL` — OpenAL. Disable for Phase A (extra dep, SDL audio is fine).
-- `WITH_RETEXTURING` — hi-res TGA/JPG/PNG texture autoload. **Keep ON.**
-  This is one of our main visual levers.
-- `WITH_ZIP` — pak loading from zip. Keep ON (libz is in Tiger).
-- `WITH_SYSTEMWIDE` — install dirs. Leave off.
-- `OSX_ARCH` — defaults to `-arch i386 -arch x86_64`. We override per target.
+Makefile knobs at the top of `yquake2/Makefile` (all default `yes`):
+`WITH_CDA`, `WITH_OGG`, `WITH_OPENAL`, `WITH_RETEXTURING`, `WITH_ZIP`,
+`WITH_SYSTEMWIDE`. `scripts/build.sh` sed-overrides the first three to
+`no` per build (we have no CD, no OGG/OpenAL deps installed on PPC),
+leaves `WITH_RETEXTURING=yes` (now satisfied by the vendored
+`stb_image.h` — see HD_PACK.md), `WITH_ZIP=yes` (libz ships in Tiger),
+and `WITH_SYSTEMWIDE=no`. `OSX_ARCH` defaults to `-arch i386 -arch
+x86_64`; we override per target via `OSX_ARCH=` in `scripts/build.sh`.
 
 PPC build flag override pattern (matches QuakeSpasm):
 - G3:   `-isysroot /Developer/SDKs/MacOSX10.3.9.sdk -mmacosx-version-min=10.3.9 -arch ppc -mcpu=750 -O3`
@@ -303,7 +302,26 @@ so it overrides cleanly. If the tweak wins, fold the new value into
   709.2 fps @ 640×480 (Polaris 20 totally unbound by GL1 fixed-func).
   Phase A baseline now complete across all 6 machines; tagged `v1.0.0`
   as the canonical re-bench reference build.
+- 2026-05-21: Phase B/C cherry-pick round landed. `gl_fog` (cvar-driven
+  GL_FOG, ported from KMQuake2), `gl_waterwarp` (underwater frustum
+  sine-warp), `gl_lightmap_subrect` (dirty-column-only dynamic upload),
+  `jpeg.c` rewritten on stb_image (drops libjpeg, unlocks
+  `WITH_RETEXTURING` on every slice), `gl_groupdraw` cvar +
+  `r_buffer.c` (batched `qglDrawElements` dispatch per state group),
+  and a CFBundle HD-texture search path in `FS_InitFilesystem` so a
+  pack can ship inside the .app. THE KEY FIX of the round was
+  `78c26f2`: `R_ApplyGLBuffer` must not toggle `R_EnableMultitexture` —
+  doing so resets TMU1's TexEnv to `GL_REPLACE`, destroying the
+  `GL_COMBINE_EXT` modulate setup `R_DrawWorld` put in place and
+  rendering walls/floors as overbright lightmap-only (with OBB4 → flat
+  yellow/beige). The buffer must trust the outer code to own the mtex
+  enable lifecycle. See `r_buffer.c` for the load-bearing comment.
+  Post-fix every multitex platform (mini-g4 / quicksilver / mini-intel)
+  renders correctly with full retex + OBB4. Yosemite ULTIMATE shipped
+  (25.10 / 45.15 fps with picmip 0 + trilinear + alias shadows + fog).
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).
-- Phase B / C: not started.
+- Next: see `NEXT_ROUND_PLAN.md` — KMQuake2 decals / stencil shadows /
+  bloom, AltiVec `R_BuildLightMap` (path to unlock dlights on
+  sawtooth), MSAA via `SDL_GL_MULTISAMPLE`, GL1 gamma correction.

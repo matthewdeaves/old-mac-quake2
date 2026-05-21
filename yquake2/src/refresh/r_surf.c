@@ -66,12 +66,28 @@ R_TextureAnimation(mtexinfo_t *tex)
 }
 
 /*
- * Append a brush-surface polygon to the current buffer batch (Phase B
- * group-draw). The caller must have set up the batch state via
- * R_UpdateGLBuffer(buf_singletex, ...) already; the buffer flushes
- * automatically when the texture or surface flags change. R_DrawGLPoly
- * is the static-coord variant; R_DrawGLFlowingPoly bakes in the time-
- * based scroll offset for SURF_FLOWING surfaces.
+ * Append a brush-surface polygon for drawing. Two paths gated by the
+ * gl_groupdraw cvar:
+ *
+ *  - gl_groupdraw 1 (Phase B #3 buffer batching): accumulate this
+ *    poly's verts into the global gl_buf and let R_ApplyGLBuffer fire
+ *    one qglDrawElements per state-coherent group. Big win on drivers
+ *    where per-call overhead dominates (GMA 950 Lion: +17%).
+ *
+ *  - gl_groupdraw 0 (1997 Q2 baseline): per-poly qglBegin/qglVertex/
+ *    qglEnd immediate mode. Kept for drivers whose original
+ *    immediate-mode fast path is faster than their vertex-array path
+ *    — confirmed for the Rage 128 on Panther (verified 2026-05-20:
+ *    group-draw regressed 31.55 → 30.70 fps demo1 1024).
+ *
+ * The caller in the buffer path must have set up batch state via
+ * R_UpdateGLBuffer(buf_singletex, ...) so the flush emits the right
+ * texture binding. In the immediate path the caller must have already
+ * R_Bind'd the texture; both R_RenderBrushPoly and R_DrawAlphaSurfaces
+ * handle that.
+ *
+ * R_DrawGLPoly is the static-coord variant; R_DrawGLFlowingPoly bakes
+ * in the time-based scroll offset for SURF_FLOWING surfaces.
  */
 void
 R_DrawGLPoly(glpoly_t *p)
@@ -80,13 +96,29 @@ R_DrawGLPoly(glpoly_t *p)
 	float *v;
 	int nv = p->numverts;
 
-	R_SetBufferIndices(GL_TRIANGLE_FAN, nv);
 	v = p->verts[0];
 
-	for (i = 0; i < nv; i++, v += VERTEXSIZE)
+	if (gl_groupdraw->value)
 	{
-		GLBUFFER_VERTEX(v[0], v[1], v[2])
-		GLBUFFER_SINGLETEX(v[3], v[4])
+		R_SetBufferIndices(GL_TRIANGLE_FAN, nv);
+
+		for (i = 0; i < nv; i++, v += VERTEXSIZE)
+		{
+			GLBUFFER_VERTEX(v[0], v[1], v[2])
+			GLBUFFER_SINGLETEX(v[3], v[4])
+		}
+	}
+	else
+	{
+		qglBegin(GL_POLYGON);
+
+		for (i = 0; i < nv; i++, v += VERTEXSIZE)
+		{
+			qglTexCoord2f(v[3], v[4]);
+			qglVertex3fv(v);
+		}
+
+		qglEnd();
 	}
 }
 
@@ -109,13 +141,29 @@ R_DrawGLFlowingPoly(msurface_t *fa)
 		scroll = -64.0;
 	}
 
-	R_SetBufferIndices(GL_TRIANGLE_FAN, nv);
 	v = p->verts[0];
 
-	for (i = 0; i < nv; i++, v += VERTEXSIZE)
+	if (gl_groupdraw->value)
 	{
-		GLBUFFER_VERTEX(v[0], v[1], v[2])
-		GLBUFFER_SINGLETEX(v[3] + scroll, v[4])
+		R_SetBufferIndices(GL_TRIANGLE_FAN, nv);
+
+		for (i = 0; i < nv; i++, v += VERTEXSIZE)
+		{
+			GLBUFFER_VERTEX(v[0], v[1], v[2])
+			GLBUFFER_SINGLETEX(v[3] + scroll, v[4])
+		}
+	}
+	else
+	{
+		qglBegin(GL_POLYGON);
+
+		for (i = 0; i < nv; i++, v += VERTEXSIZE)
+		{
+			qglTexCoord2f(v[3] + scroll, v[4]);
+			qglVertex3fv(v);
+		}
+
+		qglEnd();
 	}
 }
 
@@ -167,83 +215,140 @@ R_DrawTriangleOutlines(void)
 }
 
 /*
- * Render a chain of lightmap polygons via per-polygon vertex array
- * draws. Used by R_BlendLightmaps's second-pass lightmap blend (dual-
- * pass renderer path) where the polygon's lightmap UVs live at v[5..6]
- * rather than the color UVs at v[3..4]. Each chain link gets one
- * glDrawArrays. We don't use the global gl_buf here because the
- * per-polygon offsets vary in the soffset/toffset branch — interleaving
- * those would require a separate UV scratch per polygon. Single glDraw
- * per polygon still beats per-vertex qglBegin/End substantially on
- * 1999-era drivers.
+ * Render a chain of lightmap polygons (R_BlendLightmaps's second-pass
+ * lightmap blend, dual-pass renderer path). The polygon's lightmap
+ * UVs live at v[5..6] rather than the color UVs at v[3..4].
+ *
+ * Two paths gated by gl_groupdraw:
+ *
+ *  - 1: per-polygon vertex-array (qglDrawArrays). Uses the interleaved
+ *    poly layout via strided qglVertexPointer/qglTexCoordPointer. One
+ *    GL draw call per chain link instead of N+2 immediate-mode calls.
+ *
+ *  - 0: original 5.11 immediate-mode qglBegin/qglTexCoord/qglVertex/
+ *    qglEnd per polygon. Slower on most drivers, but FASTER on the
+ *    Rage 128 Panther driver where vertex-array dispatch regressed
+ *    the demo.
  *
  * Caller MUST have called R_ApplyGLBuffer to drain any pending
- * single-/multitex batch before invoking this; we don't do it here
- * because we'd lose the no-state-change optimization in the common
- * call site (R_BlendLightmaps inside a tight texture loop).
+ * single-/multitex batch before invoking this; the function doesn't
+ * do it itself so the no-state-change optimization in the common call
+ * site (R_BlendLightmaps inside a tight texture loop) is preserved.
  */
 void
 R_DrawGLPolyChain(glpoly_t *p, float soffset, float toffset)
 {
-	if ((soffset == 0) && (toffset == 0))
+	if (gl_groupdraw->value)
 	{
-		for ( ; p != 0; p = p->chain)
+		if ((soffset == 0) && (toffset == 0))
 		{
-			float *v;
-
-			v = p->verts[0];
-
-			if (v == NULL)
+			for ( ; p != 0; p = p->chain)
 			{
-				fprintf(stderr, "BUGFIX: R_DrawGLPolyChain: v==NULL\n");
-				return;
-			}
+				float *v;
 
-			qglEnableClientState(GL_VERTEX_ARRAY);
-			qglEnableClientState(GL_TEXTURE_COORD_ARRAY);
-			qglVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(GLfloat), v);
-			qglTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(GLfloat), v + 5);
-			qglDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
-			qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
-			qglDisableClientState(GL_VERTEX_ARRAY);
+				v = p->verts[0];
+
+				if (v == NULL)
+				{
+					fprintf(stderr, "BUGFIX: R_DrawGLPolyChain: v==NULL\n");
+					return;
+				}
+
+				qglEnableClientState(GL_VERTEX_ARRAY);
+				qglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+				qglVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(GLfloat), v);
+				qglTexCoordPointer(2, GL_FLOAT, VERTEXSIZE * sizeof(GLfloat), v + 5);
+				qglDrawArrays(GL_TRIANGLE_FAN, 0, p->numverts);
+				qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+				qglDisableClientState(GL_VERTEX_ARRAY);
+			}
+		}
+		else
+		{
+			/* per-polygon UV scratch — sized for the largest polygon we
+			 * might encounter. MAX_POLY_VERTS isn't defined in 5.11; use
+			 * a conservative cap. Q2 BSP polys are clipped by the loader
+			 * to MAX_VERT_LIGHTMAPS which is well under 64. */
+			GLfloat uvbuf[64 * 2];
+
+			for ( ; p != 0; p = p->chain)
+			{
+				float *v;
+				int j, nv;
+
+				v = p->verts[0];
+				nv = p->numverts;
+
+				if (nv > 64)
+				{
+					/* Should never happen with id1 maps; bail rather
+					 * than stomp the stack. */
+					continue;
+				}
+
+				for (j = 0; j < nv; j++)
+				{
+					uvbuf[j * 2]     = v[j * VERTEXSIZE + 5] - soffset;
+					uvbuf[j * 2 + 1] = v[j * VERTEXSIZE + 6] - toffset;
+				}
+
+				qglEnableClientState(GL_VERTEX_ARRAY);
+				qglEnableClientState(GL_TEXTURE_COORD_ARRAY);
+				qglVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(GLfloat), v);
+				qglTexCoordPointer(2, GL_FLOAT, 0, uvbuf);
+				qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
+				qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+				qglDisableClientState(GL_VERTEX_ARRAY);
+			}
 		}
 	}
 	else
 	{
-		/* per-polygon UV scratch — sized for the largest polygon we
-		 * might encounter. MAX_POLY_VERTS isn't defined in 5.11; use a
-		 * conservative cap. Q2 BSP polys are clipped by the loader to
-		 * MAX_VERT_LIGHTMAPS which is well under 64. */
-		GLfloat uvbuf[64 * 2];
-
-		for ( ; p != 0; p = p->chain)
+		/* Original 5.11 immediate-mode path. */
+		if ((soffset == 0) && (toffset == 0))
 		{
-			float *v;
-			int j, nv;
-
-			v = p->verts[0];
-			nv = p->numverts;
-
-			if (nv > 64)
+			for ( ; p != 0; p = p->chain)
 			{
-				/* Should never happen with id1 maps; bail rather than
-				 * stomp the stack. */
-				continue;
-			}
+				float *v;
+				int j;
 
-			for (j = 0; j < nv; j++)
+				v = p->verts[0];
+
+				if (v == NULL)
+				{
+					fprintf(stderr, "BUGFIX: R_DrawGLPolyChain: v==NULL\n");
+					return;
+				}
+
+				qglBegin(GL_POLYGON);
+
+				for (j = 0; j < p->numverts; j++, v += VERTEXSIZE)
+				{
+					qglTexCoord2f(v[5], v[6]);
+					qglVertex3fv(v);
+				}
+
+				qglEnd();
+			}
+		}
+		else
+		{
+			for ( ; p != 0; p = p->chain)
 			{
-				uvbuf[j * 2]     = v[j * VERTEXSIZE + 5] - soffset;
-				uvbuf[j * 2 + 1] = v[j * VERTEXSIZE + 6] - toffset;
-			}
+				float *v;
+				int j;
 
-			qglEnableClientState(GL_VERTEX_ARRAY);
-			qglEnableClientState(GL_TEXTURE_COORD_ARRAY);
-			qglVertexPointer(3, GL_FLOAT, VERTEXSIZE * sizeof(GLfloat), v);
-			qglTexCoordPointer(2, GL_FLOAT, 0, uvbuf);
-			qglDrawArrays(GL_TRIANGLE_FAN, 0, nv);
-			qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
-			qglDisableClientState(GL_VERTEX_ARRAY);
+				qglBegin(GL_POLYGON);
+				v = p->verts[0];
+
+				for (j = 0; j < p->numverts; j++, v += VERTEXSIZE)
+				{
+					qglTexCoord2f(v[5] - soffset, v[6] - toffset);
+					qglVertex3fv(v);
+				}
+
+				qglEnd();
+			}
 		}
 	}
 }
@@ -448,13 +553,22 @@ R_RenderBrushPoly(msurface_t *fa)
 		return;
 	}
 
-	/* Standard brush surface: buffer-batched single-texture draw.
-	 * R_UpdateGLBuffer flushes if state changed (different texture or
-	 * flags), then sets up the new batch. The R_DrawGLPoly /
-	 * R_DrawGLFlowingPoly calls below accumulate this surface's verts
-	 * into that batch. The caller (R_DrawTextureChains) drains the
-	 * final batch via R_ApplyGLBuffer at the end of each phase. */
-	R_UpdateGLBuffer(buf_singletex, image->texnum, 0, fa->flags, 1.0f);
+	/* Standard brush surface. Two paths:
+	 *   gl_groupdraw 1: R_UpdateGLBuffer sets buf_singletex state and
+	 *     flushes only when texture/flags change; R_DrawGLPoly /
+	 *     R_DrawGLFlowingPoly accumulate verts. R_DrawTextureChains
+	 *     drains at phase boundaries.
+	 *   gl_groupdraw 0: bind+texenv per surface; R_DrawGLPoly /
+	 *     R_DrawGLFlowingPoly emit qglBegin/qglVertex/qglEnd directly. */
+	if (gl_groupdraw->value)
+	{
+		R_UpdateGLBuffer(buf_singletex, image->texnum, 0, fa->flags, 1.0f);
+	}
+	else
+	{
+		R_Bind(image->texnum);
+		R_TexEnv(GL_REPLACE);
+	}
 
 	if (fa->texinfo->flags & SURF_FLOWING)
 	{
@@ -583,12 +697,25 @@ R_DrawAlphaSurfaces(void)
 			float alpha = (s->texinfo->flags & SURF_TRANS33) ? 0.33f
 					: (s->texinfo->flags & SURF_TRANS66) ? 0.66f : 1.0f;
 
-			/* R_UpdateGLBuffer flushes the pending batch if texture
-			 * or alpha changed since the previous surface, then sets
-			 * up the new buf_alpha batch. R_ApplyGLBuffer's buf_alpha
-			 * path will issue qglColor4f(intens, intens, intens,
-			 * alpha) at draw time. */
-			R_UpdateGLBuffer(buf_alpha, s->texinfo->image->texnum, 0, 0, alpha);
+			if (gl_groupdraw->value)
+			{
+				/* R_UpdateGLBuffer flushes the pending batch if texture
+				 * or alpha changed since the previous surface, then
+				 * sets up the new buf_alpha batch. R_ApplyGLBuffer's
+				 * buf_alpha path will issue qglColor4f(intens, intens,
+				 * intens, alpha) at draw time. */
+				R_UpdateGLBuffer(buf_alpha, s->texinfo->image->texnum, 0, 0, alpha);
+			}
+			else
+			{
+				/* Immediate-mode path: set the texture binding +
+				 * per-surface alpha color explicitly. R_DrawGLPoly /
+				 * R_DrawGLFlowingPoly with gl_groupdraw=0 will emit
+				 * qglBegin/qglVertex/qglEnd directly. */
+				float intens = gl_state.inverse_intensity;
+				R_Bind(s->texinfo->image->texnum);
+				qglColor4f(intens, intens, intens, alpha);
+			}
 
 			if (s->texinfo->flags & SURF_FLOWING)
 			{
@@ -816,12 +943,6 @@ R_RenderLightmappedPoly(msurface_t *surf)
 
 	c_brush_polys++;
 
-	/* Buffer state for this batch. Flushes the pending batch if the
-	 * color texture or lightmap texture changed since the last surface.
-	 * Surfaces with the same image + lightmaptexturenum accumulate
-	 * into a single glDrawElements at the next phase boundary. */
-	R_UpdateGLBuffer(buf_mtex, image->texnum, lmtex, 0, 1.0f);
-
 	flowing = (surf->texinfo->flags & SURF_FLOWING) ? true : false;
 	if (flowing)
 	{
@@ -834,15 +955,51 @@ R_RenderLightmappedPoly(msurface_t *surf)
 		}
 	}
 
-	for (p = surf->polys; p; p = p->chain)
+	if (gl_groupdraw->value)
 	{
-		v = p->verts[0];
-		R_SetBufferIndices(GL_TRIANGLE_FAN, nv);
+		/* Buffer state for this batch. Flushes the pending batch if
+		 * the color texture or lightmap texture changed since the
+		 * last surface. Surfaces with the same image +
+		 * lightmaptexturenum accumulate into a single glDrawElements
+		 * at the next phase boundary (R_ApplyGLBuffer in
+		 * R_DrawTextureChains / R_DrawInlineBModel). */
+		R_UpdateGLBuffer(buf_mtex, image->texnum, lmtex, 0, 1.0f);
 
-		for (i = 0; i < nv; i++, v += VERTEXSIZE)
+		for (p = surf->polys; p; p = p->chain)
 		{
-			GLBUFFER_VERTEX(v[0], v[1], v[2])
-			GLBUFFER_MULTITEX(v[3] + scroll, v[4], v[5], v[6])
+			v = p->verts[0];
+			R_SetBufferIndices(GL_TRIANGLE_FAN, nv);
+
+			for (i = 0; i < nv; i++, v += VERTEXSIZE)
+			{
+				GLBUFFER_VERTEX(v[0], v[1], v[2])
+				GLBUFFER_MULTITEX(v[3] + scroll, v[4], v[5], v[6])
+			}
+		}
+	}
+	else
+	{
+		/* Original 5.11 immediate-mode multitex path. Bind both TMUs
+		 * per surface, emit per-vertex qglMTexCoord2fSGIS to TMU0 +
+		 * TMU1. The dynamic-rebuild path above already R_MBind'd TMU1
+		 * to the lightmap atlas; this rebinds defensively in case the
+		 * non-dynamic path left it on a stale texture. */
+		R_MBind(QGL_TEXTURE0, image->texnum);
+		R_MBind(QGL_TEXTURE1, gl_state.lightmap_textures + lmtex);
+
+		for (p = surf->polys; p; p = p->chain)
+		{
+			v = p->verts[0];
+			qglBegin(GL_POLYGON);
+
+			for (i = 0; i < nv; i++, v += VERTEXSIZE)
+			{
+				qglMTexCoord2fSGIS(QGL_TEXTURE0, v[3] + scroll, v[4]);
+				qglMTexCoord2fSGIS(QGL_TEXTURE1, v[5], v[6]);
+				qglVertex3fv(v);
+			}
+
+			qglEnd();
 		}
 	}
 }

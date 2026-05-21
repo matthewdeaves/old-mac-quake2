@@ -104,6 +104,7 @@ cvar_t *gl_lightlevel;
 cvar_t *gl_overbrightbits;
 cvar_t *gl_waterwarp;          /* yquake2-ppc Phase C #2 — underwater frustum warp magnitude */
 cvar_t *gl_lightmap_subrect;   /* yquake2-ppc Phase B #1 — subrect dynamic lightmap upload */
+cvar_t *gl_groupdraw;          /* yquake2-ppc Phase B #3 — buffer-batched draw vs immediate */
 
 cvar_t *gl_nosubimage;
 cvar_t *gl_allow_software;
@@ -1030,6 +1031,33 @@ R_Register(void)
 	R_RegisterFogCvars();   /* yquake2-ppc Phase C — gl_fog + range/color/mode cvars */
 	gl_waterwarp = ri.Cvar_Get("gl_waterwarp", "0", CVAR_ARCHIVE);   /* Phase C #2 — underwater frustum warp */
 	gl_lightmap_subrect = ri.Cvar_Get("gl_lightmap_subrect", "1", CVAR_ARCHIVE);   /* Phase B #1 — subrect dynamic lightmap upload */
+
+	/* Phase B #3 — group-draw. Buffer-batched qglDrawElements vs the
+	 * 1997-baseline qglBegin/qglVertex/qglEnd immediate path. Compile-
+	 * time default is per-slice because the win is per-driver:
+	 *
+	 *   G3 / Rage 128 / Panther — REGRESSES on R128 (verified 2026-05-20:
+	 *     31.55 → 30.70 fps 1024, 66.10 → 59.45 fps 640). Default OFF.
+	 *     ATI's Panther R128 driver had a hand-tuned immediate-mode
+	 *     fast path; the vertex-array glDrawElements goes through a
+	 *     colder driver path.
+	 *
+	 *   G4 / Intel — assume default ON; can be overridden per-machine
+	 *     by autoexec. mini-intel GMA 950 / Lion validated +17%
+	 *     (102.05 → 119.35 fps 1024). Other G4 boxes unbenched but
+	 *     their post-2001 ATI/NVidia drivers are expected to handle
+	 *     vertex arrays at least as well as immediate mode.
+	 *
+	 * gcc-4.0 defines __ALTIVEC__ when -maltivec is passed; our G3
+	 * build doesn't pass it and our G4 build does. So __ALTIVEC__
+	 * distinguishes the two PPC slices cleanly. On x86 / x86_64 the
+	 * macro is undefined either way, but we always want the default-on
+	 * behaviour there. */
+#if defined(__ppc__) && !defined(__ALTIVEC__)
+	gl_groupdraw = ri.Cvar_Get("gl_groupdraw", "0", CVAR_ARCHIVE);   /* G3 R128 default OFF */
+#else
+	gl_groupdraw = ri.Cvar_Get("gl_groupdraw", "1", CVAR_ARCHIVE);
+#endif
 
 	gl_nosubimage = ri.Cvar_Get("gl_nosubimage", "0", 0);
 	gl_allow_software = ri.Cvar_Get("gl_allow_software", "0", 0);

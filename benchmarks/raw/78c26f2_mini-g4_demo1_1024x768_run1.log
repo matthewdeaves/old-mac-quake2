@@ -1,0 +1,67 @@
+Console initialized.
+
+------- sound initialization -------
+Not initializing.
+------------------------------------
+
+----- refresher initialization -----
+Byte ordering: big endian
+
+Input initialized.
+Refresher build options:
+ + Retexturing support
+ - Gamma via X11
+Refresh: Yamagi Quake II OpenGL Refresher
+Using /System/Library/Frameworks/OpenGL.framework/OpenGL for OpenGL.
+SDL video driver is "Quartz".
+setting mode -1: 1024 768
+Got 8 bits of stencil.
+Using hardware gamma via SDL.
+
+OpenGL setting:
+GL_VENDOR: ATI Technologies Inc.
+GL_RENDERER: ATI Radeon 9200 OpenGL Engine
+GL_VERSION: 1.3 ATI-1.4.18
+GL_EXTENSIONS: GL_ARB_transpose_matrix GL_ARB_vertex_program GL_ARB_vertex_blend GL_ARB_window_pos GL_ARB_shader_objects GL_ARB_vertex_shader GL_EXT_multi_draw_arrays GL_EXT_clip_volume_hint GL_EXT_rescale_normal GL_EXT_draw_range_elements GL_EXT_fog_coord GL_APPLE_client_storage GL_APPLE_specular_vector GL_APPLE_transform_hint GL_APPLE_packed_pixels GL_APPLE_fence GL_APPLE_vertex_array_object GL_APPLE_vertex_program_evaluators GL_APPLE_element_array GL_APPLE_flush_render GL_NV_texgen_reflection GL_NV_light_max_exponent GL_IBM_rasterpos_clip GL_SGIS_generate_mipmap GL_ARB_shading_language_100 GL_ARB_imaging GL_ARB_texture_env_crossbar GL_ARB_texture_border_clamp GL_ARB_multitexture GL_ARB_texture_env_add GL_ARB_texture_cube_map GL_ARB_texture_env_dot3 GL_ARB_multisample GL_ARB_texture_env_combine GL_ARB_texture_compression GL_ARB_texture_mirrored_repeat GL_ARB_occlusion_query GL_ARB_vertex_buffer_object GL_ARB_pixel_buffer_object GL_EXT_compiled_vertex_array GL_EXT_texture_rectangle GL_ARB_texture_rectangle GL_EXT_texture_env_add GL_EXT_blend_color GL_EXT_blend_minmax GL_EXT_blend_subtract GL_EXT_texture_lod_bias GL_EXT_abgr GL_EXT_bgra GL_EXT_stencil_wrap GL_EXT_texture_filter_anisotropic GL_EXT_separate_specular_color GL_EXT_secondary_color GL_EXT_blend_func_separate GL_EXT_texture_compression_s3tc GL_EXT_texture_compression_dxt1 GL_EXT_blend_equation_separate GL_APPLE_ycbcr_422 GL_APPLE_vertex_array_range GL_APPLE_texture_range GL_APPLE_pixel_buffer GL_NV_blend_square GL_NV_fog_distance GL_ATI_texture_mirror_once GL_ATI_text_fragment_shader GL_ATI_blend_equation_separate GL_ATI_blend_weighted_minmax GL_ATI_texture_env_combine3 GL_ATI_array_rev_comps_in_4_bytes GL_SGIS_texture_edge_clamp GL_SGIS_texture_lod GL_SGI_color_matrix 
+
+
+Probing for OpenGL extensions:
+...using GL_EXT_compiled_vertex_array
+...GL_EXT_point_parameters not found
+...GL_EXT_shared_texture_palette not found
+...using GL_ARB_multitexture
+...GL_SGIS_multitexture not found
+...using GL_EXT_texture_filter_anisotropic
+...using GL_ARB_texture_env_combine
+------------------------------------
+
+Loaded autoexec-mini-g4.cfg from bundle
+==== Yamagi Quake II Initialized ====
+
+*************************************
+
+Unknown command "R9200"
+Unknown command "9200"
+Unknown command "mini-g4"
+Unknown command "we"
+-------- game initialization -------
+LoadLibrary("game.so")
+Game is starting up.
+Game is baseq2.
+------------------------------------
+
+------- server initialization ------
+0 entities inhibited.
+0 teams with 0 entities.
+------------------------------------
+
+[0.0.0.0]:0: client_connect
+
+
+
+
+Installation
+Map: base2                                     pics                                     maps/base2.bsp                                     models/weapons/v_blast/tris.md2                                     models/objects/gibs/sm_meat/tris.md2                                     models/objects/gibs/arm/tris.md2                                     models/objects/gibs/bone/tris.md2                                     models/objects/gibs/bone2/tris.md2                                     models/objects/gibs/chest/tris.md2                                     models/objects/gibs/skull/tris.md2                                     models/objects/gibs/head2/tris.md2                                     models/monsters/gunner/tris.md2                                     models/monsters/infantry/tris.md2                                     models/monsters/soldier/tris.md2                                     models/objects/laser/tris.md2                                     models/deadbods/dude/tris.md2                                     models/items/ammo/shells/medium/tris.                                     models/items/healing/medium/tris.md2                                     models/weapons/g_shotg/tris.md2                                     models/weapons/v_shotg/tris.md2                                     weapons/v_shotg/flash2/tris.md2                                     models/items/armor/shard/tris.md2                                     models/items/ammo/bullets/medium/tris                                     models/items/ammo/grenades/medium/tri                                     models/weapons/v_handgr/tris.md2                                     models/items/healing/large/tris.md2                                     models/monsters/flyer/tris.md2                                     models/items/healing/stimpack/tris.md                                     models/items/armor/jacket/tris.md2                                     models/objects/debris1/tris.md2                                     models/objects/debris2/tris.md2                                     models/objects/debris3/tris.md2                                     models/objects/barrels/tris.md2                                     models/weapons/g_shotg2/tris.md2                                     models/weapons/v_shotg2/tris.md2                                     models/weapons/g_machn/tris.md2                                     models/weapons/v_machn/tris.md2                                     models/objects/gibs/head/tris.md2                                     models/items/quaddama/tris.md2                                     images                                     client 0                                     sky                                     Disruptor died.
+==== ShutdownGame ====
+Server was killed.
+689 frames, 7.1 seconds: 97.4 fps

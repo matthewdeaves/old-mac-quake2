@@ -432,6 +432,21 @@ R_AddDynamicLights(msurface_t *surf)
 				td = -td;
 			}
 
+			/* Row cull (yquake2-ppc Tier 1.2): fdist is the Manhattan-
+			 * scaled distance `max(sd,td) + min(sd,td)/2`, which means
+			 * fdist >= max(sd, td) >= td for every s. So if td >=
+			 * fminlight the inner test `fdist < fminlight` cannot
+			 * succeed for any luxel in this row, and the row
+			 * contributes zero. Skip the inner loop and just step
+			 * pfBL past the row. For typical Quake dlight intensities
+			 * (100-300, cutoff 64) most rows on big surfaces fall
+			 * outside the bounding box. */
+			if (td >= fminlight)
+			{
+				pfBL += smax * 3;
+				continue;
+			}
+
 			for (s = 0, fsacc = 0; s < smax; s++, fsacc += 16, pfBL += 3)
 			{
 				sd = Q_ftol(local[0] - fsacc);

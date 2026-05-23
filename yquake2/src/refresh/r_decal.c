@@ -623,6 +623,14 @@ R_DrawDecals(void)
 	/* Drain any pending 3D batch — we own state for the decal pass. */
 	R_ApplyGLBuffer();
 
+	/* Force single-texture state. The world pass leaves multitex ON
+	 * (TMU0 = base texture, TMU1 = lightmap with overbright combiner).
+	 * If we don't disable TMU1 explicitly, the decal binds to TMU0 but
+	 * still gets modulated by whatever TMU1 had last — visually that
+	 * showed up on the GMA 950 as "light grey bullet holes" because
+	 * the overbright lightmap was still in the pipeline. */
+	R_EnableMultitexture(false);
+
 	qglEnable(GL_BLEND);
 	qglBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	qglDepthMask(GL_FALSE);

@@ -114,9 +114,9 @@ done
 # finds them via the CFBundle HD-pak search path. User can override any
 # by dropping their own .tga into baseq2/decals/ — gamedir wins.
 if [ -d "$REPO_ROOT/yquake2/baseq2-extra/decals" ]; then
-  mkdir -p "$APP/Contents/Resources/hd-pak/baseq2/decals"
+  mkdir -p "$APP/Contents/Resources/hd-pak/decals"
   cp "$REPO_ROOT/yquake2/baseq2-extra/decals/"*.tga \
-     "$APP/Contents/Resources/hd-pak/baseq2/decals/"
+     "$APP/Contents/Resources/hd-pak/decals/"
 fi
 
 # ref_gl.so and baseq2/game.so ship OUTSIDE the bundle. Q2 resolves

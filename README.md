@@ -28,12 +28,12 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 
 | Machine | 640×480 | 1024×768 | Floor | Visual stack |
 |---|---:|---:|---:|---|
-| **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) |
-| **mini-g4** | 123.80 | 98.45 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw |
-| **mini-intel** \* | 59.40 | 101.20 | 60 | same as mini-g4 (AF 8x) |
-| **quicksilver** | 72.40 | 72.35 | 60 | same as mini-g4 |
-| **sawtooth** | 78.20 | 67.35 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp |
-| **yosemite** | 45.15 | 25.10 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp |
+| **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA |
+| **mini-g4** | 120.90 | 97.50 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, **decals 32, 2× MSAA** |
+| **mini-intel** \* | 59.40 | 101.20 | 60 | same as mini-g4 (AF 8x) + 2× MSAA |
+| **quicksilver** | 72.40 | 72.35 | 60 | same as mini-g4 (incl 2× MSAA) |
+| **sawtooth** | 72.65 | 65.60 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, **decals 16** |
+| **yosemite** | 44.40 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, **decals 8** |
 
 \* Lion's Quartz vsync caps 640×480 at 60 fps; 1024×768 escapes the cap.
 

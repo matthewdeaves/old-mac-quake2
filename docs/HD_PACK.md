@@ -48,18 +48,23 @@ visible at every gl_retexturing lookup. Layout:
 ```
 Quake2.app/Contents/Resources/
   hd-pak/
-    baseq2/
-      textures/
-        e1u1/wall1_1.tga
-        ...
-      players/
-        male/grunt.tga
-        ...
+    textures/
+      e1u1/wall1_1.tga
+      ...
+    players/
+      male/grunt.tga
+      ...
+    decals/
+      bullet.tga    ← shipped procedurally
+      blood.tga
+      greenblood.tga
+      scorch.tga
 ```
 
-(Note the extra `baseq2/` nesting — the engine walks one level deeper
-because `FS_AddGameDirectory` expects to find `baseq2/` under the path
-we hand it.)
+The `hd-pak/` directory is added to the searchpath chain directly
+(no `/baseq2` suffix appended). Files live under `hd-pak/<gamerel>`,
+matching the path used in `R_FindImage("textures/e1u1/wall1_1.tga")`
+or `R_FindImage("decals/bullet.tga")`.
 
 To stage textures this way:
 1. Drop the pack source into `scripts/bundle/hd-pak/baseq2/...`

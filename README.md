@@ -47,6 +47,8 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 | Group-draw batching (`qglDrawElements`) | `gl_groupdraw` | yquake2-latest `gl1_buffer.c` | -0.75 fps |
 | stb_image-based JPEG decode | — | vendored `stb_image.h` | drops libjpeg dep |
 | CFBundle HD-pak search path | — | `Q2_GetBundleHDPakPath` | one-time at FS init |
+| **World decals** — bullet / blood / Strogg green blood / scorch marks via BSP fragment clipping; per-machine `gl_decal_max` cap 8 (G3) → 128 (modern); textures procedurally generated, shipped in-tree at `yquake2/baseq2-extra/decals/` | `gl_decals` `gl_decal_max` | KMQuake2 `r_fragment.c` (ported renderer-side) | ~0 (gl_dynamic 0, no overdraw on empty world) |
+| **MSAA** — `SDL_GL_MULTISAMPLE` wired through SDL backend; per-machine cap 0 (PPC fixed-func) → 8x (Polaris) | `gl_msaa_samples` | own port | n/a (off on R128) |
 
 ## How the binary picks its config
 

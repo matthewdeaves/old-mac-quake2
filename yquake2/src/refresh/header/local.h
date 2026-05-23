@@ -269,6 +269,10 @@ extern cvar_t *gl_waterwarp;
 /* yquake2-ppc Phase B #3 — gl_groupdraw group-draw batching toggle */
 extern cvar_t *gl_groupdraw;
 
+/* yquake2-ppc Tier 2 — gl_minlight clamp + gl_skydistance box size */
+extern cvar_t *gl_minlight;
+extern cvar_t *gl_skydistance;
+
 /* cvar-driven GL_FOG (yquake2-ppc Phase C — see src/refresh/r_fog.c) */
 extern cvar_t *gl_fog;
 extern cvar_t *gl_fog_mode;

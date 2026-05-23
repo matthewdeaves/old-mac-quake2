@@ -587,17 +587,20 @@ R_MakeSkyVec(float s, float t, int axis)
 	vec3_t v, b;
 	int j, k;
 
-	if (gl_farsee->value == 0)
+	/* Tier 2 — sky distance is cvar-driven (default 2300 matches vanilla).
+	 * gl_farsee 1 historically doubled the sky to push the clipping plane
+	 * out; preserve that scaling so gl_farsee 1 + gl_skydistance 2300
+	 * still produces the old 4096-ish box. Users wanting a custom value
+	 * can set gl_skydistance directly. */
 	{
-		b[0] = s * 2300;
-		b[1] = t * 2300;
-		b[2] = 2300;
-	}
-	else
-	{
-		b[0] = s * 4096;
-		b[1] = t * 4096;
-		b[2] = 4096;
+		float d = gl_skydistance->value;
+		if (gl_farsee->value != 0)
+		{
+			d *= (4096.0f / 2300.0f);
+		}
+		b[0] = s * d;
+		b[1] = t * d;
+		b[2] = d;
 	}
 
 	for (j = 0; j < 3; j++)

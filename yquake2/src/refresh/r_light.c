@@ -613,70 +613,71 @@ store:
 	stride -= (smax << 2);
 	bl = s_blocklights;
 
-	for (i = 0; i < tmax; i++, dest += stride)
 	{
-		for (j = 0; j < smax; j++)
+		/* Tier 2 — gl_minlight LUT. Computed once per surface from the
+		 * current cvar value; preserves the existing fast path when the
+		 * floor is 0 (LUT becomes identity but the branch dodges the
+		 * three table lookups per luxel). The remap formula matches
+		 * yquake2-latest: out = (255 - m) * in / 255 + m. */
+		int m = (int)gl_minlight->value;
+		qboolean minlit;
+
+		if (m < 0) m = 0;
+		else if (m > 255) m = 255;
+		minlit = (m > 0);
+
+		for (i = 0; i < tmax; i++, dest += stride)
 		{
-			r = Q_ftol(bl[0]);
-			g = Q_ftol(bl[1]);
-			b = Q_ftol(bl[2]);
-
-			/* catch negative lights */
-			if (r < 0)
+			for (j = 0; j < smax; j++)
 			{
-				r = 0;
+				r = Q_ftol(bl[0]);
+				g = Q_ftol(bl[1]);
+				b = Q_ftol(bl[2]);
+
+				/* catch negative lights */
+				if (r < 0) r = 0;
+				if (g < 0) g = 0;
+				if (b < 0) b = 0;
+
+				/* determine the brightest of the three color components */
+				if (r > g) max = r; else max = g;
+				if (b > max) max = b;
+
+				/* alpha is ONLY used for the mono lightmap case. For this
+				   reason we set it to the brightest of the color components
+				   so that things don't get too dim. */
+				a = max;
+
+				/* rescale all the color components if the intensity of the
+				   greatest channel exceeds 1.0 */
+				if (max > 255)
+				{
+					float t = 255.0F / max;
+					r = r * t;
+					g = g * t;
+					b = b * t;
+					a = a * t;
+				}
+
+				if (minlit)
+				{
+					/* Clamped int math; the divide-by-255 reduces to a
+					 * shift-and-correct that the compiler folds. */
+					r = ((255 - m) * r) / 255 + m;
+					g = ((255 - m) * g) / 255 + m;
+					b = ((255 - m) * b) / 255 + m;
+					/* a stays — it's the mono-lightmap alpha, not the
+					 * mono colour, so the floor shouldn't affect it. */
+				}
+
+				dest[0] = r;
+				dest[1] = g;
+				dest[2] = b;
+				dest[3] = a;
+
+				bl += 3;
+				dest += 4;
 			}
-
-			if (g < 0)
-			{
-				g = 0;
-			}
-
-			if (b < 0)
-			{
-				b = 0;
-			}
-
-			/* determine the brightest of the three color components */
-			if (r > g)
-			{
-				max = r;
-			}
-			else
-			{
-				max = g;
-			}
-
-			if (b > max)
-			{
-				max = b;
-			}
-
-			/* alpha is ONLY used for the mono lightmap case. For this 
-			   reason we set it to the brightest of the color components
-			   so that things don't get too dim. */
-			a = max;
-
-			/* rescale all the color components if the 
-			   intensity of the greatest channel exceeds
-			   1.0 */
-			if (max > 255)
-			{
-				float t = 255.0F / max;
-
-				r = r * t;
-				g = g * t;
-				b = b * t;
-				a = a * t;
-			}
-
-			dest[0] = r;
-			dest[1] = g;
-			dest[2] = b;
-			dest[3] = a;
-
-			bl += 3;
-			dest += 4;
 		}
 	}
 }

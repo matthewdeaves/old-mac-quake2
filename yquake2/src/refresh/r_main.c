@@ -105,6 +105,8 @@ cvar_t *gl_overbrightbits;
 cvar_t *gl_waterwarp;          /* yquake2-ppc Phase C #2 — underwater frustum warp magnitude */
 cvar_t *gl_lightmap_subrect;   /* yquake2-ppc Phase B #1 — subrect dynamic lightmap upload */
 cvar_t *gl_groupdraw;          /* yquake2-ppc Phase B #3 — buffer-batched draw vs immediate */
+cvar_t *gl_minlight;           /* yquake2-ppc Tier 2 — clamp dark luxels to this floor (0-255, default 0) */
+cvar_t *gl_skydistance;        /* yquake2-ppc Tier 2 — sky box half-extent (was hardcoded 2300/4096) */
 
 cvar_t *gl_nosubimage;
 cvar_t *gl_allow_software;
@@ -1058,6 +1060,22 @@ R_Register(void)
 #else
 	gl_groupdraw = ri.Cvar_Get("gl_groupdraw", "1", CVAR_ARCHIVE);
 #endif
+
+	/* Tier 2 — minimum lightmap luxel value. 0 disables (lightmap stays
+	 * pitch-black in unlit corners as the original Q2 does). 8-32 lifts
+	 * those corners to a faint glow so geometry is still visible.
+	 * Especially useful on yosemite where gl_dynamic 0 means there are
+	 * no helpful dlights to brighten unlit nooks. The LUT remaps via
+	 *   out = (255 - m) * in / 255 + m
+	 * which preserves bright luxels unchanged and pushes dark ones up.
+	 * The clamp is applied per-luxel in R_BuildLightMap's store loop. */
+	gl_minlight = ri.Cvar_Get("gl_minlight", "0", CVAR_ARCHIVE);
+
+	/* Tier 2 — sky box half-extent. Replaces the hardcoded 2300 (default)
+	 * / 4096 (gl_farsee 1) constants in R_MakeSkyVec. 2300 keeps the
+	 * visual identical to vanilla; larger values fix sky-clipping on
+	 * big open maps but cost no fps (sky is one drawcall regardless). */
+	gl_skydistance = ri.Cvar_Get("gl_skydistance", "2300", CVAR_ARCHIVE);
 
 	gl_nosubimage = ri.Cvar_Get("gl_nosubimage", "0", 0);
 	gl_allow_software = ri.Cvar_Get("gl_allow_software", "0", 0);

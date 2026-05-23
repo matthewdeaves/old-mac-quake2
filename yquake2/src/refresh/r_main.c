@@ -110,6 +110,8 @@ cvar_t *gl_skydistance;        /* yquake2-ppc Tier 2 — sky box half-extent (wa
 cvar_t *gl_particle_square;    /* yquake2-ppc Tier 2 — force GL_POINTS particle path even without pointparameters ext */
 cvar_t *r_2D_unfiltered;       /* yquake2-ppc Tier 2 — HUD/menu pics rendered with GL_NEAREST regardless of gl_texturemode */
 cvar_t *gl_msaa_samples;       /* yquake2-ppc — MSAA sample count (0=off, 2/4/8/16); CVAR_LATCH so vid_restart picks it up */
+cvar_t *gl_pointsprites;       /* yquake2-ppc — textured GL_POINT_SPRITE particles (needs GL_ARB_point_sprite) */
+qboolean gl_have_pointsprite;  /* probed at GL init; if false, gl_pointsprites is silently no-op */
 
 cvar_t *gl_nosubimage;
 cvar_t *gl_allow_software;
@@ -523,12 +525,29 @@ R_DrawParticles(void)
 		int i;
 		unsigned char color[4];
 		const particle_t *p;
+		qboolean use_sprite = (gl_pointsprites->value && gl_have_pointsprite);
 
 		qglDepthMask(GL_FALSE);
 		qglEnable(GL_BLEND);
-		qglDisable(GL_TEXTURE_2D);
 
-		qglPointSize(LittleFloat(gl_particle_size->value));
+		if (use_sprite)
+		{
+			/* Textured point sprites — each GL_POINTS vertex is
+			 * expanded to a square quad with texcoords (0,0)-(1,1)
+			 * automatically; we just bind the particle texture and
+			 * the GPU does the work. ~10× the visual quality of solid
+			 * squares, same vertex submission cost. */
+			R_Bind(r_particletexture->texnum);
+			qglEnable(GL_POINT_SPRITE_ARB);
+			qglTexEnvi(GL_POINT_SPRITE_ARB, GL_COORD_REPLACE_ARB, GL_TRUE);
+			qglBlendFunc(GL_SRC_ALPHA, GL_ONE);  /* additive glow */
+			qglPointSize(LittleFloat(gl_particle_size->value) * 2.0f);
+		}
+		else
+		{
+			qglDisable(GL_TEXTURE_2D);
+			qglPointSize(LittleFloat(gl_particle_size->value));
+		}
 
 		qglBegin(GL_POINTS);
 
@@ -544,10 +563,20 @@ R_DrawParticles(void)
 
 		qglEnd();
 
+		if (use_sprite)
+		{
+			qglTexEnvi(GL_POINT_SPRITE_ARB, GL_COORD_REPLACE_ARB, GL_FALSE);
+			qglDisable(GL_POINT_SPRITE_ARB);
+			qglBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		}
+		else
+		{
+			qglEnable(GL_TEXTURE_2D);
+		}
+
 		qglDisable(GL_BLEND);
 		qglColor4f(1.0F, 1.0F, 1.0F, 1.0F);
 		qglDepthMask(GL_TRUE);
-		qglEnable(GL_TEXTURE_2D);
 	}
 	else
 	{
@@ -1045,6 +1074,7 @@ R_Register(void)
 	R_RegisterFogCvars();   /* yquake2-ppc Phase C — gl_fog + range/color/mode cvars */
 	R_RegisterDecalCvars(); /* yquake2-ppc — world decals from KMQuake2 (r_decal.c) */
 	gl_msaa_samples = ri.Cvar_Get("gl_msaa_samples", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	gl_pointsprites = ri.Cvar_Get("gl_pointsprites", "0", CVAR_ARCHIVE);
 	gl_waterwarp = ri.Cvar_Get("gl_waterwarp", "0", CVAR_ARCHIVE);   /* Phase C #2 — underwater frustum warp */
 	gl_lightmap_subrect = ri.Cvar_Get("gl_lightmap_subrect", "1", CVAR_ARCHIVE);   /* Phase B #1 — subrect dynamic lightmap upload */
 
@@ -1359,6 +1389,21 @@ R_Init(void *hinstance, void *hWnd)
 	else
 	{
 		ri.Con_Printf(PRINT_ALL, "...GL_EXT_point_parameters not found\n");
+	}
+
+	/* GL_ARB_point_sprite — textured point sprites. Ext came in 2003
+	 * (also core GL 2.0). On the fleet: R9000/R9200/GMA950+/Polaris yes;
+	 * R128 + GF2 MX no. Detected here so the particle path can pick
+	 * the textured glow branch when available. */
+	gl_have_pointsprite =
+		strstr(gl_config.extensions_string, "GL_ARB_point_sprite") != NULL;
+	if (gl_have_pointsprite)
+	{
+		ri.Con_Printf(PRINT_ALL, "...GL_ARB_point_sprite available\n");
+	}
+	else
+	{
+		ri.Con_Printf(PRINT_ALL, "...GL_ARB_point_sprite not found\n");
 	}
 
 	if (!qglColorTableEXT &&

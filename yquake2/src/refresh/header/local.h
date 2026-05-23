@@ -66,6 +66,16 @@
  #define GL_MULTISAMPLE 0x809D
 #endif
 
+/* GL_ARB_point_sprite — point-sprite mode + automatic texcoord
+ * generation on point primitives. ARB extension from 2003 (GL 2.0
+ * core), present on Radeon 9000+ / GMA 950+. */
+#ifndef GL_POINT_SPRITE_ARB
+ #define GL_POINT_SPRITE_ARB 0x8861
+#endif
+#ifndef GL_COORD_REPLACE_ARB
+ #define GL_COORD_REPLACE_ARB 0x8862
+#endif
+
 #define TEXNUM_LIGHTMAPS 1024
 #define TEXNUM_SCRAPS 1152
 #define TEXNUM_IMAGES 1153
@@ -276,6 +286,11 @@ extern cvar_t *gl_waterwarp;
 
 /* yquake2-ppc — MSAA sample count (CVAR_LATCH: requires vid_restart) */
 extern cvar_t *gl_msaa_samples;
+
+/* yquake2-ppc — Textured point sprite particles (GL_ARB_point_sprite).
+ * Probed at GL init; cvar is the user-visible toggle. */
+extern cvar_t   *gl_pointsprites;
+extern qboolean  gl_have_pointsprite;
 
 /* yquake2-ppc Phase B #3 — gl_groupdraw group-draw batching toggle */
 extern cvar_t *gl_groupdraw;

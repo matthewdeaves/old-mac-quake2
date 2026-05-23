@@ -26,6 +26,14 @@
 
 #include "header/local.h"
 
+/* yquake2-ppc — AltiVec R_LerpVerts attempt v2. Build with the
+ * aligned-stack-load pattern instead of the (vector float){a,b,c,d}
+ * literal that produced warped alias models on the v1 attempt (see
+ * MISTAKES.md 2026-05-23). G3 (no -maltivec) gets the scalar path. */
+#ifdef __ALTIVEC__
+#include <altivec.h>
+#endif
+
 #define NUMVERTEXNORMALS 162
 #define SHADEDOT_QUANT 16
 
@@ -39,7 +47,13 @@ float r_avertexnormal_dots[SHADEDOT_QUANT][256] =
 ;
 
 typedef float vec4_t[4];
-static vec4_t s_lerped[MAX_VERTS];
+/* Tier 1.3 — s_lerped must be 16-byte aligned for vec_st in the
+ * AltiVec R_LerpVerts path. `typedef float vec4_t[4]` only gives
+ * 4-byte alignment by default (the element's alignment), and `vec_st`
+ * silently masks the bottom 4 bits of its address — without this
+ * attribute, 12 of every 16 vertex writes land on wrong addresses,
+ * producing warped alias-model geometry. Scalar path doesn't care. */
+static vec4_t s_lerped[MAX_VERTS] __attribute__((aligned(16)));
 vec3_t shadevector;
 float shadelight[3];
 float *shadedots = r_avertexnormal_dots[0];
@@ -52,18 +66,67 @@ R_LerpVerts(int nverts, dtrivertx_t *v, dtrivertx_t *ov,
 		float frontv[3], float backv[3])
 {
 	int i;
-
-	/* Tier 1.3 AltiVec attempt REVERTED — the vec_madd port warped
-	 * monster alias models on mini-g4 (visual confirmed by user).
-	 * The bench number rose +4.3% because timedemo's wall-clock
-	 * advance was unaffected by the wrong vertex math; only the
-	 * rendered output was corrupt. See MISTAKES.md entry dated
-	 * 2026-05-23. The scalar form below is the canonical reference. */
-
-	if (currententity->flags &
+	qboolean shell = (currententity->flags &
 		(RF_SHELL_RED | RF_SHELL_GREEN |
 		 RF_SHELL_BLUE | RF_SHELL_DOUBLE |
-		 RF_SHELL_HALF_DAM))
+		 RF_SHELL_HALF_DAM)) != 0;
+
+#ifdef __ALTIVEC__
+	/* v2 AltiVec — aligned-stack-load pattern. v1 used `(vector
+	 * float){a, b, c, d}` literal with per-lane (float)byte
+	 * conversions; gcc-4.0 produced wrong lane-insertion code under
+	 * some conditions, producing warped alias models. v2 builds the
+	 * lane values into an aligned float[4] then `vec_ld`s the whole
+	 * 16 bytes — gcc-4.0 generates straight-line scalar stores into
+	 * the buffer followed by a real `lvx`, which is correct by
+	 * construction. */
+	{
+		float __attribute__((aligned(16))) buf_move[4]   = {move[0],   move[1],   move[2],   0.0f};
+		float __attribute__((aligned(16))) buf_backv[4]  = {backv[0],  backv[1],  backv[2],  0.0f};
+		float __attribute__((aligned(16))) buf_frontv[4] = {frontv[0], frontv[1], frontv[2], 0.0f};
+		vector float vmove   = vec_ld(0, buf_move);
+		vector float vbackv  = vec_ld(0, buf_backv);
+		vector float vfrontv = vec_ld(0, buf_frontv);
+
+		if (shell)
+		{
+			for (i = 0; i < nverts; i++, v++, ov++, lerp += 4)
+			{
+				float *normal = r_avertexnormals[verts[i].lightnormalindex];
+				float __attribute__((aligned(16))) buf_ov[4]   = {(float)ov->v[0], (float)ov->v[1], (float)ov->v[2], 0.0f};
+				float __attribute__((aligned(16))) buf_v[4]    = {(float)v->v[0],  (float)v->v[1],  (float)v->v[2],  0.0f};
+				float __attribute__((aligned(16))) buf_norm[4] = {
+					normal[0] * POWERSUIT_SCALE,
+					normal[1] * POWERSUIT_SCALE,
+					normal[2] * POWERSUIT_SCALE,
+					0.0f };
+				vector float vov   = vec_ld(0, buf_ov);
+				vector float vv_   = vec_ld(0, buf_v);
+				vector float vnorm = vec_ld(0, buf_norm);
+
+				vector float r = vec_madd(vov, vbackv, vmove);
+				r = vec_madd(vv_, vfrontv, r);
+				r = vec_add(r, vnorm);
+				vec_st(r, 0, lerp);
+			}
+		}
+		else
+		{
+			for (i = 0; i < nverts; i++, v++, ov++, lerp += 4)
+			{
+				float __attribute__((aligned(16))) buf_ov[4] = {(float)ov->v[0], (float)ov->v[1], (float)ov->v[2], 0.0f};
+				float __attribute__((aligned(16))) buf_v[4]  = {(float)v->v[0],  (float)v->v[1],  (float)v->v[2],  0.0f};
+				vector float vov = vec_ld(0, buf_ov);
+				vector float vv_ = vec_ld(0, buf_v);
+
+				vector float r = vec_madd(vov, vbackv, vmove);
+				r = vec_madd(vv_, vfrontv, r);
+				vec_st(r, 0, lerp);
+			}
+		}
+	}
+#else
+	if (shell)
 	{
 		for (i = 0; i < nverts; i++, v++, ov++, lerp += 4)
 		{
@@ -88,6 +151,7 @@ R_LerpVerts(int nverts, dtrivertx_t *v, dtrivertx_t *ov,
 			lerp[3] = 0;
 		}
 	}
+#endif /* __ALTIVEC__ */
 }
 
 /*

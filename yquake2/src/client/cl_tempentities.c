@@ -659,6 +659,10 @@ CL_ParseTEnt(void)
 			MSG_ReadPos(&net_message, pos);
 			MSG_ReadDir(&net_message, dir);
 			CL_ParticleEffect(pos, dir, 0xe8, 60);
+			if (re.R_AddDecal)
+			{
+				re.R_AddDecal(pos, dir, 8.0f, DECAL_BLOOD);
+			}
 			break;
 
 		case TE_GUNSHOT: /* bullet hitting wall */
@@ -680,6 +684,13 @@ CL_ParseTEnt(void)
 			if (type != TE_SPARKS)
 			{
 				CL_SmokeAndFlash(pos);
+				/* Bullet hole on wall — sparks-only events skip the
+				 * decal because those represent deflections, not
+				 * embedded shots. */
+				if (re.R_AddDecal)
+				{
+					re.R_AddDecal(pos, dir, 6.0f, DECAL_BULLET);
+				}
 				/* impact sound */
 				cnt = randk() & 15;
 
@@ -724,6 +735,10 @@ CL_ParseTEnt(void)
 			MSG_ReadDir(&net_message, dir);
 			CL_ParticleEffect(pos, dir, 0, 20);
 			CL_SmokeAndFlash(pos);
+			if (re.R_AddDecal)
+			{
+				re.R_AddDecal(pos, dir, 6.0f, DECAL_BULLET);
+			}
 			break;
 
 		case TE_SPLASH: /* bullet hitting water */
@@ -778,12 +793,20 @@ CL_ParseTEnt(void)
 			MSG_ReadPos(&net_message, pos);
 			MSG_ReadPos(&net_message, dir);
 			CL_BlasterParticles(pos, dir);
+			if (re.R_AddDecal)
+			{
+				re.R_AddDecal(pos, dir, 10.0f, DECAL_SCORCH);
+			}
 			break;
 
 		case TE_BLASTER: /* blaster hitting wall */
 			MSG_ReadPos(&net_message, pos);
 			MSG_ReadDir(&net_message, dir);
 			CL_BlasterParticles(pos, dir);
+			if (re.R_AddDecal)
+			{
+				re.R_AddDecal(pos, dir, 10.0f, DECAL_SCORCH);
+			}
 
 			ex = CL_AllocExplosion();
 			VectorCopy(pos, ex->ent.origin);

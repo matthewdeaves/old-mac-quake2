@@ -53,6 +53,13 @@
 #define ENTITY_FLAGS	68
 #define	API_VERSION		3
 
+/* Decal types passed to re.R_AddDecal. The renderer maps these to its
+ * preloaded decal textures (decals/bullet.tga etc) — the client never
+ * touches the texture itself. */
+#define	DECAL_BULLET	0
+#define	DECAL_BLOOD		1
+#define	DECAL_SCORCH	2
+
 typedef struct entity_s {
 	struct model_s		*model; /* opaque type outside refresh */
 	float				angles[3];
@@ -168,6 +175,14 @@ typedef struct {
 
 	void	(*AppActivate)(qboolean activate);
 
+	/* Decal injection — called by client impact effect handlers
+	 * (cl_effects.c). origin is the impact point in world space,
+	 * normal is the surface normal at that point, radius is the
+	 * desired decal size (typically 8-32), type is one of
+	 * DECAL_BULLET / DECAL_BLOOD / DECAL_SCORCH. Renderer-side
+	 * fragment clipping + FIFO storage + drawing — see r_decal.c. */
+	void	(*R_AddDecal)(const vec3_t origin, const vec3_t normal,
+	                      float radius, int type);
 } refexport_t;
 
 /*

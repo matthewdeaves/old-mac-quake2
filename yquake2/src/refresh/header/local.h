@@ -458,6 +458,27 @@ void R_DrawParticles2(int n,
 		const particle_t particles[],
 		const unsigned colortable[256]);
 
+/* Decals (r_decal.c) — KMQuake2-style world-decal subsystem. Fragment
+ * clipping carves a decal patch out of the BSP geometry at the impact
+ * point; FIFO storage replaces oldest when full; renderer draws after
+ * R_DrawAlphaSurfaces, before HUD. Cleared on R_BeginRegistration. */
+typedef struct {
+	int firstPoint;        /* index into the shared point pool */
+	int numPoints;         /* count of verts in this fragment */
+	mnode_t *node;         /* vis node for culling */
+} markFragment_t;
+
+int R_MarkFragments(const vec3_t origin, const vec3_t axis[3],
+		float radius, int maxPoints, vec3_t *points,
+		int maxFragments, markFragment_t *fragments);
+
+void R_AddDecal(const vec3_t origin, const vec3_t normal,
+		float radius, int type);
+void R_ClearDecals(void);
+void R_LoadDecalTextures(void);
+void R_DrawDecals(void);
+void R_RegisterDecalCvars(void);
+
 /*
  * GL config stuff
  */

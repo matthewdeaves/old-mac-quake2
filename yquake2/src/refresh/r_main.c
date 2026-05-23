@@ -939,6 +939,8 @@ R_RenderView(refdef_t *fd)
 
 	R_DrawAlphaSurfaces();
 
+	R_DrawDecals(); /* world decals — after world+ents, before flash */
+
 	R_Flash();
 
 	R_UnsetFog();   /* disable GL_FOG before 2D HUD pass so HUD isn't fogged */
@@ -1040,6 +1042,7 @@ R_Register(void)
 	gl_overbrightbits = ri.Cvar_Get("gl_overbrightbits", "2", CVAR_ARCHIVE);
 
 	R_RegisterFogCvars();   /* yquake2-ppc Phase C — gl_fog + range/color/mode cvars */
+	R_RegisterDecalCvars(); /* yquake2-ppc — world decals from KMQuake2 (r_decal.c) */
 	gl_waterwarp = ri.Cvar_Get("gl_waterwarp", "0", CVAR_ARCHIVE);   /* Phase C #2 — underwater frustum warp */
 	gl_lightmap_subrect = ri.Cvar_Get("gl_lightmap_subrect", "1", CVAR_ARCHIVE);   /* Phase B #1 — subrect dynamic lightmap upload */
 
@@ -1751,6 +1754,7 @@ R_GetRefAPI(refimport_t rimp)
 	re.EndFrame = GLimp_EndFrame;
 
 	re.AppActivate = NULL;
+	re.R_AddDecal = R_AddDecal;
 
 	Swap_Init();
 

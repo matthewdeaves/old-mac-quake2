@@ -1003,6 +1003,13 @@ R_BeginRegistration(char *model)
 	r_worldmodel = Mod_ForName(fullname, true);
 
 	r_viewcluster = -1;
+
+	/* Decals must clear when the world changes; node pointers in any
+	 * surviving fragments would dangle. Also reload the decal textures
+	 * — R_FreeUnusedImages may have purged them at map change since
+	 * they're it_sprite and the registration sequence may roll. */
+	R_ClearDecals();
+	R_LoadDecalTextures();
 }
 
 struct model_s *

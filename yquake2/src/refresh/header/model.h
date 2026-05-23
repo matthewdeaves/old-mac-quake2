@@ -108,6 +108,8 @@ typedef struct msurface_s
 	byte styles[MAXLIGHTMAPS];
 	float cached_light[MAXLIGHTMAPS];       /* values currently used in lightmap */
 	byte *samples;                          /* [numstyles*surfsize] */
+
+	int checkCount;                         /* decal fragment recursion guard */
 } msurface_t;
 
 typedef struct mnode_s

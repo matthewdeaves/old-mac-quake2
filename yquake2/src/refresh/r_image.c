@@ -1217,12 +1217,20 @@ R_FindImage(char *name, imagetype_t type)
 	else if (!strcmp(name + len - 4, ".tga"))
 	{
 		LoadTGA(name, &pic, &width, &height);
+		if (!pic)
+		{
+			return NULL;  /* yquake2-ppc fix — upstream 5.11 doesn't NULL-check */
+		}
 		image = R_LoadPic(name, pic, width, realwidth,
-				height, realwidth, type, 32);
+				height, realheight, type, 32);  /* also: was passing realwidth twice */
 	}
 	else if (!strcmp(name + len - 4, ".jpg"))
 	{
 		LoadJPG(name, &pic, &width, &height);
+		if (!pic)
+		{
+			return NULL;  /* yquake2-ppc fix — match .tga branch */
+		}
 		image = R_LoadPic(name, pic, width, realwidth,
 				height, realheight, type, 32);
 	}

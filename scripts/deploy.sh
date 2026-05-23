@@ -108,6 +108,17 @@ for cfg in yosemite sawtooth quicksilver mini-g4 mini-intel imac-2019; do
   cp "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" "$APP/Contents/Resources/"
 done
 
+# Procedural decal textures (built by scripts/gen-decals.py, GPL-clean —
+# our own work, no id1 EULA constraint). Ship inside the bundle at
+# Resources/decals/ so the renderer's R_FindImage("decals/bullet.tga")
+# finds them via the CFBundle HD-pak search path. User can override any
+# by dropping their own .tga into baseq2/decals/ — gamedir wins.
+if [ -d "$REPO_ROOT/yquake2/baseq2-extra/decals" ]; then
+  mkdir -p "$APP/Contents/Resources/hd-pak/baseq2/decals"
+  cp "$REPO_ROOT/yquake2/baseq2-extra/decals/"*.tga \
+     "$APP/Contents/Resources/hd-pak/baseq2/decals/"
+fi
+
 # ref_gl.so and baseq2/game.so ship OUTSIDE the bundle. Q2 resolves
 # ref_gl.so via basedir=. (the engine's CWD); SDLMain.m chdirs the
 # process to the .app's parent dir on Finder-launch, so basedir=.

@@ -2108,8 +2108,17 @@ FS_InitFilesystem(void)
 
 		if (Q2_GetBundleHDPakPath(hdpak, sizeof(hdpak)))
 		{
-			FS_AddGameDirectory(hdpak);
-			Com_Printf("Added bundle HD texture path: %s\n", hdpak);
+			/* The hd-pak directory itself is the "basedir" — files
+			 * live under hd-pak/baseq2/ to match the standard gamedir
+			 * layout (so R_FindImage("decals/bullet.tga") resolves to
+			 * Resources/hd-pak/baseq2/decals/bullet.tga). Append the
+			 * /baseq2 suffix here just like the main basedir call
+			 * above (line ~2090) does. */
+			char hdpak_gamedir[MAX_OSPATH];
+			Com_sprintf(hdpak_gamedir, sizeof(hdpak_gamedir),
+					"%s/" BASEDIRNAME, hdpak);
+			FS_AddGameDirectory(hdpak_gamedir);
+			Com_Printf("Added bundle HD texture path: %s\n", hdpak_gamedir);
 			/* Restore the user-facing gamedir so writes don't try
 			 * to land in the read-only bundle. */
 			Q_strlcpy(fs_gamedir, saved_gamedir, sizeof(fs_gamedir));

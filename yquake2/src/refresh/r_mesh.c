@@ -68,6 +68,7 @@ R_LerpVerts(int nverts, dtrivertx_t *v, dtrivertx_t *ov,
 					  normal[1] * POWERSUIT_SCALE;
 			lerp[2] = move[2] + ov->v[2] * backv[2] + v->v[2] * frontv[2] +
 					  normal[2] * POWERSUIT_SCALE;
+			lerp[3] = 0;
 		}
 	}
 	else
@@ -77,6 +78,7 @@ R_LerpVerts(int nverts, dtrivertx_t *v, dtrivertx_t *ov,
 			lerp[0] = move[0] + ov->v[0] * backv[0] + v->v[0] * frontv[0];
 			lerp[1] = move[1] + ov->v[1] * backv[1] + v->v[1] * frontv[1];
 			lerp[2] = move[2] + ov->v[2] * backv[2] + v->v[2] * frontv[2];
+			lerp[3] = 0;
 		}
 	}
 }
@@ -177,7 +179,7 @@ R_DrawAliasFrameLerp(dmdl_t *paliashdr, float backlerp)
 			/* pre light everything */
 			for (i = 0; i < paliashdr->num_xyz; i++)
 			{
-				float l = shadedots[verts[i].lightnormalindex];
+				l = shadedots[verts[i].lightnormalindex];
 
 				colorArray[i * 3 + 0] = l * shadelight[0];
 				colorArray[i * 3 + 1] = l * shadelight[1];

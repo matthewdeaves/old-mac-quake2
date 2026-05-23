@@ -1,0 +1,19 @@
+Console initialized.
+
+------- sound initialization -------
+Not initializing.
+------------------------------------
+
+----- refresher initialization -----
+Byte ordering: big endian
+
+Input initialized.
+Refresher build options:
+ + Retexturing support
+ - Gamma via X11
+Refresh: Yamagi Quake II OpenGL Refresher
+Using /System/Library/Frameworks/OpenGL.framework/OpenGL for OpenGL.
+SDL video driver is "Quartz".
+setting mode -1: 1024 768
+SDL SetVideoMode failed: Failed creating OpenGL pixel format
+Reverting to gl_mode 5 (640x480) and windowed mode.

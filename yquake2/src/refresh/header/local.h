@@ -450,7 +450,7 @@ int Scrap_AllocBlock(int w, int h, int *x, int *y);
 /* GL extension emulation functions */
 void R_DrawParticles2(int n,
 		const particle_t particles[],
-		const unsigned colortable[768]);
+		const unsigned colortable[256]);
 
 /*
  * GL config stuff

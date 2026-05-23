@@ -893,7 +893,11 @@ R_RenderLightmappedPoly(msurface_t *surf)
 	 * the R_UpdateGLBuffer call below). */
 	if (is_dynamic)
 	{
-		unsigned temp[128 * 128];
+		/* Sized to match R_RenderBrushPoly's temp[] above — surface
+		 * extents max out at ~512 texels per axis ÷ 16 luxels +1 = 33,
+		 * so 34*34 is the real cap. The previous 128*128 alloc walked
+		 * 64 KB of stack per dynamic surface every frame on PPC. */
+		unsigned temp[34 * 34];
 		int smax, tmax;
 		/* Mirror of the OOB fix in R_RenderBrushPoly above. If the
 		 * styles-scan loop above ran to completion, `map` is exactly

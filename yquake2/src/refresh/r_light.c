@@ -498,7 +498,7 @@ R_BuildLightMap(msurface_t *surf, byte *dest, int stride)
 	tmax = (surf->extents[1] >> 4) + 1;
 	size = smax * tmax;
 
-	if (size > (sizeof(s_blocklights) >> 4))
+	if ((size_t)size > (sizeof(s_blocklights) >> 4))
 	{
 		ri.Sys_Error(ERR_DROP, "Bad s_blocklights size");
 	}

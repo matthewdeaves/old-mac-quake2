@@ -122,6 +122,11 @@ R_ScreenShot(void)
 	}
 
 	buffer = malloc(vid.width * vid.height * 3 + 18);
+	if (!buffer)
+	{
+		ri.Con_Printf(PRINT_ALL, "SCR_ScreenShot_f: malloc failed\n");
+		return;
+	}
 	memset(buffer, 0, 18);
 	buffer[2] = 2; /* uncompressed type */
 	buffer[12] = vid.width & 255;
@@ -143,16 +148,19 @@ R_ScreenShot(void)
 	{
 		int row_bytes = vid.width * 3;
 		byte *tmp_row = malloc(row_bytes);
-		int r;
-		for (r = 0; r < vid.height / 2; r++)
+		if (tmp_row)
 		{
-			byte *top = buffer + 18 + r * row_bytes;
-			byte *bot = buffer + 18 + (vid.height - 1 - r) * row_bytes;
-			memcpy(tmp_row, top, row_bytes);
-			memcpy(top, bot, row_bytes);
-			memcpy(bot, tmp_row, row_bytes);
+			int r;
+			for (r = 0; r < vid.height / 2; r++)
+			{
+				byte *top = buffer + 18 + r * row_bytes;
+				byte *bot = buffer + 18 + (vid.height - 1 - r) * row_bytes;
+				memcpy(tmp_row, top, row_bytes);
+				memcpy(top, bot, row_bytes);
+				memcpy(bot, tmp_row, row_bytes);
+			}
+			free(tmp_row);
 		}
-		free(tmp_row);
 	}
 
 	/* swap rgb to bgr */

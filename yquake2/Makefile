@@ -124,11 +124,11 @@ endif
 #  generated if building universal binaries on OSX)
 ifeq ($(OSTYPE), Darwin)
 CFLAGS := -O2 -fno-strict-aliasing -fomit-frame-pointer \
-		  -Wall -pipe -g
+		  -Wall -Wpointer-arith -pipe -g
 CFLAGS += $(OSX_ARCH)
 else
 CFLAGS := -O2 -fno-strict-aliasing -fomit-frame-pointer \
-		  -Wall -pipe -g -MMD
+		  -Wall -Wpointer-arith -pipe -g -MMD
 endif
 
 # ----------

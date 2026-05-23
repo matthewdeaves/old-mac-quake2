@@ -1,508 +1,451 @@
-# Next round — execution plan for engine-level work
+# Next round — fresh plan after the texenv-fix session
 
-Written 2026-05-19 after the cfg-level round converged. Cfg-level box of
-tools empty (sawtooth flashblend, AF on bottom-of-fleet, OBB4 on the four
-multitex boxes all shipped 2026-05-19). What remains is multi-hour engine
-work.
+Written 2026-05-23 after a fresh code review of `yquake2/src/refresh/`
++ inventory pass over `reference/yquake2-latest/` and
+`reference/kmquake2/`. Supersedes the 2026-05-19 plan (most of which
+landed: stb_image, group-draw, OBB4, AF, GL_FOG, waterwarp, subrect
+upload, HD-pak bundle path, yosemite ULTIMATE config).
 
-This plan is ordered by **(visible-impact / effort)** ratio, tier by tier.
-Execute top-down. Each item is bench-gated: a regression >5% on any cell
-blocks the commit. Each item lists which cells gain.
+## Where we are
 
-Per-machine fps floor reminder:
-- yosemite (G3 Rage 128): 20 fps floor — at 31 fps demo1 1024, **margin 11 fps**
-- sawtooth (G4 GF2 MX):   60 fps floor — at 67 fps demo1 1024, **margin 7 fps**  
-- quicksilver (G4 R9000): 60 fps floor — at 70 fps demo1 1024, **margin 10 fps**
-- mini-g4 (G4 R9200):     60 fps floor — at 99 fps demo1 1024, **margin 39 fps**
-- mini-intel (Lion GMA):  60 fps floor — at 102 fps demo1 1024, **margin 42 fps**
-- imac-2019 (Polaris):    60 fps floor — at 732 fps demo1 1024, **margin 672 fps**
+Live fps grid (median demo1, commit `e8ae174`+):
 
----
+| Machine | 640×480 | 1024×768 | Floor | Margin | Bottleneck |
+|---|---:|---:|---:|---:|---|
+| imac-2019 | 711.75 | 726.40 | 60 | +666 | none — GPU never bound on GL1 |
+| mini-g4 | 123.80 | 98.45 | 60 | +38 | CPU mixed |
+| mini-intel | 59.40 \* | 101.20 | 60 | +41 (1024) | Quartz vsync + CPU |
+| quicksilver | 72.40 | 72.35 | 60 | +12 | CPU |
+| sawtooth | 78.20 | 67.35 | 60 | +7 | **CPU — R_BuildLightMap** (gl_flashblend mitigation) |
+| yosemite | 45.15 | 25.10 | 20 | +5 | **GPU — Rage 128 fillrate** (ULTIMATE config) |
 
-## Tier 1 — biggest visible wins (do these first)
+The two tight cells are **sawtooth 1024 (+7)** and **yosemite 1024
+(+5)**. Everything else has headroom. So the question this plan
+answers is: **what work do we do next, given that the bottlenecks
+on the two pinned machines are completely different in nature?**
 
-### 1.1 Group-draw cherry-pick from yquake2-latest (Phase B #3)
+## What the code review found
 
-**Source:** `reference/yquake2-latest/src/client/refresh/gl1/gl1_buffer.c`
-(~9.5KB) + `GLBUFFER_VERTEX/GLBUFFER_MULTITEX` macros baked into every
-call site in `gl1_surf.c`, `gl1_warp.c`, `gl1_draw.c`, `gl1_mesh.c`.
+Three angles audited (see appendix for the agent reports):
 
-**Why:** The CHANGELOG says: "Group draw call in GL1. This yields huge
-performance gains on slow GPUs." Confirmed via code inspection — 5.11's
-`R_DrawTextureChains` already groups by texture but the inner per-surface
-loop calls `R_DrawGLPoly` which spits `qglBegin(GL_POLYGON) ... qglVertex3fv
-... qglEnd` per surface. Each immediate-mode call is a driver round-trip.
-On R128 + GF2 MX (drivers from 1999/2000) the per-call cost is dominant.
-Same demo can have 200-400 surfaces visible at any time → 200-400 begin/end
-pairs per frame, replaced by 1 VBO stream + 1 draw call.
+### Hot paths still unvectorized
 
-**Per-machine impact prediction:**
-- yosemite R128: **+30-100% fps demo1 1024** (the chip is submission-bound;
-  this is the bug the yquake2 maintainers said this fix addresses)
-- sawtooth GF2 MX: +10-20% fps (also submission-bound)
-- quicksilver/mini-g4: +5-10% (modern enough that immediate-mode isn't
-  catastrophic)
-- mini-intel/imac-2019: <5% (modern GL drivers cache immediate-mode well)
+- `r_light.c:540-599` **R_BuildLightMap inner scaled-add** — per-luxel
+  byte→float scaled-add, runs every frame for every dynamically-relit
+  surface. CPU-bound (regression is identical at 640 vs 1024 — see the
+  2026-05-19 mistake-log entry on sawtooth). This is the single
+  reason `gl_dynamic 1` is forbidden on sawtooth. **Top SIMD target.**
+- `r_light.c:413-461` **R_AddDynamicLights per-luxel branch** — most
+  luxels fail `fdist < fminlight`; per-row culling could skip whole
+  rows when the bounding box doesn't intersect. Followed by SIMD on
+  the surviving rows.
+- `r_mesh.c:49-82` **R_LerpVerts** — per-vertex alias model frame
+  lerp. `s_lerped` is already vec4_t-stride (16-byte aligned),
+  AltiVec-ready out of the box. Hot when many alias models visible.
+- `r_light.c:611-682` **R_BuildLightMap store-loop** — per-luxel
+  `Q_ftol` + max-clamp + rescale + byte-pack. Branchy. SSE2-friendly
+  on x86.
+- `r_surf.c:113-122` **R_DrawGLPoly QGL function-pointer indirection**
+  in the per-vertex immediate-mode loop (R128 path, with
+  `gl_groupdraw 0`). Inline the function pointer to a local before
+  the inner loop.
 
-**Scope/effort:** Multi-file refactor. PPC_PLAN.md flags this as hand-port
-territory because yquake2-latest renamed `src/refresh/` → `src/client/refresh/gl1/`
-and the group-draw work is intermingled with the "Client & GL1 refactor"
-commits. Estimated 4-6 hours.
+### Visual features still unported
 
-**Risk:** Medium-high. If the buffer's vertex layout is wrong, every
-surface renders garbage. Triangulation order matters. Backslide path:
-revert commit, no machine ships the change.
+Verified what's actually in the reference repos:
 
-**Bench gate:** Demo1 + demo2 × 1024×768 + 640×480 × 3 runs on all 6
-machines. Each cell must hold or improve.
+| Feature | Source | LOC | GPU req | Game.so? | Status |
+|---|---|---:|---|---|---|
+| **`gl_minlight`** (clamp dark luxels) | yquake2-latest gl1_main.c | ~30 | — | no | unported |
+| **`gl_particle_square`** | yquake2-latest gl1_main.c | ~30 | — | no | unported |
+| **`r_skydistance`** | KMQuake2 r_main.c:191 + r_sky.c | ~20 | — | no | unported |
+| **`r_2D_unfiltered`** (sharp HUD under trilinear) | yquake2-latest | ~40 | — | no | unported |
+| **KMQuake2 true alias stencil shadows** | r_alias_misc.c:148-160 + r_alias.c:729-790 | ~150 | stencil (have) | no | **half-wired** — see below |
+| **KMQuake2 decals** (`r_fragment.c`) | r_fragment.c + client wire | ~500 | — | no — engine client/, not game | unported |
+| **KMQuake2 `r_caustics`** (underwater caustic projection) | r_surface.c:368+1248,1806 | ~50 | multitex (have) | no | unported |
+| **KMQuake2 `r_glows`** (shell/quad glow pass) | r_surface.c:870,1324 | ~80 | blend | no | unported |
+| **KMQuake2 bloom** | r_bloom.c + r_arb_program.c | ~700 | ARB_fragment_program | no | quicksilver+imac only |
+| **KMQuake2 rich particles** | r_particle.c + cl_particle.c | ~1500 | — | no (engine client) | unported, **risky** |
 
-**Steps:**
-1. Read `gl1_buffer.c` + `gl1_buffer.h` start-to-finish; understand
-   `R_SetBufferIndices`, `R_UpdateGLBuffer`, `R_ApplyGLBuffer`.
-2. Identify the GLBUFFER_VERTEX/GLBUFFER_MULTITEX macro contract.
-3. Port the helper file into `yquake2/src/refresh/r_buffer.c` (NEW).
-4. Rewrite `R_DrawGLPoly`, `R_DrawGLFlowingPoly`, `R_DrawGLPolyChain`,
-   `R_RenderBrushPoly`, `R_RenderLightmappedPoly`, `R_DrawAlphaSurfaces`,
-   `R_EmitWaterPolys`, and `R_DrawParticles2` to feed the buffer instead
-   of immediate-mode.
-5. Smoke test: walk one level, verify no visual corruption.
-6. Full bench grid.
+**Half-wired note on stencil shadows**: our fork ALREADY registers
+`gl_stencilshadow` (r_main.c:1078) and the cvar gates a stencil
+enable/disable around the existing flat-ground `R_DrawAliasShadow`
+(r_mesh.c:332-381) — but this is just anti-overdraw, not volumetric.
+The shadow is still projected to a single Z plane (`height = -lheight
++ 0.1f`), so it doesn't fall on walls. The KMQuake2 port replaces
+the whole `R_DrawAliasShadow` with a shadow-volume approach
+(`r_alias_misc.c:148-160`). The cvar plumbing is reusable; the inner
+function body is the work.
 
----
+### Bugs / smells found
 
-### 1.2 stb_image LoadJPG port + enable WITH_RETEXTURING
+- **`r_main.c:441` vs `header/local.h:453`** — `R_DrawParticles2`
+  declared with `colortable[768]`, defined with `colortable[256]`.
+  Harmless at runtime (C decays array params to pointers) but a real
+  clang `-Warray-parameter` warning. Caller uses `[p->color]` where
+  `p->color` is a byte, so `[256]` is correct → fix the header.
+- **`r_light.c:243`** — cppcheck `identicalConditionAfterEarlyExit`,
+  `(back<0)==side` checked twice. Worth a read.
+- **`r_misc.c:141`** — screenshot path does pointer arithmetic on
+  possibly-NULL `malloc` return. Theoretical crash; bench machines
+  never OOM. Low priority.
+- **`r_surf.c:896` `unsigned temp[128*128]`** = 64 KB stack alloc
+  per dynamic surface per frame. Surface extents max out at ~34×34
+  luxels (cf. `R_RenderBrushPoly`'s 34*34 buffer at r_surf.c:624).
+  Wasted stack. Trivial fix.
+- **`r_mesh.c:75-81`** — non-shell `R_LerpVerts` branch writes
+  `lerp[0..2]` but `s_lerped` is vec4_t; the 4th lane stays from
+  previous frame. Discarded downstream, so not a real bug — but a
+  read-of-uninit that MSan would flag. Fix is `lerp[3] = 0` in the
+  branch. Free.
 
-**Source:** `reference/yquake2-latest/src/client/refresh/files/stb_image.h`
-(public domain, 278KB single-header) and `stb.c` wrapper.
+### Static-analysis tooling — currently zero
 
-**Why:** 5.11's `LoadJPG` uses libjpeg. libjpeg isn't installed on the
-mini-intel build host. As a result, `scripts/build.sh:110` `sed`s
-`WITH_RETEXTURING=yes` → `=no`, which `#ifdef`-disables the entire hi-res
-texture loading code path. The cfg lines `set gl_retexturing 1` on
-quicksilver, mini-g4, mini-intel, imac-2019 are **silent no-ops today**.
-With stb_image replacing libjpeg, WITH_RETEXTURING can be ON across all
-3 slices with zero external dependencies.
+Makefile is `-O2 -fno-strict-aliasing -fomit-frame-pointer -Wall
+-pipe -g -MMD`. Just `-Wall`. **No** `-Wextra`, `-Wshadow`,
+`-Wundef`, `-Wpointer-arith`, `-Wstrict-prototypes`,
+`-Wmissing-prototypes`. The Ubuntu workstation has cppcheck 2.17,
+clang-tidy / scan-build (LLVM 20), gcc-15 with `-fanalyzer`,
+flawfinder.
 
-**Per-machine impact prediction:**
-- Visible impact today: **ZERO** (no HD texture pack shipped). 
-- Latent unlock: the user can drop in any TGA/JPG/PNG pack post-deploy
-  and it lights up everywhere with retex=1. Sharp 1024×1024 textures on
-  walls vs the 256×256 originals — dramatic on Polaris 20.
+cppcheck on `yquake2/src/refresh/` reports 1 error + 17 warnings +
+250 style + 2 portability. Most "style" hits are `staticFunction`
+hygiene (file-local funcs missing `static`). The 17 warnings are
+mostly worth a look.
 
-**Scope/effort:** Bounded ~2 hours.
-
-**Risk:** Low. The new LoadJPG has the same signature `void
-LoadJPG(char *origname, byte **pic, int *width, int *height)`. Drop-in.
-stb_image is mature and used in many shipping engines.
-
-**Steps:**
-1. Copy `stb_image.h` to `yquake2/src/refresh/files/stb_image.h`.
-2. Rewrite `yquake2/src/refresh/files/jpeg.c` to use stb_image instead
-   of libjpeg's `jpeg_decompress_struct`. Preserve `LoadJPG` signature.
-3. Remove `-framework libjpeg` from `yquake2/Makefile` (or whole linker
-   line in the `WITH_RETEXTURING=yes` block).
-4. Modify `scripts/build.sh:110` to NOT sed out `WITH_RETEXTURING=yes`.
-5. Build g3 + g4 + lion (all three need to compile with retex).
-6. Verify cfg cvars now create real `gl_retexturing` cvar.
-7. Bench all 6 to verify no regression (without HD pack, retex code
-   path looks for replacements and falls back to .pcx/.wal cleanly).
-8. (Optional follow-up) source a free HD pack (e.g. NeuralUpscale or
-   the public-domain CDQ HD pack) and verify visual lift on quicksilver+.
-
----
-
-### 1.3 yquake2-latest gl1_particle_square + GL_POINTS path verification
-
-**Source:** `reference/yquake2-latest/src/client/refresh/gl1/gl1_main.c`
-particle drawing code.
-
-**Why:** 5.11's `R_DrawParticles2` (the non-pointsprite fallback) draws
-3 immediate-mode vertices per particle. Round particles via point sprites
-(`gl_ext_pointparameters 1`) are cheap on modern chips but yosemite has
-this OFF because R128's point sprite ext is buggy. So yosemite goes
-through R_DrawParticles2 — the worst-case path. `gl1_particle_square 1`
-on yquake2-latest replaces the round-blit with a single GL_POINTS draw
-of square particles. Skips the alpha-test, skips per-particle triangle
-emission.
-
-**Per-machine impact prediction:**
-- yosemite: +5-10% in particle-heavy moments (rocket trails, explosions)
-- sawtooth/quicksilver/mini-g4: <2% (point sprites already work)
-- mini-intel/imac-2019: <1%
-
-**Scope/effort:** Small. ~1 hour.
-
-**Risk:** Low. Square particles vs round is a visual preference, not a
-correctness change.
-
-**Steps:**
-1. Add `gl_particle_square` cvar (CVAR_ARCHIVE, default 0).
-2. In `R_DrawParticles`, dispatch: square path = single GL_POINTS draw
-   (no point-sprite ext needed); round path = existing
-   pointparameters or triangle-billboard fallback.
-3. Add to autoexec-yosemite.cfg with default 1 (force square on R128).
-4. Bench yosemite + sawtooth.
+clang with `-Wextra -Wshadow -Wundef` flagged the prototype mismatch
+above + `r_light.c:501` sign-compare + an `r_mesh.c:180` shadow.
 
 ---
 
-## Tier 2 — visual Phase C ports (KMQuake2 cherry-picks)
+## The plan
 
-### 2.1 Decals (Phase C #3) — r_fragment.c
+Six tiers ordered by **(visible-win × confidence) / risk**. Each
+tier is its own session — none requires the previous to land first
+unless explicitly noted.
 
-**Source:** `reference/kmquake2/renderer/r_fragment.c` (~8KB).
+---
 
-**Why:** Bullet impacts, blood splatter, scorch marks on walls. Free
-visual richness with no perf cost (decals fade after N seconds, count
-capped). Fixed-function compatible — fits all 6 chips.
+### Tier 0 — instrument before optimizing (1-2h, do this FIRST)
 
-**Per-machine impact prediction:** Visible visual win on every machine.
-Decals are bounded by `r_decal_max` cvar. Cost: a few extra surfaces per
-frame, negligible.
+#### 0.1 Add `scripts/analyze.sh` running cppcheck + clang -Wextra
 
-**Scope/effort:** Medium. KMQuake2's decal subsystem has its own state
-manager. ~3-4 hours porting + bench.
+Drop into `scripts/`, wire as a `make analyze`-equivalent. Concrete
+target — appendix at bottom of this file has the snippet from the
+static-analysis audit. Goal: surface real warnings before each Phase
+B/C cherry-pick. Filter out `stb_image.h` + `staticFunction` noise
+so the signal-to-noise is readable.
 
-**Risk:** Medium. Decal lifetime management is its own subsystem with
-its own data structures. Needs care to integrate with our texture chains.
+#### 0.2 Fix the cleanly-visible warnings
+
+- `header/local.h:453` — change `colortable[768]` → `colortable[256]`
+  to match the defn.
+- `r_surf.c:896` — `unsigned temp[128*128]` → `unsigned temp[34*34]`
+  to match `R_RenderBrushPoly` at line 624.
+- `r_mesh.c:75-81` — zero `lerp[3]` in the non-shell branch.
+
+These are all zero-risk cleanup. Land as one commit `chore: fix
+warnings surfaced by clang -Wextra + cppcheck`. Bench grid as a
+safety net but no behaviour change expected.
+
+#### 0.3 Tighten the Makefile warning floor
+
+Add `-Wshadow -Wpointer-arith -Wstrict-prototypes`. Leave `-Wextra`
+off for now — it floods on the `unused-parameter` Win32 leftovers,
+and we can't `(void)` those without churning unrelated files. Run a
+fresh build on all three slices (g3 / g4 / lion) and silence any new
+warnings before commit.
+
+---
+
+### Tier 1 — AltiVec the lightmap hot path (the sawtooth unlock)
+
+This is the work that the 2026-05-19 mistake log explicitly flagged
+as the actionable fix for `gl_dynamic 1` on sawtooth. Same code path
+helps quicksilver + mini-g4 too, but sawtooth is the cell where it
+moves the floor.
+
+#### 1.1 `R_BuildLightMap` scaled-add AltiVec (~4h)
+
+**Target:** `r_light.c:540-599`. Two scalar variants of byte→float
+scaled-add, gated by `#ifdef __ALTIVEC__` so only the G4 slice
+picks them up.
+
+Pseudocode:
+```c
+vector float vscale = vec_splat(... pack scale[0,1,2,0] ...);
+for (i = 0; i < size; i += 4) {
+    vector unsigned char raw = vec_ld(0, &lightmap[i*3]);  /* 12 bytes */
+    // permute 12-byte RGBRGBRGBRGB into 16-byte stride, expand to float,
+    // vec_madd into vec_ld(s_blocklights[i]), vec_st back.
+}
+// scalar tail for size%4
+```
+
+Validate visually identical lightmaps on quicksilver (where dlights
+are on) — diff one frame's `s_blocklights` against the scalar
+reference. Bench sawtooth with `gl_dynamic 1` flipped back ON in the
+autoexec — that's the success criterion. If the floor holds, **the
+sawtooth visual unlock that's blocked since 2026-05-19 ships in the
+same commit**.
+
+#### 1.2 `R_AddDynamicLights` row-cull + AltiVec (~3h)
+
+**Target:** `r_light.c:413-461`. Add the row-precheck: if
+`td_at_row_start >= fminlight + (smax-1)²`, skip the row's inner
+loop entirely. Then SIMD the surviving rows.
+
+Most luxels in a dlight-touched surface fail the cutoff test; this
+cuts iterations long before any per-luxel work. Combined with 1.1
+this is the second half of the "unlock dlights on sawtooth" story.
+
+#### 1.3 `R_LerpVerts` AltiVec (~3h)
+
+**Target:** `r_mesh.c:49-82`. Already vec4_t-aligned output. Two MADs
+per vertex on the G4 slice. Helps any G4 with many alias models
+visible (demo1 boss room is the worst case).
+
+#### 1.4 (optional, only if mini-intel is bottlenecked after Tier 2)
+`R_BuildLightMap` store-loop SSE2 (~3h). Defer until we see whether
+the mini-intel margin shrinks below ~20 fps from Tier 2/3 visual
+additions.
+
+**Bench gate for Tier 1:** sawtooth must end the round with
+`gl_dynamic 1 + gl_flashblend 0` ≥ 60 fps demo1 1024. If we can't
+land that, revert to `gl_flashblend 1` and keep only the speedups
+that don't regress.
+
+---
+
+### Tier 2 — cheap visual wins (no GPU dep, 1-2h each)
+
+These are all small ports that work on every machine and the
+risk/effort is bounded enough to batch into one commit each.
+
+#### 2.1 `gl_minlight` (yquake2-latest, ~30 LOC)
+
+Clamp lightmap luxel minimum to N. Per-machine defaults: yosemite +
+sawtooth 0 (no change), others 8-16. Stops pitch-black corners
+without hurting fps. Trivial port.
+
+#### 2.2 `gl_particle_square` (yquake2-latest, ~30 LOC)
+
+Square particles via single `GL_POINTS` draw, no point-sprite ext
+required. Helps yosemite specifically — R128 has buggy point-sprite
+ext (currently OFF in autoexec) and falls through to
+`R_DrawParticles2` (3 triangles per particle). Square path is one
+draw call total.
+
+#### 2.3 `r_skydistance` (KMQuake2, ~20 LOC)
+
+Variable sky range cvar — fixes sky-clipping seam on large open
+maps. Default 10000 matches KM. No fps cost. Trivial.
+
+#### 2.4 `r_2D_unfiltered` (yquake2-latest, ~40 LOC)
+
+Forces HUD glyphs through GL_NEAREST even when the texture mode is
+GL_LINEAR_MIPMAP_LINEAR (yosemite ULTIMATE, sawtooth visual unlock).
+Currently HUD numbers go fuzzy under trilinear. Cheap quality fix.
+
+**Batch 2.1-2.4 into one commit each (or one combined cherry-pick
+commit if they don't interact).** Bench grid for regression only —
+no item is expected to move fps measurably.
+
+---
+
+### Tier 3 — replace the stencil-shadow stub with KMQuake2's volumetric port (~4-5h)
+
+The cvar is already wired, the stencil setup is already correct, the
+fleet all has 8-bit stencil. What's missing is the actual
+shadow-volume math from `reference/kmquake2/renderer/r_alias_misc.c:148-160`
++ `r_alias.c:729-790`. Replace `R_DrawAliasShadow` body.
 
 **Per-machine defaults:**
-- yosemite: r_decal_max 8 (fillrate-limited)
-- sawtooth: r_decal_max 16
-- quicksilver/mini-g4/mini-intel: r_decal_max 32
-- imac-2019: r_decal_max 128 (or uncapped)
+- yosemite: SKIP — R128 stencil on Panther 10.3.9 is untrusted +
+  fillrate already tight at 25 fps.
+- sawtooth: ON only after Tier 1 lands (need the BuildLightMap fps
+  margin first).
+- quicksilver / mini-g4 / mini-intel / imac-2019: ON.
+
+**Risk: medium.** Stencil-volume rendering can ghost / flicker on
+the first port. Bench-grid gate: no machine drops more than 5%, no
+visual corruption on alias models (test in the start-of-level Quake
+Guard chamber for predictable enemies).
 
 ---
 
-### 2.2 Stencil shadows (Phase C #8) — alias model true shadows
+### Tier 4 — KMQuake2 decals (the biggest visual lift, ~6h)
 
-**Source:** `reference/kmquake2/renderer/r_alias_md2.c` (and surrounding).
+`reference/kmquake2/renderer/r_fragment.c` (327 LOC) + the client
+wire (`R_MarkFragments` ref export → `V_AddDecal` in our `client/`,
+NOT `baseq2/game.so`). The decals subsystem is engine-side, not
+game-mod-side, so we don't touch the game DLL.
 
-**Why:** Real volumetric shadows for enemies/player projected onto
-walls/floor, replacing the simple `gl_shadows` blob. Requires stencil
-buffer (SDL_GL_STENCIL_SIZE=8 already set in refresh.c).
+**Compatibility with `r_buffer.c`**: decals emit standard textured
+triangles via array pointers — `r_fragment.c` has zero `qglBegin` calls
+(verified). They flush during the alias / transparent pass, not the
+world pass, so they don't break `gl_groupdraw`'s batch boundaries.
 
-**Per-machine impact prediction:**
-- yosemite: probably SKIP — R128 stencil support is iffy in 10.3.9 driver.
-- sawtooth: SKIP — GF2 MX has stencil, but cost might break the 60 fps
-  floor on 500 MHz G4 (per-light stencil pass).
-- quicksilver/mini-g4: ON — Radeon 9000/9200 have full stencil.
-- mini-intel: cautious ON — GMA 950 has stencil but driver is unreliable.
-- imac-2019: ON.
+**Per-machine `r_decal_max`:**
+- yosemite: 8 (fillrate)
+- sawtooth: 16
+- quicksilver / mini-g4 / mini-intel: 32
+- imac-2019: 128
 
-**Scope/effort:** Medium-high. ~4-5 hours.
-
-**Risk:** Medium. Stencil state interacts with everything; visual glitches
-likely on first pass.
-
----
-
-### 2.3 Alpha-test surfaces with lightmaps (Phase C #4)
-
-**Source:** `reference/kmquake2/renderer/r_surface.c` modifications.
-
-**Why:** Textures with alpha-cutout regions (grates, vegetation,
-chain-link) currently fall through to non-lightmapped path → look dark
-or wrong. KMQuake2 routes them through a special alpha-tested lightmap
-blend that preserves shading.
-
-**Per-machine impact prediction:** Visual correctness win, no fps cost.
-Fixed-function compatible.
-
-**Scope/effort:** Low-medium. ~2-3 hours.
+**Risk: medium.** Decal lifetime management + the `R_MarkFragments`
+BSP-clipping function are their own subsystem. Need careful
+integration with our BSP. Bench grid mandatory.
 
 ---
 
-### 2.4 Transparent surfaces with lightmaps (Phase C #7)
+### Tier 5 — additional visual cherry-picks, opportunistic
 
-**Source:** `reference/kmquake2/renderer/r_surface.c` SURF_TRANS33/66 changes.
+#### 5.1 KMQuake2 `r_glows` (~80 LOC, ~3h)
 
-**Why:** Glass + force fields currently render without lightmaps in 5.11
-GL1. Looks "floating" in the level. KMQuake2 adds a blend mode that
-preserves lightmap modulation on transparent surfaces.
+Adds a second-pass modulate for shell / quad-damage / pent skins —
+glowing creature outlines. Multitex-free fallback exists in KM's
+code (multitex preferred). Cheap. Works on all 6 machines.
 
-**Per-machine impact prediction:** Visual win. Cost: one extra texture
-unit on multitex boxes (free), or one extra pass on dual-pass boxes
-(small fps cost).
+#### 5.2 KMQuake2 `r_caustics` (~50 LOC, ~2h)
 
-**Scope/effort:** Low-medium. ~2 hours.
+Underwater caustic-light projection on submerged surfaces.
+Multitex-required (have it on the four lower-multitex boxes).
+Visual richness when underwater. Cheap once `r_caustics` cvar is
+wired in surface.c the way KM does.
 
----
+#### 5.3 Alpha-test + lightmap (~3h) and Transparent + lightmap (~2h)
 
-### 2.5 Bloom (Phase C #5) — r_bloom.c + r_arb_program.c
-
-**Source:** `reference/kmquake2/renderer/r_bloom.c` (21KB) +
-`r_arb_program.c` (10KB).
-
-**Why:** Bright surfaces get a soft glow halo. Big visual upgrade,
-especially on dlight events. Requires `ARB_fragment_program`.
-
-**Per-machine impact prediction:**
-- yosemite: SKIP — R128 has no fragment program. 
-- sawtooth: SKIP — GF2 MX has no fragment program.
-- quicksilver R9000 Pro: ON (R9000 Pro has ARB_fragment_program;
-  base R9000 may not). Verify driver report.
-- mini-g4 R9200: SKIP — R9200 specifically dropped fragment_program (it's
-  a R8500 variant). Verify.
-- mini-intel GMA 950: SKIP — no ARB_fragment_program.
-- imac-2019 Polaris: ON.
-
-**Scope/effort:** High. ~6-8 hours including bench.
-
-**Risk:** High. ARB shader debugging on retro GPUs is painful.
+KM's `r_trans_lighting` family in r_surface.c around 943-948. Cutout
+textures (grates, vegetation) and glass currently render
+unlightmapped → "floating" look. KM merges them back into the
+lightmap path. Visual correctness, free on multitex boxes, one
+extra pass on R128/GF2 MX (small fps hit on yosemite — likely
+gate-off there).
 
 ---
 
-### 2.6 Quake2maX particle effects (Phase C #6)
+### Tier 6 — defer indefinitely
 
-**Source:** `reference/kmquake2/renderer/r_particle.c` (30KB).
-
-**Why:** Richer particle system — proper smoke, blood spray, sparks.
-Visual replacement for Q2's spartan particle palette.
-
-**Per-machine impact prediction:** Big visual lift on every machine.
-KMQuake2 has a quality dial (`cl_particles_quality` low/med/high) so we
-can per-machine tune cost.
-
-**Scope/effort:** High. The 30KB particle code is its own subsystem.
-~5-6 hours.
-
-**Risk:** Medium. Particles touch the client + renderer boundary;
-integration with our render pass is non-trivial.
-
-**Per-machine defaults:**
-- yosemite: low
-- sawtooth: low
-- quicksilver: med
-- mini-g4: high
-- mini-intel: high
-- imac-2019: high
-
----
-
-## Tier 3 — code-level optimizations (AltiVec + SIMD)
-
-### 3.1 AltiVec R_BuildLightMap scaled-add loops
-
-**Target:** `yquake2/src/refresh/r_light.c:541-595`. Per-luxel
-byte→float scaled-add. Two loops (nummaps==1 and nummaps>1).
-
-**Why:** Quicksilver/mini-g4 are CPU-bound on this loop during
-dlight-heavy scenes (rocket explosions, BFG). Vectorizing 4 luxels per
-iteration could give 2-3× speedup on that hot loop.
-
-**Per-machine impact prediction:**
-- yosemite (no AltiVec): zero (G3 has no AltiVec)
-- sawtooth (AltiVec but uses flashblend): zero (path not hit)
-- quicksilver (AltiVec 7450): +3-7% demo1 in dlight scenes
-- mini-g4 (AltiVec 7447A): +3-7%
-- mini-intel/imac-2019 (no AltiVec, but SSE available): could add x86 path
-  separately for +similar gains, but boxes are already at 100+/700+ fps
-  so the win is irrelevant.
-
-**Scope/effort:** Medium. ~4-5 hours including AltiVec quirks and bench.
-
-**Risk:** Medium. AOS RGB layout is hostile to vectorization. Need
-careful unaligned loads (vec_lvsl/vec_lvsr) or layout change.
-
-**Steps:**
-1. Wrap new code in `#ifdef __ALTIVEC__` so it compiles only on G4
-   slice (build.sh g4 has `-maltivec`).
-2. Process 4 luxels per iteration: load 12 bytes of lightmap, unpack
-   to 3 vec_float4 registers, multiply by broadcast scale pattern,
-   store to 12 floats of s_blocklights.
-3. Handle the size%4 tail in scalar.
-4. Validate visually identical output (no shimmer in lightmaps).
-5. Bench quicksilver + mini-g4 demo3 (most dlight-heavy).
-
----
-
-### 3.2 AltiVec R_LerpVerts
-
-**Target:** `yquake2/src/refresh/r_mesh.c:49-82`. Per-vertex alias model
-lerp between two frames.
-
-**Why:** Every visible enemy + player + weapon costs `num_xyz` lerps per
-frame. demo1 has ~5-10 visible models in busy scenes × 100-500 verts
-each. Hot on the CPU side.
-
-**Per-machine impact prediction:**
-- quicksilver: +2-5%
-- mini-g4: +2-5%
-- yosemite: zero (no AltiVec)
-- sawtooth: +2-5% (AltiVec available, this path is hot)
-
-**Scope/effort:** Medium. ~3-4 hours.
-
-**Risk:** Medium. Same AOS-byte-stride issue as R_BuildLightMap.
-
----
-
-### 3.3 SSE2 path mirroring AltiVec for Intel
-
-**Target:** Same loops as 3.1/3.2 but with `<emmintrin.h>` SSE intrinsics.
-
-**Why:** mini-intel + imac-2019 already at 100/700 fps. Win irrelevant
-unless we hit a CPU bottleneck on the modern boxes after Tier 1/2 lands.
-**Skip unless bench shows CPU-bound.**
-
----
-
-## Tier 4 — engine plumbing
-
-### 4.1 MSAA via SDL_GL_MULTISAMPLE
-
-**Target:** `yquake2/src/backends/sdl/refresh.c:214` — add
-`SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1)` +
-`SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, gl_msaa_samples->value)`
-before SDL_SetVideoMode. Plus `glEnable(GL_MULTISAMPLE)` post-context.
-
-**Why:** Polaris 20 (imac-2019) can do 8x MSAA at zero perf cost. Removes
-the polygon-edge aliasing that's the giveaway of fixed-function GL.
-
-**Per-machine impact prediction:**
-- imac-2019: 8x MSAA, dramatic visual lift, ~0% fps cost.
-- mini-intel GMA 950: try 2x; the GMA driver supports it but slowly.
-- quicksilver/mini-g4: try 2x; R9000/R9200 should handle 2x cheaply.
-- sawtooth GF2 MX: SKIP — chip supports MSAA via SGIS_multisample but
-  Mac driver may not expose it.
-- yosemite R128: SKIP — no MSAA.
-
-**Complication:** First-boot the autoexec hasn't fired when SDL inits.
-The MSAA cvar value at SDL_GL_SetAttribute time would be 0 (default).
-Two solutions:
-- (a) Autoexec writes the cvar; engine issues `vid_restart` at end of
-  autoexec; second pass picks up MSAA. One visible flash on first boot.
-- (b) Read the cvar from a special early-boot file (before SDL init).
-
-Option (a) is simpler. On subsequent boots config.cfg has the value
-already so no flash.
-
-**Scope/effort:** Medium. ~2-3 hours including the vid_restart wiring.
-
-**Risk:** Medium. SDL 1.2's MSAA support on Tiger varies by chip; could
-fail to create context, fallback path needed.
-
----
-
-### 4.2 gl1_minlight cvar (yquake2-latest port)
-
-**Target:** Latest's `gl1_minlight` — minimum light value applied in
-R_BuildLightMap so dark spots don't go pitch black.
-
-**Why:** Q2's lightmaps drop to actual black in many corners. With
-minlight=8 or 16, even unlit corners have faint visibility. Helps
-gameplay (see enemies in shadow) and looks cleaner.
-
-**Per-machine impact prediction:** Visual win, no fps cost.
-
-**Scope/effort:** Low. ~1 hour. Read minlight[256] LUT from r_main.c in
-latest, port to 5.11's R_BuildLightMap.
-
----
-
-### 4.3 gl_farsee 1 enable on imac-2019 (and big-VRAM boxes)
-
-**Target:** existing `gl_farsee` cvar in r_main.c:995 (CVAR_LATCH).
-
-**Why:** Q2's BSP traversal culls distant geometry by default for
-fillrate reasons. `gl_farsee 1` disables the distance cap → see the
-whole level at once. Polaris 20 doesn't care about fillrate.
-
-**Complication:** CVAR_LATCH means it requires `vid_restart` after
-setting. Same vid_restart-at-end-of-autoexec mechanic as MSAA.
-
-**Scope/effort:** Low (autoexec only, IF vid_restart mechanic exists).
-But the vid_restart hook needs to be wired separately.
-
----
-
-## Tier 5 — small wins from PPC_PLAN.md inventory
-
-### 5.1 GL1 gamma correction (Phase B #5)
-
-**Source:** yquake2-latest GL1 gamma path. 5.11 uses SDL_SetGamma
-which is hit-or-miss on Tiger; the GL1 software gamma is more reliable.
-
-**Effort:** ~1 hour.
-
-**Win:** Per-machine gamma calibration that doesn't flicker the display.
-
----
-
-### 5.2 Multitex bugfix for multi-light-style surfaces
-
-**Source:** yquake2-latest commit, addresses "Fixed GL1 multitexturing
-in surfaces using multiple light styles." Bug shows up on flickering
-torch surfaces.
-
-**Effort:** ~1 hour. Visual correctness, not fps.
-
----
-
-### 5.3 Yosemite quality tier expansion (cfg-only, requires bench)
-
-After Tier 1 group-draw lifts yosemite fps headroom:
-- Try `gl_picmip 0` (full texel detail) — bench, check VRAM
-- Try `gl_texturemode GL_LINEAR_MIPMAP_LINEAR` (trilinear) — bench
-- Try `gl_round_down 0` — bench
-
-**Effort:** Each is one cfg edit + bench = 5 minutes per knob. Do AFTER
-Tier 1 group-draw lands and we know the new headroom.
+- **Bloom (`r_bloom.c` + `r_arb_program.c`, 700 LOC)** — requires
+  `GL_ARB_fragment_program`. R128 / GF2 MX / GMA 950 / R9200 don't
+  have it. R9000 Pro on quicksilver does + imac-2019 does. Two
+  machines is not enough to justify a 700-LOC port that won't
+  unify the visual stack across the fleet. Park.
+- **KMQuake2 `r_particle.c` rewrite (1500 LOC, client + renderer)** —
+  too much surface area, touches client/cl_particle.c heavily.
+  Risk of breaking demo playback. Park unless we hit a "particles
+  are the bottleneck on the visual lift" wall.
+- **MSAA via `SDL_GL_MULTISAMPLE`** — would need a vid_restart hook
+  to apply on first boot, since the cvar isn't read until after
+  SDL_SetVideoMode. Worth ~3h on imac-2019 only. Park behind decals.
+- **GL1 gamma correction (yquake2-latest)** — `SDL_SetGamma` works
+  fine on every machine we ship; the latest's software gamma is a
+  fallback for systems where SDL gamma fails. Not a real problem
+  for us. Park.
+- **gl_farsee 1 on imac-2019** — CVAR_LATCH, needs the same
+  vid_restart hook. Imac is at 700 fps; we don't need the win.
+  Park.
 
 ---
 
 ## Suggested execution order
 
-1. **Day 1 (~6h):** Tier 1.1 group-draw. Biggest yosemite win. Land
-   commit, bench grid, iterate on visual bugs.
-2. **Day 1 evening (~2h):** Tier 1.2 stb_image. Unlocks WITH_RETEXTURING
-   for any future HD pack. Bench-only-for-regression.
-3. **Day 2 (~3h):** Tier 1.3 particle_square + Tier 4.2 minlight + Tier
-   5.1 GL1 gamma + Tier 5.2 multitex bugfix. Batch of small cherries.
-4. **Day 2 evening (~2h):** Tier 5.3 yosemite quality tier expansion now
-   that group-draw lifted fps.
-5. **Day 3 (~5h):** Tier 2.3 alpha-test lightmaps + 2.4 transparent
-   lightmaps. Visual correctness wins.
-6. **Day 4 (~4h):** Tier 2.1 decals. Big visual richness lift.
-7. **Day 5 (~3h):** Tier 4.1 MSAA with vid_restart. imac-2019 polish.
-8. **Day 6 (~5h):** Tier 2.2 stencil shadows. Real alias-model shadows
-   on capable boxes.
-9. **Tier 2.5 bloom + 2.6 particles + Tier 3 AltiVec** — defer until
-   first 8 days land. By that point fps headroom and remaining items
-   will be clearer.
+1. **Session A (~3h)**: Tier 0 — static analysis script + warning
+   fixes + Makefile floor. Lands one cleanup commit, no behaviour
+   change.
+2. **Session B (~5h)**: Tier 1.1 + 1.2 — R_BuildLightMap +
+   R_AddDynamicLights AltiVec. Goal: flip sawtooth `gl_dynamic 1`
+   in the same commit. **The headline win of the round.**
+3. **Session C (~3h)**: Tier 1.3 — R_LerpVerts AltiVec. Lands the
+   second AltiVec hot path. Marginal on its own but completes the
+   "G4 SIMD" story.
+4. **Session D (~2h)**: Tier 2.1-2.4 — batch the cheap visual
+   cherry-picks into one or two commits.
+5. **Session E (~5h)**: Tier 3 — volumetric stencil shadows on
+   capable boxes.
+6. **Session F (~6h)**: Tier 4 — decals.
+7. **Session G (~4h)**: Tier 5.1 + 5.2 — glows + caustics.
+8. **Session H (~5h)**: Tier 5.3 — alpha-test + transparent
+   lightmapped surfaces.
 
-## Bench cadence per item
+Total ~33h. Each session is independently shippable.
 
-Same as the round we just shipped:
-1. Code change → smoke bench on dirty tree (one machine, one resolution,
-   3 runs).
-2. If no regression → commit code + bench row + raw logs.
-3. After commit → full grid (6 machines × 2 demos × 2 res × 3 runs).
+## Bench cadence per item (unchanged)
+
+1. Code change → smoke bench on dirty tree (one machine, one
+   resolution, 3 runs).
+2. If no regression → `bench-and-commit.sh "Round X" --quick` lands
+   the commit + bench row + raw logs.
+3. Full 6-machine × 2 demos × 2 res × 3 runs grid at end of round.
 4. Update `PPC_PLAN.md` live feature inventory with new commit SHA.
 
-## Risk gating
+## Risk gating (unchanged)
 
 Block any commit if:
 - Any cell drops >5% fps from previous round's row
 - yosemite drops below 20 fps demo1 1024
 - Any G4 box drops below 60 fps demo1 1024
-- Visual regressions (corruption, missing surfaces, wrong colors) on
-  any machine
+- Visual regressions (corruption, missing surfaces, wrong colours)
+  on any machine
 
-## Open questions for next session
+## What this plan does NOT include and why
 
-1. Should we source an HD texture pack for testing retex post-Tier 1.2?
-   (Free packs exist: NeuralUpscale, CDQ, Quake2-RTX assets.)
-2. Should we install MacPorts on mini-intel to enable libjpeg/libpng/
-   libtiff for richer image support? (Probably no — stb_image is
-   sufficient.)
-3. Bloom on quicksilver — does R9000 Pro driver on Tiger actually expose
-   ARB_fragment_program? Need to bench-run a probe before investing.
-4. Are we willing to break first-boot UX (one vid_restart flash) for
-   MSAA and gl_farsee? If no, we need a different cvar-init mechanic.
+- **No new feature flags / cvars not gated to existing cvars**.
+  Every per-machine decision still flows through
+  `scripts/bundle/autoexec-<machine>.cfg`.
+- **No game.so / baseq2 modifications**. Every feature in the plan
+  lives in the engine (renderer + engine `client/`). Decals are
+  engine-side in KM, not mod-side.
+- **No SDL2 / yquake2 7.21 base bump**. Out of scope — would lose
+  the Panther + Tiger targets.
+- **No new build host**. mini-intel stays the cross-build box.
 
 ---
 
-End of plan. ~30-40 hours of work distributed across the tiers. Each
-tier delivers visible gains independently — no need to do them all to
-ship a meaningful improvement.
+## Appendix A — static analysis Makefile snippet (drop-in)
+
+```make
+ANALYZE_SRC := src/refresh src/client src/common
+
+analyze-cppcheck:
+	cppcheck --enable=warning,performance,portability --quiet \
+	  --suppress=missingIncludeSystem \
+	  --suppress=*:src/refresh/files/stb_image.h \
+	  --error-exitcode=0 $(ANALYZE_SRC)
+
+analyze-clang:
+	@for f in $$(find $(ANALYZE_SRC) -name '*.c'); do \
+	  clang -fsyntax-only -Wall -Wextra -Wshadow -Wundef -Wpointer-arith \
+	    -Wstrict-prototypes -Wmissing-prototypes \
+	    -Isrc/client/refresh -Isrc $$f 2>&1; \
+	done | grep -E 'warning|error' | sort -u
+
+analyze: analyze-cppcheck analyze-clang
+```
+
+## Appendix B — verified bugs / smells punch list
+
+| File:line | Issue | Severity | Effort |
+|---|---|---|---|
+| `header/local.h:453` vs `r_main.c:441` | `colortable[768]` vs `[256]` array-parameter mismatch | clang warning | 1 min |
+| `r_surf.c:896` | `unsigned temp[128*128]` = 64KB stack, only ~34×34 used | wasteful stack | 2 min |
+| `r_mesh.c:75-81` | `s_lerped[i][3]` read-of-uninit (silently discarded) | MSan-only | 1 min |
+| `r_light.c:243` | `identicalConditionAfterEarlyExit` — `(back<0)==side` twice | possible logic bug | 15 min to read |
+| `r_light.c:501` | int/unsigned sign-compare | clang warning | 5 min |
+| `r_misc.c:141` | screenshot malloc may return NULL → pointer arith | crash on OOM | 10 min |
+| `r_mesh.c:180` | local `float l` shadows outer | warning | 5 min |
+
+All seven are appropriate for the Tier 0 cleanup commit.
+
+## Appendix C — what's left in the PPC_PLAN.md backlog
+
+(For continuity — nothing here is new since 2026-05-21.)
+- Phase B GL1 cherry-picks: most landed; remaining are `gl1_minlight`
+  (this plan §2.1), `gl1_particle_square` (§2.2), GL1 gamma
+  (parked, §Tier 6).
+- Phase C visual ports from KMQuake2: stencil-shadow volumetric
+  (this plan §Tier 3), decals (§Tier 4), bloom (parked §Tier 6),
+  rich particles (parked §Tier 6), alpha-test + transparent
+  lightmapped surfaces (§Tier 5.3).
+
+End of plan.

@@ -245,11 +245,15 @@ GLimp_InitGraphics(qboolean fullscreen)
 	/* Set the icon */
 	SetSDLIcon();
 
-	/* Enable vsync */
-	if (gl_swapinterval->value)
-	{
-		SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 1);
-	}
+	/* Vsync — explicitly set SWAP_CONTROL even when disabling. Apple's
+	 * Quartz / OpenGL framework defaults to vsync ON after a fresh boot
+	 * on some Macs; the previous code only SET swap-control to 1 when
+	 * gl_swapinterval was non-zero, leaving the cvar=0 case to inherit
+	 * whatever the system happened to default to. On mini-g4 post-reboot
+	 * that defaulted to ON, capping fps at 60 Hz (96 → 56 fps for demo1
+	 * 1024). Explicit 0 in the off case forces tearing instead of cap. */
+	SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL,
+			gl_swapinterval->value ? 1 : 0);
 
 	while (1)
 	{

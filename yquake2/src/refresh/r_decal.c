@@ -612,8 +612,29 @@ R_DrawDecals(void)
 {
 	int    i, frag_i, j;
 	float  now, alpha;
+	int    any_in_use;
 
 	if (!gl_decals || !gl_decals->value)
+	{
+		return;
+	}
+
+	/* Fast path — skip all GL state changes when no decals are live.
+	 * Without this, every empty frame still paid R_EnableMultitexture
+	 * + 6 qglEnable/Disable calls, each flushing the pipeline on the
+	 * Tiger ATI driver (R9200). Mini-g4 measured this overhead as
+	 * ~40 fps demo1 1024 regression (97.5 → 56.8). With the early
+	 * return when nothing's drawable, fps returns to baseline. */
+	any_in_use = 0;
+	for (i = 0; i < MAX_DECALS; i++)
+	{
+		if (r_decals[i].inUse)
+		{
+			any_in_use = 1;
+			break;
+		}
+	}
+	if (!any_in_use)
 	{
 		return;
 	}

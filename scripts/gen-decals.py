@@ -100,6 +100,45 @@ def blood_splat():
     return img.filter(ImageFilter.GaussianBlur(radius=0.5))
 
 
+def green_blood_splat():
+    """Identical structure to blood_splat but in green-yellow — Strogg
+    blood per Q2 lore. RGB (120, 180, 30) saturates well against beige
+    base textures."""
+    random.seed(0x9e10)  # different seed → different droplet pattern
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    px = img.load()
+
+    for y in range(SIZE):
+        for x in range(SIZE):
+            dx = x - HALF + 0.5
+            dy = y - HALF + 0.5
+            r = math.sqrt(dx * dx + dy * dy)
+            if r < 20:
+                a = int(230 * (1.0 - r / 22.0))
+                px[x, y] = (120, 180, 30, max(0, a))
+            else:
+                px[x, y] = (0, 0, 0, 0)
+
+    for _ in range(8):
+        ang = random.uniform(0, 2 * math.pi)
+        dist = random.uniform(18, 28)
+        cx = int(HALF + math.cos(ang) * dist)
+        cy = int(HALF + math.sin(ang) * dist)
+        rad = random.randint(2, 5)
+        for y in range(max(0, cy - rad - 1), min(SIZE, cy + rad + 1)):
+            for x in range(max(0, cx - rad - 1), min(SIZE, cx + rad + 1)):
+                dx = x - cx
+                dy = y - cy
+                r = math.sqrt(dx * dx + dy * dy)
+                if r < rad:
+                    a = int(200 * (1.0 - r / float(rad)))
+                    old = img.getpixel((x, y))
+                    new_a = min(255, old[3] + a)
+                    img.putpixel((x, y), (120, 180, 30, new_a))
+
+    return img.filter(ImageFilter.GaussianBlur(radius=0.5))
+
+
 def scorch_mark():
     """Radial black scorch — strong center, feathered edge with
     some randomness."""
@@ -138,5 +177,6 @@ def save_tga(img, name):
 print(f"Generating decals in {OUT}/")
 save_tga(bullet_hole(), "bullet")
 save_tga(blood_splat(), "blood")
+save_tga(green_blood_splat(), "greenblood")
 save_tga(scorch_mark(), "scorch")
 print("done.")

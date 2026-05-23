@@ -854,6 +854,14 @@ CL_ParseTEnt(void)
 		case TE_GRENADE_EXPLOSION:
 		case TE_GRENADE_EXPLOSION_WATER:
 			MSG_ReadPos(&net_message, pos);
+			/* Scorch on the floor — explosion events lack a normal in
+			 * the packet, so assume up. Wrong for wall explosions but
+			 * the explosion sprite covers it visually. */
+			if (re.R_AddDecal)
+			{
+				vec3_t up_normal = {0.0f, 0.0f, 1.0f};
+				re.R_AddDecal(pos, up_normal, 24.0f, DECAL_SCORCH);
+			}
 			ex = CL_AllocExplosion();
 			VectorCopy(pos, ex->ent.origin);
 			ex->type = ex_poly;
@@ -911,6 +919,15 @@ CL_ParseTEnt(void)
 		case TE_ROCKET_EXPLOSION:
 		case TE_ROCKET_EXPLOSION_WATER:
 			MSG_ReadPos(&net_message, pos);
+			/* Scorch on the floor — see TE_EXPLOSION2 above. Bigger
+			 * radius for rocket impacts. */
+			if (re.R_AddDecal)
+			{
+				vec3_t up_normal = {0.0f, 0.0f, 1.0f};
+				re.R_AddDecal(pos, up_normal,
+						(type == TE_EXPLOSION1_BIG) ? 36.0f : 28.0f,
+						DECAL_SCORCH);
+			}
 			ex = CL_AllocExplosion();
 			VectorCopy(pos, ex->ent.origin);
 			ex->type = ex_poly;
@@ -1028,6 +1045,10 @@ CL_ParseTEnt(void)
 			MSG_ReadPos(&net_message, pos);
 			MSG_ReadDir(&net_message, dir);
 			CL_ParticleEffect2(pos, dir, 0xdf, 30);
+			if (re.R_AddDecal)
+			{
+				re.R_AddDecal(pos, dir, 8.0f, DECAL_GREENBLOOD);
+			}
 			break;
 
 		case TE_TUNNEL_SPARKS:

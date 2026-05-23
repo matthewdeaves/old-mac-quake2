@@ -69,7 +69,7 @@ static cplane_t        cm_markPlanes[MAX_FRAGMENT_PLANES];
 
 /* Preloaded decal textures, one per DECAL_* type. Loaded by
  * R_LoadDecalTextures at R_BeginRegistration time. */
-static image_t *r_decal_textures[3];
+static image_t *r_decal_textures[4];
 
 cvar_t *gl_decals;
 cvar_t *gl_decal_max;
@@ -383,15 +383,16 @@ R_LoadDecalTextures(void)
 		{0, 0}
 	};
 
-	r_decal_textures[DECAL_BULLET] = R_FindImage("decals/bullet.tga", it_sprite);
-	r_decal_textures[DECAL_BLOOD]  = R_FindImage("decals/blood.tga",  it_sprite);
-	r_decal_textures[DECAL_SCORCH] = R_FindImage("decals/scorch.tga", it_sprite);
+	r_decal_textures[DECAL_BULLET]     = R_FindImage("decals/bullet.tga",     it_sprite);
+	r_decal_textures[DECAL_BLOOD]      = R_FindImage("decals/blood.tga",      it_sprite);
+	r_decal_textures[DECAL_SCORCH]     = R_FindImage("decals/scorch.tga",     it_sprite);
+	r_decal_textures[DECAL_GREENBLOOD] = R_FindImage("decals/greenblood.tga", it_sprite);
 
 	/* Clamp wrap so the alpha-zero edges of the texture stay alpha-zero
 	 * even if texcoords drift slightly outside [0,1] due to numerical
 	 * imprecision in the clipper. Default GL_REPEAT would wrap the
 	 * opaque dark center of the texture into the visible boundary. */
-	for (i = 0; i < 3; i++)
+	for (i = 0; i < 4; i++)
 	{
 		if (r_decal_textures[i])
 		{
@@ -401,10 +402,11 @@ R_LoadDecalTextures(void)
 		}
 	}
 
-	ri.Con_Printf(PRINT_ALL, "Decals: bullet=%s blood=%s scorch=%s\n",
-			r_decal_textures[DECAL_BULLET] ? "OK" : "MISSING",
-			r_decal_textures[DECAL_BLOOD]  ? "OK" : "MISSING",
-			r_decal_textures[DECAL_SCORCH] ? "OK" : "MISSING");
+	ri.Con_Printf(PRINT_ALL, "Decals: bullet=%s blood=%s scorch=%s greenblood=%s\n",
+			r_decal_textures[DECAL_BULLET]     ? "OK" : "MISSING",
+			r_decal_textures[DECAL_BLOOD]      ? "OK" : "MISSING",
+			r_decal_textures[DECAL_SCORCH]     ? "OK" : "MISSING",
+			r_decal_textures[DECAL_GREENBLOOD] ? "OK" : "MISSING");
 }
 
 void
@@ -469,7 +471,7 @@ R_AddDecal(const vec3_t origin, const vec3_t normal,
 		return;
 	}
 
-	if (!r_worldmodel || type < 0 || type > 2)
+	if (!r_worldmodel || type < 0 || type > 3)
 	{
 		return;
 	}

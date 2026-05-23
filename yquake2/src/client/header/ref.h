@@ -56,9 +56,10 @@
 /* Decal types passed to re.R_AddDecal. The renderer maps these to its
  * preloaded decal textures (decals/bullet.tga etc) — the client never
  * touches the texture itself. */
-#define	DECAL_BULLET	0
-#define	DECAL_BLOOD		1
-#define	DECAL_SCORCH	2
+#define	DECAL_BULLET		0
+#define	DECAL_BLOOD			1
+#define	DECAL_SCORCH		2
+#define	DECAL_GREENBLOOD	3
 
 typedef struct entity_s {
 	struct model_s		*model; /* opaque type outside refresh */

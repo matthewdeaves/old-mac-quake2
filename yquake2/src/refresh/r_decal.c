@@ -41,6 +41,15 @@ typedef struct {
 	int        numFragments;
 	int        fragOffsets[16]; /* per-fragment first-vert offsets */
 	int        fragLens[16];    /* per-fragment vert counts */
+	/* Texgen state, captured at spawn time so the draw pass can compute
+	 * accurate texcoords (not approximated from fragment centroid).
+	 * Without these, mismatched radii cause the alpha-faded edge of the
+	 * decal texture to never reach the fragment boundary — producing a
+	 * visible square outline on the wall. */
+	vec3_t     origin;          /* impact point in world space */
+	vec3_t     right;           /* basis: in-plane right vector */
+	vec3_t     up;              /* basis: in-plane up vector */
+	float      radius;          /* clip radius — texture maps [-r,+r] → [0,1] */
 } r_decal_t;
 
 static r_decal_t r_decals[MAX_DECALS];
@@ -367,9 +376,35 @@ R_ClearDecals(void)
 void
 R_LoadDecalTextures(void)
 {
+	int i;
+	static const int wrap_modes[3][2] = {
+		{GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE},
+		{GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE},
+		{0, 0}
+	};
+
 	r_decal_textures[DECAL_BULLET] = R_FindImage("decals/bullet.tga", it_sprite);
 	r_decal_textures[DECAL_BLOOD]  = R_FindImage("decals/blood.tga",  it_sprite);
 	r_decal_textures[DECAL_SCORCH] = R_FindImage("decals/scorch.tga", it_sprite);
+
+	/* Clamp wrap so the alpha-zero edges of the texture stay alpha-zero
+	 * even if texcoords drift slightly outside [0,1] due to numerical
+	 * imprecision in the clipper. Default GL_REPEAT would wrap the
+	 * opaque dark center of the texture into the visible boundary. */
+	for (i = 0; i < 3; i++)
+	{
+		if (r_decal_textures[i])
+		{
+			R_Bind(r_decal_textures[i]->texnum);
+			qglTexParameteri(GL_TEXTURE_2D, wrap_modes[0][0], wrap_modes[0][1]);
+			qglTexParameteri(GL_TEXTURE_2D, wrap_modes[1][0], wrap_modes[1][1]);
+		}
+	}
+
+	ri.Con_Printf(PRINT_ALL, "Decals: bullet=%s blood=%s scorch=%s\n",
+			r_decal_textures[DECAL_BULLET] ? "OK" : "MISSING",
+			r_decal_textures[DECAL_BLOOD]  ? "OK" : "MISSING",
+			r_decal_textures[DECAL_SCORCH] ? "OK" : "MISSING");
 }
 
 void
@@ -512,6 +547,13 @@ R_AddDecal(const vec3_t origin, const vec3_t normal,
 		decal_vert_head += verts_needed;
 	}
 
+	/* Stash the texgen basis + radius so R_DrawDecals can compute
+	 * accurate (s, t) — see r_decal_t comment. */
+	VectorCopy(origin, d->origin);
+	VectorCopy(axis[1], d->right);
+	VectorCopy(axis[2], d->up);
+	d->radius = radius;
+
 	now = (r_newrefdef.time != 0.0f) ? r_newrefdef.time : 0.0f;
 	d->inUse = true;
 	d->time = now;
@@ -552,7 +594,6 @@ R_DrawDecals(void)
 {
 	int    i, frag_i, j;
 	float  now, alpha;
-	vec3_t origin_dummy;
 
 	if (!gl_decals || !gl_decals->value)
 	{
@@ -597,63 +638,22 @@ R_DrawDecals(void)
 		qglColor4f(1.0f, 1.0f, 1.0f, alpha);
 		R_Bind(d->texture->texnum);
 
-		/* For texgen we need a stable origin + basis. The basis is
-		 * implicit in the fragment positions — we approximate by using
-		 * the centroid of the first fragment. Acceptable for the visual
-		 * fidelity we're targeting; a more accurate impl would store
-		 * the basis in r_decal_t. */
+		for (frag_i = 0; frag_i < d->numFragments; frag_i++)
 		{
-			int   first = d->firstPoint;
-			float cx = 0.0f, cy = 0.0f, cz = 0.0f;
-			int   k;
-			int   n = d->fragLens[0];
-			vec3_t normal_approx, right, up;
+			int  fn = d->fragLens[frag_i];
+			int  base = d->firstPoint + d->fragOffsets[frag_i];
+			float s, t;
 
-			for (k = 0; k < n; k++)
+			qglBegin(GL_TRIANGLE_FAN);
+			for (j = 0; j < fn; j++)
 			{
-				cx += r_decal_verts[first + k][0];
-				cy += r_decal_verts[first + k][1];
-				cz += r_decal_verts[first + k][2];
+				DecalTexCoord(r_decal_verts[base + j],
+						d->origin, d->right, d->up,
+						d->radius, &s, &t);
+				qglTexCoord2f(s, t);
+				qglVertex3fv(r_decal_verts[base + j]);
 			}
-			cx /= n; cy /= n; cz /= n;
-			origin_dummy[0] = cx;
-			origin_dummy[1] = cy;
-			origin_dummy[2] = cz;
-
-			/* Recover a normal from two edges of the first fragment. */
-			if (n >= 3)
-			{
-				vec3_t e1, e2;
-				VectorSubtract(r_decal_verts[first + 1],
-						r_decal_verts[first + 0], e1);
-				VectorSubtract(r_decal_verts[first + 2],
-						r_decal_verts[first + 0], e2);
-				CrossProduct(e1, e2, normal_approx);
-				VectorNormalize(normal_approx);
-			}
-			else
-			{
-				normal_approx[0] = 0; normal_approx[1] = 0; normal_approx[2] = 1;
-			}
-			MakeNormalVectors(normal_approx, right, up);
-
-			for (frag_i = 0; frag_i < d->numFragments; frag_i++)
-			{
-				int  fn = d->fragLens[frag_i];
-				int  base = first + d->fragOffsets[frag_i];
-				float s, t;
-
-				qglBegin(GL_TRIANGLE_FAN);
-				for (j = 0; j < fn; j++)
-				{
-					DecalTexCoord(r_decal_verts[base + j],
-							origin_dummy, right, up,
-							16.0f, &s, &t);
-					qglTexCoord2f(s, t);
-					qglVertex3fv(r_decal_verts[base + j]);
-				}
-				qglEnd();
-			}
+			qglEnd();
 		}
 	}
 

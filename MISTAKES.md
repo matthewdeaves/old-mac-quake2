@@ -16,6 +16,71 @@ quirks.
 
 ---
 
+## 2026-05-23 — `gl_stencilshadow 1` on Tiger ATI drivers regresses 60% fps
+
+**What we tried:** Enabled `gl_stencilshadow 1` in autoexec for sawtooth
+(GF2 MX), quicksilver (R9000), mini-g4 (R9200), and mini-intel (GMA 950).
+The hope was that the existing `R_DrawAliasShadow` stencil path
+(`GL_EQUAL, 1, 2` + `GL_INCR`) would compose overlapping monster
+shadows without double-darkening, given that 8-bit stencil is requested
+via `SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8)`.
+
+**What went wrong:** On mini-g4 (R9200, ATI Tiger driver) demo2 1024×768
+fps dropped from 103.6 → 40.6 — a **60% regression**. The R9200's
+per-fragment `GL_INCR` stencil op runs on a very slow driver code
+path; the bench scene with many monsters hits it every frame.
+
+**Fix:** Reverted `gl_stencilshadow` to 0 on all four PPC + Intel
+slow-stencil machines. Left blob shadows (`gl_shadows 1`) ON since
+those run at the existing fillrate cost. imac-2019 (Polaris) keeps
+`gl_stencilshadow 1` — plenty of headroom there.
+
+**Lesson:** 8-bit stencil being *requested* doesn't mean the per-frag
+op path is fast. Tiger-era ATI drivers fall off a cliff on stencil
+INC. The `have_stencil` flag in r_mesh.c only checks if stencil bits
+were granted, not if the path is performant — so it can't guard for
+this. Bench-validate per machine before enabling any stencil-test
+feature on 1999-2007 GPUs.
+
+---
+
+## 2026-05-23 — Multitexture state leaks into ad-hoc draw passes on GMA 950
+
+**What we tried:** Wrote `R_DrawDecals` in `r_decal.c` to render world
+decals after `R_DrawAlphaSurfaces`. The path bound the decal texture
+to TMU0, called `R_TexEnv(GL_MODULATE)`, and drew alpha-blended quads
+with `qglColor4f(1, 1, 1, alpha)`. Worked correctly on yosemite
+(R128, no multitex) and mini-g4 (R9200) — dark decal texture renders
+as dark bullet holes.
+
+**What went wrong:** On mini-intel (GMA 950, Lion driver), the same
+build rendered minigun decals as **light grey discs** instead of
+dark bullet holes. The shape was right (rotation, falloff, position
+all correct), only the colour was wrong. Reported by the user
+playing on the physical machine: "the bullet marks on walls appear
+as light grey from the mini gun — not quite right".
+
+**Root cause:** `R_DrawWorld` leaves multitexture ENABLED with TMU1
+holding the lightmap + an overbright combiner state (`GL_RGB_SCALE_EXT 4`
+when `gl_overbrightbits 4`). The R9200 / Rage 128 drivers apparently
+reset TMU1's combine state when TMU0 binds a new texture; the GMA 950
+Lion driver does NOT. So `R_TexEnv(GL_MODULATE)` set TMU0's env, but
+TMU1 kept applying the bright lightmap, modulating the dark decal
+texel up to grey.
+
+**Fix:** Explicit `R_EnableMultitexture(false)` at the start of
+`R_DrawDecals` to guarantee single-texture state. Cheap (one extra
+`qglDisable(GL_TEXTURE_2D)` on TMU1).
+
+**Lesson:** GL state cleanup is the caller's responsibility. Any
+ad-hoc draw pass that runs after `R_DrawWorld` MUST explicitly disable
+multitexture if it expects single-texture semantics — relying on
+TMU0's env to override TMU1 is driver-dependent. The "it works on
+PPC" sanity check is not sufficient for a state-machine bug; test on
+GMA 950 / Intel before declaring done.
+
+---
+
 ## 2026-05-23 — AltiVec R_BuildLightMap is net-negative on Q2 too
 
 What we tried: AltiVec port of R_BuildLightMap's `scale != 1.0F` paths

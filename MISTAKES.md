@@ -16,6 +16,64 @@ quirks.
 
 ---
 
+## 2026-05-23 — AltiVec R_BuildLightMap is net-negative on Q2 too
+
+What we tried: AltiVec port of R_BuildLightMap's `scale != 1.0F` paths
+(both nummaps==1 assign and nummaps>1 accumulate variants). Output
+stride is 3 floats — incompatible with `vec_st`'s 16-byte aligned
+contract, so each loop body builds 16-byte aligned stack temps for
+input + accumulator, vec_madd, vec_st to a temp, scalar extract of
+lanes 0-2 to bl[]. The sister project (`~/quakespasm/Quake/r_brush.c`)
+measured this class of work as net-neutral on QuakeSpasm; the hope
+was Q2's larger lightmap surfaces would tip it positive.
+
+What went wrong:
+  - mini-g4 1024 demo1: 101.25 → 98.95 fps (−2.3%) with the AltiVec
+    code on the gl_dynamic 1 path that actually exercises it.
+  - sawtooth at gl_dynamic 0 (autoexec default): no exercise of the
+    code, no signal.
+  - sawtooth at gl_dynamic 1 (autoexec-edited unlock attempt):
+    14.70 fps demo1 1024. Slightly WORSE than the 15.25 fps documented
+    in the 2026-05-19 "Lightmap subrect doesn't unlock dlights on
+    sawtooth either" entry. So the dlight path is still untouchable
+    on GF2 MX + AGP1999 + 500 MHz 7400.
+
+Root cause is the per-iteration setup overhead. AltiVec needs aligned
+input vectors, and bl's 3-float stride means destination is non-
+aligned every iteration. The scalar-extract-after-vec_st pattern
+trades one parallel `vec_madd` (cheap) for one extra `vec_ld` (per
+input), one extra `vec_st` to a stack temp (per output), and three
+scalar loads from that temp. Net per-luxel cost exceeds the scalar
+3 fmul + 3 fmadd.
+
+Fix: revert all AltiVec code in R_BuildLightMap, drop the
+`__attribute__((aligned(16)))` on s_blocklights (no longer needed),
+restore sawtooth's autoexec to `gl_dynamic 0 + gl_flashblend 1`.
+
+What we learned:
+  1. **AltiVec on AOS-3 layouts is structurally limited.** The
+     working AltiVec R_LerpVerts wins (or breaks even) because output
+     is vec4_t stride. Anywhere the output stride is 3 (lightmaps,
+     vec3_t arrays), the AltiVec setup cost dominates because the
+     final store is necessarily scalar-extracts.
+  2. **The sister project's "neutral on QS, slight regression on
+     attempt" pattern transfers cleanly to Q2.** Don't re-attempt this
+     specific function shape. To make AltiVec lightmaps win, the
+     STORAGE LAYOUT would need to change (s_blocklights → vec4_t
+     stride with one wasted lane), which cascades into the downstream
+     store loop at r_light.c:611-682 and would need to be carried
+     all the way through `qglTexImage2D`'s GL_RGBA expectations.
+  3. **Sawtooth dlight unlock requires a fundamentally different
+     approach** — not SIMD on the existing code. Options for a
+     future round: (a) per-light subrect upload only (smaller GPU
+     transfer per dlight), (b) batch multiple lights into a single
+     R_BuildLightMap pass, (c) accept gl_flashblend 1 as permanent.
+
+Bench: 14.70 fps demo1 1024 vs 15.25 fps prior. The minus delta
+within run-to-run noise but the signal is "no win" not "small win".
+
+---
+
 ## 2026-05-23 — AltiVec R_LerpVerts produces warped alias-model geometry
 
 What we tried: AltiVec port of `R_LerpVerts` (commit 55bfeb8). Each

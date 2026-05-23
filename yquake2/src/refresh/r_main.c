@@ -107,6 +107,8 @@ cvar_t *gl_lightmap_subrect;   /* yquake2-ppc Phase B #1 — subrect dynamic lig
 cvar_t *gl_groupdraw;          /* yquake2-ppc Phase B #3 — buffer-batched draw vs immediate */
 cvar_t *gl_minlight;           /* yquake2-ppc Tier 2 — clamp dark luxels to this floor (0-255, default 0) */
 cvar_t *gl_skydistance;        /* yquake2-ppc Tier 2 — sky box half-extent (was hardcoded 2300/4096) */
+cvar_t *gl_particle_square;    /* yquake2-ppc Tier 2 — force GL_POINTS particle path even without pointparameters ext */
+cvar_t *r_2D_unfiltered;       /* yquake2-ppc Tier 2 — HUD/menu pics rendered with GL_NEAREST regardless of gl_texturemode */
 
 cvar_t *gl_nosubimage;
 cvar_t *gl_allow_software;
@@ -508,7 +510,14 @@ R_DrawParticles(void)
 	/* Group-draw drain: both inner branches emit immediate-mode. */
 	R_ApplyGLBuffer();
 
-	if (gl_ext_pointparameters->value && qglPointParameterfEXT)
+	/* Tier 2 — gl_particle_square forces the GL_POINTS path even when
+	 * the pointparameters extension is absent. R128 (yosemite) has no
+	 * pointparameters so the fallback path is the textured-triangle
+	 * R_DrawParticles2 — 3 verts per particle. The GL_POINTS path is
+	 * 1 vert per particle and produces solid-coloured squares (no
+	 * smoothing, which is fine for retro-look). */
+	if ((gl_ext_pointparameters->value && qglPointParameterfEXT) ||
+		gl_particle_square->value)
 	{
 		int i;
 		unsigned char color[4];
@@ -1076,6 +1085,23 @@ R_Register(void)
 	 * visual identical to vanilla; larger values fix sky-clipping on
 	 * big open maps but cost no fps (sky is one drawcall regardless). */
 	gl_skydistance = ri.Cvar_Get("gl_skydistance", "2300", CVAR_ARCHIVE);
+
+	/* Tier 2 — force the GL_POINTS particle path even when the
+	 * pointparameters extension isn't available. Yosemite's R128
+	 * driver doesn't expose pointparameters, so without this cvar the
+	 * engine falls back to R_DrawParticles2's 3-vertex textured
+	 * triangle per particle (slow). Setting gl_particle_square 1 takes
+	 * the GL_POINTS path unconditionally — one vertex per particle,
+	 * drawn as solid-coloured aliased squares (no point smoothing).
+	 * Best paired with autoexec on yosemite. */
+	gl_particle_square = ri.Cvar_Get("gl_particle_square", "0", CVAR_ARCHIVE);
+
+	/* Tier 2 — keep HUD / menu pics on GL_NEAREST regardless of the
+	 * world texture-mode. With gl_texturemode GL_LINEAR_MIPMAP_LINEAR
+	 * (yosemite/sawtooth ULTIMATE), pic textures otherwise pick up the
+	 * GL_LINEAR magnify filter and HUD numbers go fuzzy. Applied at
+	 * upload time in r_image.c — runtime toggle requires vid_restart. */
+	r_2D_unfiltered = ri.Cvar_Get("r_2D_unfiltered", "0", CVAR_ARCHIVE);
 
 	gl_nosubimage = ri.Cvar_Get("gl_nosubimage", "0", 0);
 	gl_allow_software = ri.Cvar_Get("gl_allow_software", "0", 0);

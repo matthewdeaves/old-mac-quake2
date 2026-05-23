@@ -1010,6 +1010,16 @@ R_LoadPic(char *name, byte *pic, int width, int realwidth,
 						(image->type != it_pic && image->type != it_sky));
 		}
 
+		/* Tier 2 — r_2D_unfiltered overrides the LINEAR filter for it_pic
+		 * textures to GL_NEAREST. HUD glyphs and menu icons stay crisp
+		 * under a trilinear gl_texturemode (yosemite/sawtooth ULTIMATE).
+		 * Applied at upload time; runtime toggle requires vid_restart. */
+		if (image->type == it_pic && r_2D_unfiltered && r_2D_unfiltered->value)
+		{
+			qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		}
+
 		image->upload_width = upload_width; /* after power of 2 and scales */
 		image->upload_height = upload_height;
 		image->paletted = uploaded_paletted;

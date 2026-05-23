@@ -16,6 +16,68 @@ quirks.
 
 ---
 
+## 2026-05-23 — AltiVec R_LerpVerts produces warped alias-model geometry
+
+What we tried: AltiVec port of `R_LerpVerts` (commit 55bfeb8). Each
+vertex's `lerp = move + ov->v * backv + v->v * frontv` reduced to two
+`vec_madd`s plus one `vec_st`, gated by `#ifdef __ALTIVEC__` so only
+the G4 slice picked it up. Output array `s_lerped` is `static vec4_t
+s_lerped[MAX_VERTS]` — naturally 16-byte aligned, so the 16-byte
+`vec_st` should match.
+
+What went wrong: monster alias models (md2 frame-lerped enemies +
+weapon viewmodel) rendered with skewed/warped triangles on mini-g4
+(G4 / Radeon 9200 / Tiger). World BSP geometry was unaffected
+(R_LerpVerts only runs for alias models). User caught it visually —
+the bench script's timedemo wall-clock advanced fine and even
+reported +4.3% fps because the broken vertex math was strictly
+cheaper than the correct math, so timedemo finished slightly faster.
+
+The smoking-gun observation: a second mini-g4 bench at 1024×768 of
+the SAME AltiVec binary that read 103.30 fps the first time read
+17.50 fps on the retry. That's not noise — it's likely the GL driver
+state from the warped-geometry render being corrupted into a slow
+software-fallback path on the second pass.
+
+Suspected root cause: `(vector float){a, b, c, d}` constant-init
+syntax with `(float)byte` per-lane conversions. gcc-4.0 (the PPC
+cross-compiler) does compile this syntax, but the lane-insertion
+codegen for "expand 3 byte loads + 3 sint→float + 3 vector-inserts +
+1 literal 0" can go wrong if the compiler uses a stack temp that
+isn't 16-byte aligned, or generates a `vec_ld` with a wrong shift
+permute.
+
+Fix: reverted to the scalar implementation. The bench number gain
+was real but conditional on broken vertex output, so it doesn't
+count.
+
+What we learned:
+1. **Bench correctness is not visual correctness.** A timedemo can
+   advance frames quickly while rendering garbage. Always corroborate
+   a +N% AltiVec win with a screenshot diff against the scalar
+   reference, especially when the change is in a per-vertex or
+   per-luxel pipeline. The QuakeSpasm sister project's `r_brush.c`
+   added an `-altivec-lm` opt-in default-off precisely because the
+   initial smoke regressed; that's the inverse failure mode (visible
+   regression, no correctness break) but it points to the same
+   discipline.
+2. **`(vector float){a, b, c, d}` with non-constant lane values is
+   risky on gcc-4.0 PPC.** Prefer the safer pattern: write to a
+   `float v[4] __attribute__((aligned(16)))` stack buffer, then
+   `vec_ld(0, v)`. Slightly more code, much more predictable codegen.
+3. Re-attempting AltiVec on R_LerpVerts requires the aligned-stack-
+   load pattern + a visual A/B (screenshot of a monster from a fixed
+   camera angle on yosemite scalar build vs mini-g4 AltiVec build).
+4. The bench-only signal that something was wrong was the 103.30 →
+   17.50 fps drop on the second run — keep an eye on bench-to-bench
+   stability of the AltiVec slice; rapidly-degrading fps over runs
+   suggests the GPU driver is being put in a degraded mode by bad
+   geometry.
+
+Bench delta on revert: see commit immediately after this entry.
+
+---
+
 ## 2026-05-21 — `R_ApplyGLBuffer` toggling multitex destroys the GL_COMBINE_EXT setup
 
 What we tried: the initial port of yquake2-latest's `gl1_buffer.c` into

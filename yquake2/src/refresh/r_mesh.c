@@ -26,14 +26,6 @@
 
 #include "header/local.h"
 
-/* yquake2-ppc Tier 1.3 — AltiVec R_LerpVerts. Same conditional pattern
- * as the sister QuakeSpasm project's r_brush.c so G3 (no -maltivec)
- * compiles cleanly. The G4 slice gets -maltivec via scripts/build.sh
- * and __ALTIVEC__ becomes defined. */
-#ifdef __ALTIVEC__
-#include <altivec.h>
-#endif
-
 #define NUMVERTEXNORMALS 162
 #define SHADEDOT_QUANT 16
 
@@ -60,62 +52,18 @@ R_LerpVerts(int nverts, dtrivertx_t *v, dtrivertx_t *ov,
 		float frontv[3], float backv[3])
 {
 	int i;
-	qboolean shell = (currententity->flags &
+
+	/* Tier 1.3 AltiVec attempt REVERTED — the vec_madd port warped
+	 * monster alias models on mini-g4 (visual confirmed by user).
+	 * The bench number rose +4.3% because timedemo's wall-clock
+	 * advance was unaffected by the wrong vertex math; only the
+	 * rendered output was corrupt. See MISTAKES.md entry dated
+	 * 2026-05-23. The scalar form below is the canonical reference. */
+
+	if (currententity->flags &
 		(RF_SHELL_RED | RF_SHELL_GREEN |
 		 RF_SHELL_BLUE | RF_SHELL_DOUBLE |
-		 RF_SHELL_HALF_DAM)) != 0;
-
-#ifdef __ALTIVEC__
-	/* Tier 1.3 — AltiVec lerp. s_lerped (the storage `lerp` points
-	 * into) is `static vec4_t s_lerped[MAX_VERTS]` — 16-byte stride,
-	 * naturally aligned, which is the friendly case for `vec_st`. The
-	 * inputs ov->v[] and v->v[] are 3-byte arrays from dtrivertx_t
-	 * (which is 4 bytes total: byte v[3] + byte lightnormalindex).
-	 * We can't avoid the scalar byte loads but we can fuse the math
-	 * into two `vec_madd`s instead of nine scalar mul/add pairs. */
-	{
-		/* Pack the three constant 3-vectors into 4-lane vectors with
-		 * the 4th lane held at 0 so the final stored lerp[3] is 0
-		 * (matches the scalar lerp[3] = 0 invariant added in Tier 0). */
-		vector float vmove   = (vector float){move[0],   move[1],   move[2],   0.0f};
-		vector float vbackv  = (vector float){backv[0],  backv[1],  backv[2],  0.0f};
-		vector float vfrontv = (vector float){frontv[0], frontv[1], frontv[2], 0.0f};
-
-		if (shell)
-		{
-			for (i = 0; i < nverts; i++, v++, ov++, lerp += 4)
-			{
-				float *normal = r_avertexnormals[verts[i].lightnormalindex];
-				vector float vov = (vector float){(float)ov->v[0], (float)ov->v[1], (float)ov->v[2], 0.0f};
-				vector float vv  = (vector float){(float)v->v[0],  (float)v->v[1],  (float)v->v[2],  0.0f};
-				vector float vnorm = (vector float){
-					normal[0] * POWERSUIT_SCALE,
-					normal[1] * POWERSUIT_SCALE,
-					normal[2] * POWERSUIT_SCALE,
-					0.0f };
-				/* r = (vov * vbackv) + vmove
-				 * r = (vv * vfrontv) + r
-				 * r = r + vnorm  */
-				vector float r = vec_madd(vov, vbackv, vmove);
-				r = vec_madd(vv, vfrontv, r);
-				r = vec_add(r, vnorm);
-				vec_st(r, 0, lerp);
-			}
-		}
-		else
-		{
-			for (i = 0; i < nverts; i++, v++, ov++, lerp += 4)
-			{
-				vector float vov = (vector float){(float)ov->v[0], (float)ov->v[1], (float)ov->v[2], 0.0f};
-				vector float vv  = (vector float){(float)v->v[0],  (float)v->v[1],  (float)v->v[2],  0.0f};
-				vector float r = vec_madd(vov, vbackv, vmove);
-				r = vec_madd(vv, vfrontv, r);
-				vec_st(r, 0, lerp);
-			}
-		}
-	}
-#else
-	if (shell)
+		 RF_SHELL_HALF_DAM))
 	{
 		for (i = 0; i < nverts; i++, v++, ov++, lerp += 4)
 		{
@@ -140,7 +88,6 @@ R_LerpVerts(int nverts, dtrivertx_t *v, dtrivertx_t *ov,
 			lerp[3] = 0;
 		}
 	}
-#endif /* __ALTIVEC__ */
 }
 
 /*

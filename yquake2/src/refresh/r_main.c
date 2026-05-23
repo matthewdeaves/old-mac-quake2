@@ -109,6 +109,7 @@ cvar_t *gl_minlight;           /* yquake2-ppc Tier 2 — clamp dark luxels to th
 cvar_t *gl_skydistance;        /* yquake2-ppc Tier 2 — sky box half-extent (was hardcoded 2300/4096) */
 cvar_t *gl_particle_square;    /* yquake2-ppc Tier 2 — force GL_POINTS particle path even without pointparameters ext */
 cvar_t *r_2D_unfiltered;       /* yquake2-ppc Tier 2 — HUD/menu pics rendered with GL_NEAREST regardless of gl_texturemode */
+cvar_t *gl_msaa_samples;       /* yquake2-ppc — MSAA sample count (0=off, 2/4/8/16); CVAR_LATCH so vid_restart picks it up */
 
 cvar_t *gl_nosubimage;
 cvar_t *gl_allow_software;
@@ -1043,6 +1044,7 @@ R_Register(void)
 
 	R_RegisterFogCvars();   /* yquake2-ppc Phase C — gl_fog + range/color/mode cvars */
 	R_RegisterDecalCvars(); /* yquake2-ppc — world decals from KMQuake2 (r_decal.c) */
+	gl_msaa_samples = ri.Cvar_Get("gl_msaa_samples", "0", CVAR_ARCHIVE | CVAR_LATCH);
 	gl_waterwarp = ri.Cvar_Get("gl_waterwarp", "0", CVAR_ARCHIVE);   /* Phase C #2 — underwater frustum warp */
 	gl_lightmap_subrect = ri.Cvar_Get("gl_lightmap_subrect", "1", CVAR_ARCHIVE);   /* Phase B #1 — subrect dynamic lightmap upload */
 
@@ -1483,6 +1485,15 @@ R_Init(void *hinstance, void *hWnd)
 	}
 
 	R_SetDefaultState();
+
+	/* MSAA — SDL_GL_MULTISAMPLE attributes already requested in the
+	 * SDL backend's GLimp setup. If the driver granted multisample
+	 * (or even if it didn't — qglEnable is a no-op without the
+	 * MULTISAMPLE buffer), enabling here turns it on at the GL level. */
+	if (gl_msaa_samples && gl_msaa_samples->value > 0)
+	{
+		qglEnable(GL_MULTISAMPLE);
+	}
 
 	R_InitImages();
 	Mod_Init();

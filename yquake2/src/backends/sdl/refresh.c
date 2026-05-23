@@ -218,6 +218,22 @@ GLimp_InitGraphics(qboolean fullscreen)
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
+	/* MSAA via SDL 1.2 — request multisample if the cvar is set.
+	 * 0 = off; 2/4/8/16 = N-sample MSAA. The SDL_SetVideoMode call
+	 * below will succeed even if the driver can't honour the request
+	 * (silently drops to the next-lower available count), but a
+	 * machine without GL_ARB_multisample will get plain antialiasing-
+	 * off output. Per-machine defaults via autoexec cvar. */
+	{
+		extern cvar_t *gl_msaa_samples;
+		if (gl_msaa_samples && (int)gl_msaa_samples->value > 0)
+		{
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES,
+					(int)gl_msaa_samples->value);
+		}
+	}
+
 	/* Initiate the flags */
 	flags = SDL_OPENGL;
 

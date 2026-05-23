@@ -58,6 +58,14 @@
  #define GL_TEXTURE1 0x84C1
 #endif
 
+/* MSAA enum — defined since GL 1.3 / GL_ARB_multisample (1999). The
+ * Panther 10.3.9 OpenGL.framework predates it on the symbol level even
+ * though the runtime supports the call. Define manually to keep the
+ * build clean on the oldest SDK. */
+#ifndef GL_MULTISAMPLE
+ #define GL_MULTISAMPLE 0x809D
+#endif
+
 #define TEXNUM_LIGHTMAPS 1024
 #define TEXNUM_SCRAPS 1152
 #define TEXNUM_IMAGES 1153
@@ -265,6 +273,9 @@ extern cvar_t *gl_lightmap_subrect;
 
 /* yquake2-ppc Phase C #2 — gl_waterwarp underwater frustum warp */
 extern cvar_t *gl_waterwarp;
+
+/* yquake2-ppc — MSAA sample count (CVAR_LATCH: requires vid_restart) */
+extern cvar_t *gl_msaa_samples;
 
 /* yquake2-ppc Phase B #3 — gl_groupdraw group-draw batching toggle */
 extern cvar_t *gl_groupdraw;

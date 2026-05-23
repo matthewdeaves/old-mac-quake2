@@ -29,11 +29,13 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 | Machine | 640×480 | 1024×768 | Floor | Visual stack |
 |---|---:|---:|---:|---|
 | **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA |
-| **mini-g4** | 120.90 | 97.50 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, **decals 32, 2× MSAA** |
-| **mini-intel** \* | 59.40 | 101.20 | 60 | same as mini-g4 (AF 8x) + 2× MSAA |
+| **mini-g4** \** | 100.20 | 56.70 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, **decals 32, 2× MSAA** |
+| **mini-intel** | 222.90 | 98.00 | 60 | same as mini-g4 (AF 8x) + 2× MSAA — **vsync fix uncapped 640 from 60→223 fps** |
 | **quicksilver** | 72.40 | 72.35 | 60 | same as mini-g4 (incl 2× MSAA) |
-| **sawtooth** | 72.65 | 65.60 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, **decals 16** |
-| **yosemite** | 44.40 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, **decals 8** |
+| **sawtooth** | 72.95 | 65.75 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, **decals 16** |
+| **yosemite** | 46.00 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, **decals 8** |
+
+\** mini-g4 1024 fps shows thermal/state degradation after many hours of continuous benching — early-session numbers on a cold machine were 120.90 / 97.50; after a cool-down the cell typically recovers. The 56.70 figure is recorded as the worst observed, not the steady-state. See MISTAKES.md.
 
 \* Lion's Quartz vsync caps 640×480 at 60 fps; 1024×768 escapes the cap.
 

@@ -241,6 +241,11 @@ worse than -5% on any machine block the commit.
 | Group-draw vertex-array dispatch (Phase B #3) | `gl_groupdraw` | autoexec | mini-g4 + quicksilver + mini-intel + imac-2019 + sawtooth = 1 (default ON for G4 + x86); yosemite = 0 (no visible benefit, small cost). Compile-time default is per-slice via `__ALTIVEC__` probe. | `594eeba` + `78c26f2` fix |
 | HD texture pack search path inside Quake2.app bundle | (no cvar — CFBundle hook in `Q2_GetBundleHDPakPath`) | always-on if `Contents/Resources/hd-pak/baseq2/` exists | all Mac builds. Lets the .app ship a self-contained HD pack alongside the per-machine cfgs. | `b9588bc` |
 | Yosemite ULTIMATE — full-detail textures + trilinear + alias shadows + GL_FOG | `gl_picmip 0` `gl_round_down 0` `gl_texturemode GL_LINEAR_MIPMAP_LINEAR` `gl_shadows 1` `gl_fog 1` | autoexec-yosemite | yosemite only. Cost: 31.50 → 25.10 fps demo1 1024, 65.30 → 45.15 fps demo1 640 (5.8 fps + 20.1 fps spent on visuals; both well above 20 fps floor). Unlocked by the texenv fix. | `e8ae174` |
+| Tier 0 — static analysis + 7 warning fixes (`colortable[768]→[256]`, `temp[128*128]→[34*34]`, `lerp[3]=0` init, malloc-NULL guards, sign-cast, `Wpointer-arith` floor) | — | always-on | all builds | `9440302` |
+| Tier 2 — `gl_minlight` (lightmap LUT clamp) + `gl_skydistance` (sky box size) | `gl_minlight` `gl_skydistance` | autoexec | yosemite=16, sawtooth=8, others=0 (default); skydistance=2300 (default = vanilla) | `2c1fd88` |
+| Tier 1.2 — R_AddDynamicLights row-cull (skip rows where `td ≥ fminlight`) | — | always-on | all dlight-running machines (mini-g4/qs/mi/imac); silently no-op when gl_dynamic 0 | `da905a2` |
+| Tier 2 — `gl_particle_square` (force GL_POINTS path) + `r_2D_unfiltered` (HUD pics on GL_NEAREST) | `gl_particle_square` `r_2D_unfiltered` | autoexec | particle_square=1 on yosemite (R128 has no pointparameters); r_2D_unfiltered=1 on all 6 (all use trilinear) | `0b4b184` + `2cdcc3b` |
+| Tier 1.3 — AltiVec R_LerpVerts (alias model frame lerp) + `s_lerped` 16-byte aligned | — | always-on (gated by `__ALTIVEC__` to G4 slice only) | mini-g4/quicksilver/sawtooth via G4 slice; G3 + x86 fall through to identical scalar code. Net fps-neutral (GPU-bound at typical alias vert counts) but establishes the working AltiVec template for future ports. | `712a244` |
 
 (More rows landed as each round ships.)
 

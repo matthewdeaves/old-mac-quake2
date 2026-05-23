@@ -50,6 +50,8 @@ typedef struct {
 	vec3_t     right;           /* basis: in-plane right vector */
 	vec3_t     up;              /* basis: in-plane up vector */
 	float      radius;          /* clip radius — texture maps [-r,+r] → [0,1] */
+	float      rotCos;          /* per-decal in-plane rotation cos/sin */
+	float      rotSin;          /* (random per spawn — breaks pattern repetition on walls) */
 } r_decal_t;
 
 static r_decal_t r_decals[MAX_DECALS];
@@ -556,6 +558,16 @@ R_AddDecal(const vec3_t origin, const vec3_t normal,
 	VectorCopy(axis[2], d->up);
 	d->radius = radius;
 
+	/* Per-decal random rotation breaks pattern repetition on walls.
+	 * Sampling rand() once at spawn and stashing cos/sin avoids per-
+	 * pixel transcendentals at draw time. Cheap and stays deterministic
+	 * within a single decal's lifetime. */
+	{
+		float ang = (rand() & 0xfff) * (2.0f * (float)M_PI / 4096.0f);
+		d->rotCos = cosf(ang);
+		d->rotSin = sinf(ang);
+	}
+
 	now = (r_newrefdef.time != 0.0f) ? r_newrefdef.time : 0.0f;
 	d->inUse = true;
 	d->time = now;
@@ -582,13 +594,17 @@ R_AddDecal(const vec3_t origin, const vec3_t normal,
 static void
 DecalTexCoord(const vec3_t v, const vec3_t origin,
 		const vec3_t right, const vec3_t up, float radius,
-		float *s, float *t)
+		float rotCos, float rotSin, float *s, float *t)
 {
 	vec3_t diff;
 	float  inv = 0.5f / radius;
+	float  pr, pu;
 	VectorSubtract(v, origin, diff);
-	*s = 0.5f + DotProduct(diff, right) * inv;
-	*t = 0.5f + DotProduct(diff, up)    * inv;
+	pr = DotProduct(diff, right) * inv;
+	pu = DotProduct(diff, up)    * inv;
+	/* Rotate in plane around the centroid (0.5, 0.5 in texcoord space). */
+	*s = 0.5f + pr * rotCos - pu * rotSin;
+	*t = 0.5f + pr * rotSin + pu * rotCos;
 }
 
 void
@@ -651,7 +667,7 @@ R_DrawDecals(void)
 			{
 				DecalTexCoord(r_decal_verts[base + j],
 						d->origin, d->right, d->up,
-						d->radius, &s, &t);
+						d->radius, d->rotCos, d->rotSin, &s, &t);
 				qglTexCoord2f(s, t);
 				qglVertex3fv(r_decal_verts[base + j]);
 			}

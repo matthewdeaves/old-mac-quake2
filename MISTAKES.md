@@ -44,6 +44,45 @@ feature on 1999-2007 GPUs.
 
 ---
 
+## 2026-05-23 — Bench machine state can shift between runs (thermal, vsync)
+
+**What we observed:** mini-g4 produced 97.50 fps demo1 1024×768 early in
+the session, then 56.8 fps later in the same session — same binary,
+same code, same autoexec. A clean reboot of the machine did not
+restore the original fps. Diagnostic checks confirmed:
+- top showed 0% idle CPU
+- display mode was still 1024×768 @ 60 Hz
+- GL_RENDERER reported the R9200 normally
+- demo1 ran 689 frames in 12.1 seconds (was 7.1 s)
+
+The 56.8 fps figure is suspiciously close to `60 × 16/17 = 56.5`,
+suggesting Quartz vsync had taken effect (engine missing one of every
+17 swaps) — but explicit `SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 0)`
+didn't recover it. Windowed mode was actually slower (44 fps), so it
+wasn't purely a fullscreen vsync issue either.
+
+Most likely cause: thermal throttling on the 1.25 GHz 7447A. Tiger
+does not manage CPU temperature actively; sustained benchmarking can
+push the part into thermal limit. The 7447A's clock-throttle ramps it
+down to ~800 MHz when hot, which roughly matches the 60% fps fall.
+A 30+ minute cool-down (or running the machine off and unplugged)
+typically resolves it.
+
+**Fix:** Wait for the machine to cool. Don't bench-validate code
+changes against numbers from a hot machine. For overnight automated
+runs, leave a cool-down gap between batches.
+
+**Defensive code change shipped:** explicit `SDL_GL_SWAP_CONTROL` to
+0 when `gl_swapinterval` is 0 (was previously only set when 1) — this
+prevents the OS default kicking in unpredictably across reboots.
+
+**Lesson:** Benchmark numbers from this fleet need a "thermal-OK" tag.
+A regression vs an earlier number isn't always a code regression — if
+the same binary produces both numbers on the same machine, it's
+state. Re-validate after a cold-boot rather than chasing it in code.
+
+---
+
 ## 2026-05-23 — Multitexture state leaks into ad-hoc draw passes on GMA 950
 
 **What we tried:** Wrote `R_DrawDecals` in `r_decal.c` to render world

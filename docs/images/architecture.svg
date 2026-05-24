@@ -162,7 +162,7 @@
   <!-- ZONE 3 :: Bench rack — six machines                            -->
   <!-- ============================================================ -->
   <g transform="translate(60, 678)">
-    <text x="0" y="0" font-size="13" fill="#666">Each runs <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#333">+timedemo demotimedemo demo&lt;n&gt;lt;ntimedemo demo&lt;n&gt;gt;.dm2</tspan>; qconsole.log returns to Ubuntu, parsed into a CSV row tagged with the commit hash</text>
+    <text x="0" y="0" font-size="13" fill="#666">Each runs <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#333">+timedemo demo&lt;n&gt;.dm2</tspan>; qconsole.log returns to Ubuntu, parsed into a CSV row tagged with the commit hash</text>
 
     <!-- 6 machine cards -->
     <!-- card width 200, gap 10, total 6*200 + 5*10 = 1250 -->

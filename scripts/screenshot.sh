@@ -22,8 +22,11 @@
 #   4. scp the 10 TGAs back, convert to PNG, drop into docs/screenshots/.
 #
 # usage: scripts/screenshot.sh <target>
-# output: docs/screenshots/<target>-NN.png  (NN = 00..09)
-#         docs/screenshots/<target>.png      → hero (symlink to -02)
+#        DEMO=demo2.dm2 scripts/screenshot.sh <target>   # pick which demo
+# output: docs/screenshots/<target>[-<demo>]-NN.png  (NN = 00..09)
+#         docs/screenshots/<target>.png      → hero (copy of demo1-04)
+#         When DEMO != demo1.dm2 the demo basename is suffixed:
+#           docs/screenshots/<target>-demo2-NN.png
 #
 # Engine prerequisites (cl_main.c + cl_parse.c patches from this commit):
 #   - CL_Frame's PrepRefresh fallback also calls CM_LoadMap + RegisterSounds
@@ -41,6 +44,17 @@ set -euo pipefail
 
 TARGET="${1:?usage: $0 <target>}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DEMO="${DEMO:-demo1.dm2}"
+DEMO_BASE="${DEMO%.dm2}"
+
+# Output tag: legacy <target>-NN.png for demo1, <target>-<demo>-NN.png otherwise.
+# Keeps existing docs/screenshots/yosemite-04.png style file paths intact for
+# the index.html + README references.
+if [ "$DEMO_BASE" = "demo1" ]; then
+  OUT_TAG="$TARGET"
+else
+  OUT_TAG="${TARGET}-${DEMO_BASE}"
+fi
 
 case "$TARGET" in
   yosemite|sawtooth|quicksilver|mini-g4|mini-intel|imac-2019) HOST="$TARGET" ;;
@@ -110,7 +124,7 @@ ssh "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
     +set logfile 2 \\
     +set timedemo 1 \\
     ${EXTRA:-} \\
-    +demomap demo1.dm2 +exec autoshot.cfg > /dev/null 2>&1 &
+    +demomap $DEMO +exec autoshot.cfg > /dev/null 2>&1 &
   PID=\$!
   # Wait for engine to produce the last shot, exit, or time out.
   # G3 at ~15 fps × 600 frames = ~40 sec; 180 sec is a safe ceiling.
@@ -146,28 +160,30 @@ else
 fi
 
 echo "[screenshot] convert TGAs → PNGs ($CONV)"
-# Wipe any prior per-shot files for this target so a shorter run doesn't
-# leave stale shots from a previous longer run lying around.
-rm -f "$REPO_ROOT/docs/screenshots/${TARGET}-"*.png
+# Wipe any prior per-shot files for this OUT_TAG so a shorter run doesn't
+# leave stale shots from a previous longer run lying around. Note we wipe
+# OUT_TAG specifically — for demo2 runs that won't clobber demo1 shots.
+rm -f "$REPO_ROOT/docs/screenshots/${OUT_TAG}-"*.png
 i=0
 for tga in $TGAS; do
-  OUT="$REPO_ROOT/docs/screenshots/${TARGET}-$(printf "%02d" $i).png"
+  OUT="$REPO_ROOT/docs/screenshots/${OUT_TAG}-$(printf "%02d" $i).png"
   $CONV "$tga" "$OUT"
   echo "  $OUT"
   i=$((i+1))
 done
 
 # Pick a "hero" shot — shot 04 is mid-demo where the action is densest in
-# demo1.dm2's recorded path through base2 (Installation). We don't try to
-# be clever about "best frame" detection — the user can pick visually
-# from the per-shot files committed alongside.
-HERO="$REPO_ROOT/docs/screenshots/${TARGET}-04.png"
-if [ -f "$HERO" ]; then
-  cp "$HERO" "$REPO_ROOT/docs/screenshots/${TARGET}.png"
+# demo1.dm2's recorded path through base2 (Installation). Only do this for
+# the canonical demo1 run, so multi-demo runs don't keep overwriting it.
+if [ "$DEMO_BASE" = "demo1" ]; then
+  HERO="$REPO_ROOT/docs/screenshots/${TARGET}-04.png"
+  if [ -f "$HERO" ]; then
+    cp "$HERO" "$REPO_ROOT/docs/screenshots/${TARGET}.png"
+  fi
 fi
 
 # Remove the staged autoshot.cfg so it doesn't sit in the user's baseq2/.
 ssh "$HOST" 'rm -f ~/Desktop/quake2/baseq2/autoshot.cfg' 2>/dev/null || true
 
-echo "[screenshot] OK — $(ls "$REPO_ROOT/docs/screenshots/${TARGET}"-*.png 2>/dev/null | wc -l) PNGs"
-ls -la "$REPO_ROOT/docs/screenshots/${TARGET}"*.png 2>&1 | head -15
+echo "[screenshot] OK — $(ls "$REPO_ROOT/docs/screenshots/${OUT_TAG}"-*.png 2>/dev/null | wc -l) PNGs"
+ls -la "$REPO_ROOT/docs/screenshots/${OUT_TAG}"*.png 2>&1 | head -15

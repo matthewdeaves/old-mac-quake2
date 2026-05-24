@@ -6,10 +6,18 @@
 [![Engine: yquake2 5.11](https://img.shields.io/badge/Engine-yquake2%205.11-red.svg)](https://github.com/yquake2/yquake2)
 
 <p align="center">
-  <img src="docs/screenshots/icon.png" width="128" alt="Quake II icon" />
+  <img src="docs/icon-source/quake2-icon-256.png" width="200" alt="Quake II icon" />
 </p>
 
 yquake2 5.11 port tuned to six retro Macs spanning 1999–2019. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + Intel x86_64) inside a single self-contained `Quake2.app` bundle. Per-machine `autoexec.cfg` ships inside the .app and is dispatched by `sysctl hw.model` at boot. Sister project of [`old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm).
+
+<p align="center">
+  <img src="docs/screenshots/yosemite.png" width="23%" alt="yosemite (G3 Panther)" />
+  <img src="docs/screenshots/quicksilver.png" width="23%" alt="quicksilver (G4 Tiger / R9000)" />
+  <img src="docs/screenshots/mini-g4.png" width="23%" alt="mini-g4 (G4 Tiger / R9200)" />
+  <img src="docs/screenshots/mini-intel.png" width="23%" alt="mini-intel (Lion / GMA 950)" />
+</p>
+<p align="center"><sub>Same binary, same content, four different GPU generations · full gallery at <a href="docs/screenshots/index.html"><code>docs/screenshots/index.html</code></a></sub></p>
 
 ## The fleet
 
@@ -29,15 +37,31 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 | Machine | 640×480 | 1024×768 | Floor | Visual stack |
 |---|---:|---:|---:|---|
 | **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA |
-| **mini-g4** \** | 100.20 | 56.70 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, **decals 32, 2× MSAA** |
-| **mini-intel** | 222.90 | 98.00 | 60 | same as mini-g4 (AF 8x) + 2× MSAA — **vsync fix uncapped 640 from 60→223 fps** |
-| **quicksilver** | 72.40 | 72.35 | 60 | same as mini-g4 (incl 2× MSAA) |
-| **sawtooth** | 72.95 | 65.75 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, **decals 16** |
-| **yosemite** | 46.00 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, **decals 8** |
+| **mini-intel** | 222.80 | 100.30 | 60 | picmip 0, trilinear, AF 8x, fog, waterwarp, group-draw, **decals 64, 2× MSAA** — **vsync default fix uncapped 640 from 60 → 223 fps** |
+| **mini-g4** | 100.45 | 56.80 \** | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, **decals 32, 2× MSAA** |
+| **sawtooth** | 72.90 | 65.45 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, **decals 16** |
+| **quicksilver** | 70.70 | 68.60 | 60 | picmip 0, trilinear, AF 8x, dlights, OBB 4, retex, fog, waterwarp, group-draw, **decals 32, 2× MSAA** \* |
+| **yosemite** | 46.20 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, **decals 8** |
 
-\** mini-g4 1024 fps shows thermal/state degradation after many hours of continuous benching — early-session numbers on a cold machine were 120.90 / 97.50; after a cool-down the cell typically recovers. The 56.70 figure is recorded as the worst observed, not the steady-state. See MISTAKES.md.
+\* quicksilver's LCD vsync caps both resolutions near 71 fps — visual features have not pushed fps below the cap, meaning there's spare GPU headroom we could spend on further effects.
+\** mini-g4 1024 fps shows thermal/state degradation after many hours of continuous benching — early-session numbers on a cold machine were 120.90 / 97.50; after a cool-down the cell typically recovers. The 56.80 figure is recorded as the worst observed, not the steady-state. See MISTAKES.md.
 
-\* Lion's Quartz vsync caps 640×480 at 60 fps; 1024×768 escapes the cap.
+### First build vs current — what we traded for visual upgrades
+
+Phase A landed a near-stock yquake2 5.11 with minimal config. Today the same binary ships ~15 visual / perf cherry-picks (KMQuake2 decals + fog + waterwarp, batched group-draw, MSAA, point-sprite particles, stb_image retex, per-machine HD-pak, multitex isolation, vsync default fix, AltiVec model interp). The trade-off is below — all machines remain comfortably above their playability floor.
+
+| Machine | Phase A 640 | Now 640 | Δ | Phase A 1024 | Now 1024 | Δ | Floor |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| imac-2019 | 709.20 | 711.75 | +0% | 701.60 | 726.40 | +4% | 60 ✓ |
+| mini-intel | 59.40 | **222.80** | **+275%** | 80.80 | 100.30 | +24% | 60 ✓ |
+| mini-g4 | 126.90 | 100.45 | −21% | 99.15 | 56.80 \** | −43% | 60 ✓ |
+| sawtooth | 95.00 | 72.90 | −23% | 82.90 | 65.45 | −21% | 60 ✓ |
+| quicksilver | 72.40 | 70.70 | −2% | 68.50 | 68.60 | +0% | 60 ✓ |
+| yosemite | 65.15 | 46.20 | −29% | 31.60 | 25.20 | −20% | 20 ✓ |
+
+The two outliers tell the story:
+- **mini-intel +275% at 640** is the vsync default fix — Apple's Quartz layer was leaving SDL's swap interval ON when the cvar was off, capping us at 60. Explicit `SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 0)` released the cap.
+- **mini-g4 −43% at 1024** is partly the visual cost and partly thermal degradation after hours of continuous benching; cool-machine numbers sit around 97 fps. Documented in [`MISTAKES.md`](MISTAKES.md).
 
 ### Phase B/C features shipped (cherry-picked from yquake2-latest + KMQuake2)
 
@@ -83,7 +107,9 @@ scripts/parallel-bench.sh                         # full matrix, all reachable l
 
 Each cell in `benchmarks/results.csv` is tagged with the commit hash that produced it.
 
-## Run it from any Quake 2 folder
+## Run it from any folder on the Mac
+
+Drop `Quake2.app` and a `baseq2/` directory next to each other — anywhere: `~/Applications/Games/`, `~/Desktop/Quake2/`, `/Volumes/Some Disk/Quake/`. The bundle's `SDLMain.m` chdir's to the .app's parent on Finder launch, so the engine finds `baseq2/` adjacent. No installer, no system locations, no admin.
 
 ```
 <your dir>/
@@ -94,13 +120,14 @@ Each cell in `benchmarks/results.csv` is tagged with the commit hash that produc
       MacOS/SDL.framework/           (fat: ppc + i386 + x86_64)
       Resources/Quake2.icns
       Resources/autoexec-*.cfg × 6   (per-machine, picked by sysctl)
+      Resources/hd-pak/decals/       (bundled world-decal textures)
   ref_gl.so
   baseq2/
     game.so
     pak0.pak  pak1.pak  pak2.pak   ← supply your own
 ```
 
-The repo does **not** distribute `.pak` files — bring your own from Steam / GOG / retail CD.
+The repo does **not** distribute `.pak` files — bring your own from Steam / GOG / retail CD. Release builds with the fat .app are on the [Releases](../../releases) page.
 
 ## Repo layout
 
@@ -117,7 +144,8 @@ scripts/
 benchmarks/      results.csv + raw qconsole.log per run
 docs/
   images/        SVG architecture diagrams (rendered above)
-  screenshots/   per-machine post-build screenshots + index.html gallery
+  icon-source/   high-res icon masters (1254² source + 512/256 derivatives)
+  screenshots/   per-machine in-game PNGs (demo1 + demo2) + index.html gallery
   HD_PACK.md     bundle-vs-user HD texture pack install paths
 MacOSX/          fat SDL.framework (ppc + i386 + x86_64), Quake2.icns
 ```

@@ -13,6 +13,11 @@ reference/
 # Benchmark scratch
 benchmarks/results.csv.bak.*
 
+# Release artifacts staged for `gh release create` upload (not committed —
+# the canonical .app rebuilds via scripts/build-fat.sh from source).
+Old-Mac-Quake2-fat.zip
+Old-Mac-Quake2-*.zip
+
 # Editor / OS cruft
 .DS_Store
 *.swp

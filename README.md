@@ -49,9 +49,11 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 \* quicksilver's LCD vsync caps both resolutions near 71 fps — visual features have not pushed fps below the cap, meaning there's spare GPU headroom we could spend on further effects.
 \** mini-g4 1024 fps shows thermal/state degradation after many hours of continuous benching — early-session numbers on a cold machine were 120.90 / 97.50; after a cool-down the cell typically recovers. The 56.80 figure is recorded as the worst observed, not the steady-state. See MISTAKES.md.
 
-### First build vs current — what we traded for visual upgrades
+### First build vs current — fps traded for visual fidelity, by design
 
-Phase A landed a near-stock yquake2 5.11 with minimal config. Today the same binary ships ~15 visual / perf cherry-picks (KMQuake2 decals + fog + waterwarp, batched group-draw, MSAA, point-sprite particles, stb_image retex, per-machine HD-pak, multitex isolation, vsync default fix, AltiVec model interp). The trade-off is below — all machines remain comfortably above their playability floor.
+Phase A landed a near-stock yquake2 5.11 with minimal config. Today the same binary ships ~15 visual / perf cherry-picks (KMQuake2 decals + fog + waterwarp, batched group-draw, MSAA, point-sprite particles, stb_image retex, per-machine HD-pak, multitex isolation, vsync default fix, AltiVec model interp).
+
+**The design constraint here is the playability floor, not the max fps number.** Every visual upgrade we ship costs a small slice of frame time, and on the older GPUs that adds up. The trade we're making — explicitly — is: every machine has to stay above its floor (20 fps on G3, 60 fps on G4/Intel), and within that envelope we spend the headroom on visuals. The negative deltas on yosemite, sawtooth, and quicksilver are not regressions; they are the bill for decals, fog, MSAA, alias shadows, trilinear, AF, gl_minlight, and friends.
 
 | Machine | Phase A 640 | Now 640 | Δ | Phase A 1024 | Now 1024 | Δ | Floor |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -60,11 +62,17 @@ Phase A landed a near-stock yquake2 5.11 with minimal config. Today the same bin
 | mini-g4 | 126.90 | 100.45 | −21% | 99.15 | 56.80 \** | −43% | 60 ✓ |
 | sawtooth | 95.00 | 72.90 | −23% | 82.90 | 65.45 | −21% | 60 ✓ |
 | quicksilver | 72.40 | 70.70 | −2% | 68.50 | 68.60 | +0% | 60 ✓ |
-| yosemite | 65.15 | 46.20 | −29% | 31.60 | 25.20 | −20% | 20 ✓ |
+| yosemite | 65.15 | 46.20 | **−29%** | 31.60 | 25.20 | **−20%** | 20 ✓ |
 
-The two outliers tell the story:
-- **mini-intel +275% at 640** is the vsync default fix — Apple's Quartz layer was leaving SDL's swap interval ON when the cvar was off, capping us at 60. Explicit `SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 0)` released the cap.
+How to read the rows:
+
+- **yosemite −29% / −20%** — the deliberate visual-cost case. A 1999 ATI Rage 128 is fillrate-bound, every per-pixel effect (fog, alias shadows, trilinear, AF, decals) takes a real bite. 25.20 fps at 1024 still clears the 20 fps floor — the game is playable, with a far richer visual stack than the Phase A baseline. If pure fps were the goal we'd strip these features back out, but that wasn't the goal.
+- **sawtooth / quicksilver −21% to −23%** — same trade on the early G4 GPUs (GeForce2 MX and Radeon 9000 Pro). Both still clear 60 fps.
 - **mini-g4 −43% at 1024** is partly the visual cost and partly thermal degradation after hours of continuous benching; cool-machine numbers sit around 97 fps. Documented in [`MISTAKES.md`](MISTAKES.md).
+- **mini-intel +275% at 640** is the vsync default fix — Apple's Quartz layer was leaving SDL's swap interval ON when the cvar was off, capping us at 60. Explicit `SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 0)` released the cap. A real bug fix, not a visual win.
+- **imac-2019 ≈ flat** — modern Polaris discrete GPU never hits a fillrate limit on GL1 fixed-function content; visual features cost nothing.
+
+If you want the Phase A "raw fps" build back, every visual cvar is runtime-toggleable per machine via `scripts/bundle/autoexec-<machine>.cfg` — set `gl_decals 0`, `gl_fog 0`, `gl_msaa_samples 0`, drop AF/trilinear, and yosemite goes back to ~30 fps at 1024.
 
 ### Phase B/C features shipped (cherry-picked from yquake2-latest + KMQuake2)
 

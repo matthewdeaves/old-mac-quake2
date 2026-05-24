@@ -9,15 +9,18 @@
   <img src="docs/icon-source/quake2-icon-256.png" width="200" alt="Quake II icon" />
 </p>
 
-yquake2 5.11 port tuned to six retro Macs spanning 1999–2019. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + Intel x86_64) inside a single self-contained `Quake2.app` bundle. Per-machine `autoexec.cfg` ships inside the .app and is dispatched by `sysctl hw.model` at boot. Sister project of [`old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm).
+yquake2 5.11 port tuned to six retro Macs spanning 1999–2019. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + Intel x86_64) inside a single self-contained `Quake2.app` bundle. Per-machine `autoexec.cfg` ships inside the .app and is dispatched by `sysctl hw.model` at boot.
+
+> **Sister project — Quake 1 on the same fleet:** [`matthewdeaves/old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm) — the QuakeSpasm port for the same six Macs. Shares build infrastructure, fat SDL framework, and bench rack with this project.
 
 <p align="center">
-  <img src="docs/screenshots/yosemite.png" width="23%" alt="yosemite (G3 Panther)" />
-  <img src="docs/screenshots/quicksilver.png" width="23%" alt="quicksilver (G4 Tiger / R9000)" />
-  <img src="docs/screenshots/mini-g4.png" width="23%" alt="mini-g4 (G4 Tiger / R9200)" />
-  <img src="docs/screenshots/mini-intel.png" width="23%" alt="mini-intel (Lion / GMA 950)" />
+  <img src="docs/screenshots/yosemite.png" width="19%" alt="yosemite (G3 Panther) — BFG ball flying through corridor" />
+  <img src="docs/screenshots/sawtooth.png" width="19%" alt="sawtooth (G4 Tiger / GF2 MX) — BFG explosion combat" />
+  <img src="docs/screenshots/quicksilver.png" width="19%" alt="quicksilver (G4 Tiger / R9000) — Strogg combat" />
+  <img src="docs/screenshots/mini-g4.png" width="19%" alt="mini-g4 (G4 Tiger / R9200) — gold door, classic Q2" />
+  <img src="docs/screenshots/mini-intel.png" width="19%" alt="mini-intel (Lion / GMA 950) — corridor combat" />
 </p>
-<p align="center"><sub>Same binary, same content, four different GPU generations · full gallery at <a href="docs/screenshots/index.html"><code>docs/screenshots/index.html</code></a></sub></p>
+<p align="center"><sub>Same binary, same demo, five GPU generations · 1999 → 2007 · ATI Rage 128, NVIDIA GF2 MX, ATI Radeon 9000 / 9200, Intel GMA 950</sub></p>
 
 ## The fleet
 
@@ -32,7 +35,7 @@ yquake2 5.11 port tuned to six retro Macs spanning 1999–2019. One source tree,
 
 ## Current build — `timedemo demo1.dm2` (median)
 
-Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`docs/screenshots/index.html`](docs/screenshots/index.html) · per-machine cfgs: [`scripts/bundle/`](scripts/bundle/).
+Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`docs/screenshots/`](docs/screenshots/) · per-machine cfgs: [`scripts/bundle/`](scripts/bundle/).
 
 | Machine | 640×480 | 1024×768 | Floor | Visual stack |
 |---|---:|---:|---:|---|
@@ -145,7 +148,7 @@ benchmarks/      results.csv + raw qconsole.log per run
 docs/
   images/        SVG architecture diagrams (rendered above)
   icon-source/   high-res icon masters (1254² source + 512/256 derivatives)
-  screenshots/   per-machine in-game PNGs (demo1 + demo2) + index.html gallery
+  screenshots/   per-machine in-game PNGs (demo1 + demo2)
   HD_PACK.md     bundle-vs-user HD texture pack install paths
 MacOSX/          fat SDL.framework (ppc + i386 + x86_64), Quake2.icns
 ```

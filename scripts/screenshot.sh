@@ -172,11 +172,14 @@ for tga in $TGAS; do
   i=$((i+1))
 done
 
-# Pick a "hero" shot — shot 04 is mid-demo where the action is densest in
-# demo1.dm2's recorded path through base2 (Installation). Only do this for
-# the canonical demo1 run, so multi-demo runs don't keep overwriting it.
+# Pick a "hero" shot. Frame 04 is during the demo1.dm2 fog-volume
+# transition — comes out monochrome cyan/red wash, looked terrible
+# in README marketing strips. Frame 06 is reliably mid-corridor with
+# a gold door and weapon visible — classic Q2 look, no fog dominance.
+# Only do this for the canonical demo1 run, so multi-demo runs don't
+# keep overwriting it.
 if [ "$DEMO_BASE" = "demo1" ]; then
-  HERO="$REPO_ROOT/docs/screenshots/${TARGET}-04.png"
+  HERO="$REPO_ROOT/docs/screenshots/${TARGET}-06.png"
   if [ -f "$HERO" ]; then
     cp "$HERO" "$REPO_ROOT/docs/screenshots/${TARGET}.png"
   fi

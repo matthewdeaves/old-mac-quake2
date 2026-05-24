@@ -20,6 +20,22 @@ Live fps grid (median demo1, commit `e629080`, full demo1+demo2 grid):
 
 Two cells still pinned: **sawtooth 1024 (+5)** and **yosemite 1024 (+5)**.
 
+### Honest read: the fps ceiling is mostly reached
+
+After v2.0.0 there is **no remaining easy CPU work that moves the
+framewide fps needle**. The obvious SIMD wins are taken (R_LerpVerts,
+R_AddDynamicLights row-cull); the next-rung CPU target (AltiVec
+R_BuildLightMap, which would unlock `gl_dynamic 1` on sawtooth) was
+tried in this past round and reverted with a net-negative outcome
+(see MISTAKES.md). yosemite is GPU-fillrate-bound and no CPU work
+helps. quicksilver is vsync-capped with unused GPU headroom — the only
+way to "use" it is more visual effects. mini-intel + imac-2019 have
+plenty of margin.
+
+**Therefore: this plan is mostly about visual richness, not fps.**
+Tier B is the headline. Tier A is parity-with-QS housekeeping that
+won't show in the bench grid. Tier C is polish + documentation.
+
 ## What's shipped since v1.0.0
 
 Visual: world decals (4 types), GL_FOG, waterwarp, group-draw batching,
@@ -40,29 +56,43 @@ Ordered by **(visible-win × confidence) / risk**. Each tier independent.
 
 ---
 
-### Tier A — small SIMD wins from the QS sister (1-2h each)
+### Tier A — QS-sister parity (NOT fps wins)
 
-The QuakeSpasm port at `~/quakespasm/` has two trivially-portable
-PPC SIMD wins that Q2 hasn't taken. Bring them across.
+Two SIMD backports from `~/quakespasm/`. **Honest forecast: neither
+will move the fps grid measurably.** The headline reason to do them
+is parity / code-quality with the sister project, not performance.
 
-#### A.1 frsqrte `Q_rsqrt_ppc` — drop-in from QS
+#### A.1 frsqrte `Q_rsqrt_ppc` — parity backport (~1h)
 
 **Source:** `~/quakespasm/Quake/mathlib.h:66-73`. Single PPC `frsqrte`
-intrinsic wrapper around the standard `1/sqrtf(x)` use sites in
-Q2's `q_shared.c`. Used in vector normalization (hot during alias
-rendering + lighting).
+intrinsic wrapper. Free on x86 (not compiled in).
 
-Gain: ~5-15% on `VectorNormalize`-bound paths on PPC. Marginal headline
-fps but real on alias-heavy scenes. Free on x86 (not compiled in).
+**Forecast: ~0% framewide on every machine.** The per-frame render
+path only has 3 `VectorNormalize` calls (`r_mesh.c`, `r_main.c`,
+`r_decal.c`) — saving ~25 ns each = ~75 ns per frame, well under
+0.01% of a 16 ms frame. The 26 calls in `cl_effects.c` are bursty
+particle spawns; the 7 in `pmove.c` run at 10 Hz. Combined gain is
+microseconds per second — invisible.
 
-#### A.2 AltiVec 16-bit sound mixer
+**Why do it anyway:** code parity with QS, sets up future PPC SIMD
+work cleanly, removes one "QS has this and we don't" itch.
+**Skip if pure fps is the goal.**
+
+#### A.2 AltiVec 16-bit sound mixer (~3h)
 
 **Source:** `~/quakespasm/Quake/snd_mix.c:559-612`. Aligned-paintbuffer
-mixer with runtime opt-out. Q2's sound code is still scalar.
+mixer with runtime opt-out cvar. Q2's mixer is still scalar — runs
+~44100×N samples/sec during gameplay (N = active channels).
 
-Gain: sound takes ~5% of frame time on G4. AltiVec brings it down to
-~1-2%. Bench gate: no audible artifacts on the test fleet (clipping,
-phase issues). The opt-out cvar is the safety net.
+**Forecast: ~1-2% framewide on G4 during heavy combat** (gun + monster
+sounds + explosions = 5-10 simultaneous channels). 0% during quiet
+exploration. 0% on Intel boxes (different mixer). Likely shows up as
++0.5-1 fps on sawtooth/mini-g4 combat scenes, lost in noise on demo
+timedemos (no live sounds).
+
+**Why do it:** modest perf during real play, opt-out cvar means low
+risk. The audible artifact gate is the real concern — clipping or
+phase issues on PPC need careful A/B listening.
 
 **Tasks:** #42, #43 (already in the list).
 
@@ -213,23 +243,27 @@ Hard pass — loses Panther + Tiger targets. Out of scope.
 
 ## Suggested execution order
 
-Three short sessions can land Tier A + B in a weekend:
+**Lead with Tier B (visuals).** Tier A is mop-up that can wait.
 
-1. **Session A (~3h)**: Tier A.1 + A.2 — QS SIMD backports. Two
-   commits, no behaviour change beyond perf. Bench grid mandatory.
-2. **Session B (~3h)**: Tier B.1 (`r_glows`) — visual win on combat
-   shots, easy port. Multitex-only.
-3. **Session C (~4h)**: Tier B.2 (`r_caustics`) — needs the
+1. **Session B.1 (~3h)**: `r_glows` — easy multitex visual win,
+   immediately visible during combat (shell/quad/pent skins glow).
+2. **Session B.2 (~4h)**: `r_caustics` — needs the
    `CL_PMpointcontents` wrapper first (~30 min), then the
    surface-projection port.
-4. **Session D (~4h)**: Tier B.3 (`r_trans_lighting`) — cleanest of
-   the three visual ports; glass + grates start looking grounded.
-5. **Session E (~6h)**: Tier C — pure documentation + autoexec
-   tweaks. One PR with HD pack guide, OGG guide, FOV defaults,
-   crosshair pack, install nudge. Could be done in one session if
-   the docs flow.
+3. **Session B.3 (~4h)**: `r_trans_lighting` — cleanest of the three
+   visual ports; glass + grates start looking grounded.
+4. **Session A (~3h)**: A.2 sound mixer (skip A.1 unless you want
+   the QS parity itch scratched). Bench gate mostly listening-test,
+   not fps.
+5. **Session C (~6h)**: Tier C QoL — pure docs + autoexec tweaks.
+   One PR with HD pack guide, OGG guide, FOV defaults, crosshair
+   pack, install nudge.
 
-Total ~20h to v2.1.0 (Tier A+B+C combined).
+Total ~20h to v2.1.0 (Tier A.2 + B + C). Add 1h for A.1 if you do it.
+
+**v2.1.0 will not bump fps materially** — the value prop is "Quake II
+on retro Macs now looks even richer (glowing creatures, underwater
+caustics, properly-lit glass) at the same playable framerate."
 
 A v3.0.0 would need Tier D — probably 25-40h of work and a real
 risk of breaking existing rendering. Not on the immediate horizon.

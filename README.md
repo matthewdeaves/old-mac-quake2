@@ -11,7 +11,7 @@
 
 yquake2 5.11 port tuned to six retro Macs spanning 1999–2019. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + Intel x86_64) inside a single self-contained `Quake2.app` bundle. Per-machine `autoexec.cfg` ships inside the .app and is dispatched by `sysctl hw.model` at boot.
 
-> **Sister project — Quake 1 on the same fleet:** [`matthewdeaves/old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm) — the QuakeSpasm port for the same six Macs. Shares build infrastructure, fat SDL framework, and bench rack with this project.
+> **Sister projects on the same fleet:** [`old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm) (Quake 1) and [`old-mac-quake3`](https://github.com/matthewdeaves/old-mac-quake3) (Quake III Arena — early WIP, pinned to the last SDL 1.2 commit of ioquake3 so it runs on Panther/Tiger). Both share this project's build infrastructure, fat universal binary approach, and bench rack.
 
 <p align="center">
   <img src="docs/screenshots/yosemite.png" width="19%" alt="yosemite (G3 Panther) — BFG ball flying through corridor" />

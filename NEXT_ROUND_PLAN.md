@@ -1,5 +1,13 @@
 # Next round — fresh plan after v2.0.0
 
+> **Update 2026-05-29 (v2.1.0 shipped):** Tier B landed — B.1 `gl_glows`,
+> B.2 `gl_caustics` (water-surface variant, not per-surface projection),
+> B.3 `gl_trans_lighting` are all in and ON for the multitex boxes. Tier C
+> partially: `gl_farsee` (x86), `gl_zfix`. Tier D.2 **bloom** was attempted
+> as fixed-function (`gl_bloom`) and shelved — too slow on PPC + broken on
+> the GL1 path (see MISTAKES.md). Also did the CVA group-draw lever (neutral)
+> and fixed the effect-texture-freeing bug. Remaining below is still open.
+
 Written 2026-05-24, post-v2.0.0 release. Supersedes the 2026-05-23 plan
 (every tier 0/1/2/4 item landed: analyze.sh + warning fixes, AltiVec
 R_LerpVerts + row-cull, all four cheap visual cvars, decals). The

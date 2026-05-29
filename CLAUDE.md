@@ -184,11 +184,28 @@ heritage, Q2's `demo3.dm2` is NOT in any of the retail pak files —
 attempting to play it fails with "Couldn't open demos/demo3.dm2". Bench
 scripts default to demo1+demo2 only.
 
-## Toggleable knobs (placeholder — populate as Phase B/C lands)
+## Toggleable knobs
 
 Same discipline as QuakeSpasm: every per-target visual / perf decision
-must be flippable at runtime (cvar) or at launch (`-flag`). Inventory
-table goes here as features land.
+must be flippable at runtime (cvar) or at launch (`-flag`). Custom cvars
+this fork adds on top of stock yquake2 5.11:
+
+| cvar | what | default per machine |
+|---|---|---|
+| `gl_fog` (+ mode/start/end/rgb) | cvar-driven GL_FOG | on (all) |
+| `gl_waterwarp` | underwater frustum sine-warp | on (all) |
+| `gl_decals` `gl_decal_max/life/fade` | KMQuake2 world decals | on; cap 8 (G3)→128 (imac) |
+| `gl_msaa_samples` | MSAA (CVAR_LATCH) | 0 (PPC fixed-func)→8 (imac) |
+| `gl_lightmap_subrect` | dirty-column dynamic LM upload | on (no-op if dlights off) |
+| `gl_groupdraw` | batched `qglDrawElements` (+ CVA lock) | on G4+/x86, off G3 |
+| `gl_minlight` `gl_skydistance` | lightmap floor / sky extent | per-machine |
+| `gl_particle_square` `gl_pointsprites` `r_2D_unfiltered` | particle/HUD tweaks | per-machine |
+| `gl_glows` | sphere-map energy shell glow | on multitex, off G3/sawtooth |
+| `gl_trans_lighting` | lightmapped glass/grates (map-load latched) | on multitex, off G3/sawtooth |
+| `gl_caustics` | water-surface caustic overlay | on multitex, off G3/sawtooth |
+| `gl_zfix` | polygon-offset coplanar surfaces | on (all) |
+| `gl_farsee` | extended far clip (CVAR_LATCH) | on x86 only |
+| `gl_bloom` (+ alpha/darken/size) | fixed-function light bloom | **off — WIP, broken on GL1, see MISTAKES.md** |
 
 ## Icon pipeline philosophy
 
@@ -319,9 +336,20 @@ so it overrides cleanly. If the tweak wins, fold the new value into
   Post-fix every multitex platform (mini-g4 / quicksilver / mini-intel)
   renders correctly with full retex + OBB4. Yosemite ULTIMATE shipped
   (25.10 / 45.15 fps with picmip 0 + trilinear + alias shadows + fog).
+- 2026-05-29: v2.1.0 round (tagged). Shipped: `gl_glows` (sphere-map
+  energy shell), `gl_trans_lighting` (lightmapped glass/grates),
+  `gl_caustics` (water-surface caustic overlay) — all ON for the multitex
+  boxes, OFF on yosemite/sawtooth; `gl_zfix` (coplanar z-fix) everywhere;
+  `gl_farsee` on the x86 boxes; CVA (`glLockArraysEXT`) on the group-draw
+  path (fps-neutral, kept for parity). Fixed a latent bug: the procedural
+  shell/caustic textures (and bloom's) are now protected in
+  `R_FreeUnusedImages` — they were being freed on map change. `gl_bloom`
+  (fixed-function light bloom) is wired but DISABLED — prohibitive on PPC
+  (quicksilver 25fps) and renders incorrectly on the GL1 path; see
+  MISTAKES.md. `scripts/make-dmg.sh` added (Panther-built UDZO `.dmg`).
+  Note: G4 fps floor is now ~40 for feature work (user pref), not 60.
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).
-- Next: see `NEXT_ROUND_PLAN.md` — KMQuake2 decals / stencil shadows /
-  bloom, AltiVec `R_BuildLightMap` (path to unlock dlights on
-  sawtooth), MSAA via `SDL_GL_MULTISAMPLE`, GL1 gamma correction.
+- Next: bloom redo (dedicated render-target texture, sub-res budget);
+  AltiVec `R_BuildLightMap`; GL1 gamma correction; re-bench mini-g4 cool.

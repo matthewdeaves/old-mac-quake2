@@ -28,3 +28,4 @@ Old-Mac-Quake2-*.zip
 # Python venv for icon prep + helper scripts
 .venv/
 .game-data/
+dist/

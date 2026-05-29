@@ -39,30 +39,30 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 
 | Machine | 640×480 | 1024×768 | Floor | Visual stack |
 |---|---:|---:|---:|---|
-| **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA |
-| **mini-intel** | 222.80 | 100.30 | 60 | picmip 0, trilinear, AF 8x, fog, waterwarp, group-draw, **decals 64, 2× MSAA** — **vsync default fix uncapped 640 from 60 → 223 fps** |
-| **mini-g4** | 100.45 | 56.80 \** | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, **decals 32, 2× MSAA** |
-| **sawtooth** | 72.90 | 65.45 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, **decals 16** |
-| **quicksilver** | 70.70 | 68.60 | 60 | picmip 0, trilinear, AF 8x, dlights, OBB 4, retex, fog, waterwarp, group-draw, **decals 32, 2× MSAA** \* |
-| **yosemite** | 46.20 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, **decals 8** |
+| **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA + glows + lit glass + caustics + farsee |
+| **mini-intel** | 219.15 | 98.85 | 60 | picmip 0, trilinear, AF 8x, fog, waterwarp, group-draw, decals 64, 2× MSAA, **glows + lit glass + caustics + farsee + zfix** |
+| **mini-g4** | 96.05 \** | 56.95 \** | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **glows + lit glass + caustics + zfix** |
+| **sawtooth** | 72.90 | 65.45 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, decals 16 |
+| **quicksilver** | 69.30 | 65.30 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **glows + lit glass + caustics + zfix** \* |
+| **yosemite** | 46.40 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, decals 8, **zfix** |
 
 \* quicksilver's LCD vsync caps both resolutions near 71 fps — visual features have not pushed fps below the cap, meaning there's spare GPU headroom we could spend on further effects.
-\** mini-g4 1024 fps shows thermal/state degradation after many hours of continuous benching — early-session numbers on a cold machine were 120.90 / 97.50; after a cool-down the cell typically recovers. The 56.80 figure is recorded as the worst observed, not the steady-state. See MISTAKES.md.
+\** mini-g4 1024/640 here are **thermal** — the machine was sitting in direct sun during this grid; cool-machine numbers are ~99/126. The 56.95/96.05 figures are the worst observed, not steady-state. See MISTAKES.md.
 
 ### First build vs current — fps traded for visual fidelity, by design
 
-Phase A landed a near-stock yquake2 5.11 with minimal config. Today the same binary ships ~15 visual / perf cherry-picks (KMQuake2 decals + fog + waterwarp, batched group-draw, MSAA, point-sprite particles, stb_image retex, per-machine HD-pak, multitex isolation, vsync default fix, AltiVec model interp).
+Phase A landed a near-stock yquake2 5.11 with minimal config. Today the same binary ships ~18 visual / perf cherry-picks (KMQuake2 decals + fog + waterwarp, energy-shell glow, lightmapped glass/grates, water caustics, batched group-draw, MSAA, point-sprite particles, stb_image retex, per-machine HD-pak, multitex isolation, vsync default fix, AltiVec model interp, extended draw distance).
 
 **The design constraint here is the playability floor, not the max fps number.** Every visual upgrade we ship costs a small slice of frame time, and on the older GPUs that adds up. The trade we're making — explicitly — is: every machine has to stay above its floor (20 fps on G3, 60 fps on G4/Intel), and within that envelope we spend the headroom on visuals. The negative deltas on yosemite, sawtooth, and quicksilver are not regressions; they are the bill for decals, fog, MSAA, alias shadows, trilinear, AF, gl_minlight, and friends.
 
 | Machine | Phase A 640 | Now 640 | Δ | Phase A 1024 | Now 1024 | Δ | Floor |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | imac-2019 | 709.20 | 711.75 | +0% | 701.60 | 726.40 | +4% | 60 ✓ |
-| mini-intel | 59.40 | **222.80** | **+275%** | 80.80 | 100.30 | +24% | 60 ✓ |
-| mini-g4 | 126.90 | 100.45 | −21% | 99.15 | 56.80 \** | −43% | 60 ✓ |
+| mini-intel | 59.40 | **219.15** | **+269%** | 80.80 | 98.85 | +22% | 60 ✓ |
+| mini-g4 | 126.90 | 96.05 \** | −24% | 99.15 | 56.95 \** | −43% | 60 ✓ |
 | sawtooth | 95.00 | 72.90 | −23% | 82.90 | 65.45 | −21% | 60 ✓ |
-| quicksilver | 72.40 | 70.70 | −2% | 68.50 | 68.60 | +0% | 60 ✓ |
-| yosemite | 65.15 | 46.20 | **−29%** | 31.60 | 25.20 | **−20%** | 20 ✓ |
+| quicksilver | 72.40 | 69.30 | −4% | 68.50 | 65.30 | −5% | 60 ✓ |
+| yosemite | 65.15 | 46.40 | **−29%** | 31.60 | 25.20 | **−20%** | 20 ✓ |
 
 How to read the rows:
 
@@ -86,6 +86,12 @@ If you want the Phase A "raw fps" build back, every visual cvar is runtime-toggl
 | CFBundle HD-pak search path | — | `Q2_GetBundleHDPakPath` | one-time at FS init |
 | **World decals** — bullet / blood / Strogg green blood / scorch marks via BSP fragment clipping; per-machine `gl_decal_max` cap 8 (G3) → 128 (modern); textures procedurally generated, shipped in-tree at `yquake2/baseq2-extra/decals/` | `gl_decals` `gl_decal_max` | KMQuake2 `r_fragment.c` (ported renderer-side) | ~0 (gl_dynamic 0, no overdraw on empty world) |
 | **MSAA** — `SDL_GL_MULTISAMPLE` wired through SDL backend; per-machine cap 0 (PPC fixed-func) → 8x (Polaris) | `gl_msaa_samples` | own port | n/a (off on R128) |
+| **Energy-shell glow** — sphere-map sheen on quad/invuln/etc. shells instead of flat colour | `gl_glows` | KMQuake2 (re-impl) | ~0 (shells only) |
+| **Lightmapped glass/grates** — translucent surfaces lit by the room instead of rendering "floating" | `gl_trans_lighting` | KMQuake2 (re-impl) | ~0 on demo |
+| **Water caustics** — animated additive caustic shimmer on water surfaces | `gl_caustics` | KMQuake2 (re-impl) | −1–3% (water in view) |
+| **Compiled vertex arrays** on the group-draw path; coplanar z-fix; extended draw distance | `gl_zfix` `gl_farsee` | own / yq2 | neutral |
+
+`gl_bloom` (fixed-function light bloom) is wired but **disabled** — too slow on PPC and visually incorrect on the GL1 path; see [`MISTAKES.md`](MISTAKES.md).
 
 ## How the binary picks its config
 
@@ -148,6 +154,7 @@ scripts/
   build.sh           single-arch build via mini-intel
   build-fat.sh       3-arch lipo merge → build/q2-fat/
   deploy.sh          rsync fat .app to one machine
+  make-dmg.sh        stage + hdiutil a distributable .dmg (built on Panther for max compat)
   bench.sh           one demo × resolution
   parallel-bench.sh  whole grid in parallel
   screenshot.sh      capture in-game PNGs from one host

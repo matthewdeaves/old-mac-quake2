@@ -248,6 +248,8 @@ extern image_t *r_notexture;
 extern image_t *r_particletexture;
 extern image_t *r_shelltexture;   /* yquake2-ppc — sphere-map glow for RF_SHELL (gl_glows) */
 extern image_t *r_caustictexture; /* yquake2-ppc — animated caustic overlay for water surfaces (gl_caustics) */
+extern image_t *r_bloomscreentexture;  /* yquake2-ppc — bloom back-buffer copy */
+extern image_t *r_bloomeffecttexture;  /* yquake2-ppc — bloom downsample/blur accumulator */
 extern entity_t *currententity;
 extern model_t *currentmodel;
 extern int r_visframecount;
@@ -279,6 +281,10 @@ extern cvar_t *gl_lerpmodels;
 extern cvar_t *gl_glows;   /* yquake2-ppc — sphere-map energy glow on RF_SHELL alias models */
 extern cvar_t *gl_trans_lighting;   /* yquake2-ppc — lightmap-modulate translucent surfaces (glass/grates). Map-load latched. */
 extern cvar_t *gl_caustics;   /* yquake2-ppc — animated additive caustic overlay on water surfaces */
+extern cvar_t *gl_bloom;        /* yquake2-ppc — fixed-function light bloom post-process */
+extern cvar_t *gl_bloom_alpha;
+extern cvar_t *gl_bloom_darken;
+extern cvar_t *gl_bloom_size;
 
 extern cvar_t *gl_lightlevel;
 extern cvar_t *gl_overbrightbits;
@@ -427,6 +433,8 @@ void R_RenderBrushPoly(msurface_t *fa);
 void R_InitParticleTexture(void);
 void R_InitShellTexture(void);
 void R_InitCausticTexture(void);
+void R_InitBloomTextures(void);
+void R_Bloom(void);
 void Draw_InitLocal(void);
 void R_SubdivideSurface(msurface_t *fa);
 qboolean R_CullBox(vec3_t mins, vec3_t maxs);

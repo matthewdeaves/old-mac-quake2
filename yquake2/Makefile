@@ -676,6 +676,7 @@ OPENGL_OBJS_ = \
 	src/refresh/r_image.o \
 	src/refresh/r_light.o \
 	src/refresh/r_lightmap.o \
+	src/refresh/r_bloom.o \
 	src/refresh/r_buffer.o \
 	src/refresh/r_decal.o \
 	src/refresh/r_main.o \

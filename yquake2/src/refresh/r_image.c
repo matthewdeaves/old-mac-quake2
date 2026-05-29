@@ -1274,6 +1274,27 @@ R_FreeUnusedImages(void)
 	r_notexture->registration_sequence = registration_sequence;
 	r_particletexture->registration_sequence = registration_sequence;
 
+	/* yquake2-ppc — likewise protect the procedural/effect textures that
+	 * are built once at R_Init (shell glow, water caustics, bloom). Without
+	 * this they get freed on the first map change and the feature paths
+	 * sample a deleted texnum. */
+	if (r_shelltexture)
+	{
+		r_shelltexture->registration_sequence = registration_sequence;
+	}
+	if (r_caustictexture)
+	{
+		r_caustictexture->registration_sequence = registration_sequence;
+	}
+	if (r_bloomscreentexture)
+	{
+		r_bloomscreentexture->registration_sequence = registration_sequence;
+	}
+	if (r_bloomeffecttexture)
+	{
+		r_bloomeffecttexture->registration_sequence = registration_sequence;
+	}
+
 	for (i = 0, image = gltextures; i < numgltextures; i++, image++)
 	{
 		if (image->registration_sequence == registration_sequence)

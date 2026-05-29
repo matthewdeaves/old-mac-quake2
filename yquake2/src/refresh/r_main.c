@@ -980,6 +980,8 @@ R_RenderView(refdef_t *fd)
 
 	R_UnsetFog();   /* disable GL_FOG before 2D HUD pass so HUD isn't fogged */
 
+	R_Bloom();      /* yquake2-ppc — fixed-function light bloom post-process */
+
 	if (gl_speeds->value)
 	{
 		ri.Con_Printf(PRINT_ALL, "%4i wpoly %4i epoly %i tex %i lmaps\n",
@@ -1163,6 +1165,10 @@ R_Register(void)
 	gl_glows = ri.Cvar_Get("gl_glows", "1", CVAR_ARCHIVE);
 	gl_trans_lighting = ri.Cvar_Get("gl_trans_lighting", "1", CVAR_ARCHIVE);
 	gl_caustics = ri.Cvar_Get("gl_caustics", "1", CVAR_ARCHIVE);
+	gl_bloom = ri.Cvar_Get("gl_bloom", "0", CVAR_ARCHIVE);
+	gl_bloom_alpha = ri.Cvar_Get("gl_bloom_alpha", "0.3", CVAR_ARCHIVE);
+	gl_bloom_darken = ri.Cvar_Get("gl_bloom_darken", "4", CVAR_ARCHIVE);
+	gl_bloom_size = ri.Cvar_Get("gl_bloom_size", "256", CVAR_ARCHIVE);
 	gl_dynamic = ri.Cvar_Get("gl_dynamic", "1", 0);
 	gl_nobind = ri.Cvar_Get("gl_nobind", "0", 0);
 	gl_round_down = ri.Cvar_Get("gl_round_down", "1", 0);
@@ -1551,6 +1557,7 @@ R_Init(void *hinstance, void *hWnd)
 	R_InitImages();
 	Mod_Init();
 	R_InitParticleTexture();
+	R_InitBloomTextures(); /* (re)create bloom textures for this video mode */
 	Draw_InitLocal();
 
 	err = qglGetError();

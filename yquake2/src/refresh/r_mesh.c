@@ -167,6 +167,7 @@ R_DrawAliasFrameLerp(dmdl_t *paliashdr, float backlerp)
 	int count;
 	float frontlerp;
 	float alpha;
+	qboolean shell_glow = false;   /* RF_SHELL sphere-map glow active (gl_glows) */
 
 	/* Group-draw drain: per-alias-model immediate-mode emit ahead. */
 	R_ApplyGLBuffer();
@@ -199,7 +200,26 @@ R_DrawAliasFrameLerp(dmdl_t *paliashdr, float backlerp)
 		(RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE | RF_SHELL_DOUBLE |
 		 RF_SHELL_HALF_DAM))
 	{
-		qglDisable(GL_TEXTURE_2D);
+		if (gl_glows->value && r_shelltexture)
+		{
+			/* Energy-shell glow: sphere-map a radial highlight onto the
+			 * shell silhouette instead of drawing it as a flat colour.
+			 * The texture stays bound and is MODULATEd by the shell
+			 * colour set in qglColor; GL_SPHERE_MAP texgen generates the
+			 * coords from the per-vertex normals emitted in the draw loop
+			 * below, so the hotspot tracks the view and shimmers. */
+			shell_glow = true;
+			R_Bind(r_shelltexture->texnum);
+			R_TexEnv(GL_MODULATE);
+			qglTexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+			qglTexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+			qglEnable(GL_TEXTURE_GEN_S);
+			qglEnable(GL_TEXTURE_GEN_T);
+		}
+		else
+		{
+			qglDisable(GL_TEXTURE_2D);
+		}
 	}
 
 	frontlerp = 1.0 - backlerp;
@@ -352,6 +372,12 @@ R_DrawAliasFrameLerp(dmdl_t *paliashdr, float backlerp)
 
 					qglColor4f(shadelight[0], shadelight[1],
 							shadelight[2], alpha);
+					if (shell_glow)
+					{
+						/* sphere-map texgen needs a live normal per vertex */
+						qglNormal3fv(
+							r_avertexnormals[verts[index_xyz].lightnormalindex]);
+					}
 					qglVertex3fv(s_lerped[index_xyz]);
 				}
 				while (--count);
@@ -383,7 +409,17 @@ R_DrawAliasFrameLerp(dmdl_t *paliashdr, float backlerp)
 		(RF_SHELL_RED | RF_SHELL_GREEN | RF_SHELL_BLUE |
 		 RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM))
 	{
-		qglEnable(GL_TEXTURE_2D);
+		if (shell_glow)
+		{
+			/* texture stayed enabled in the glow path; just retire texgen
+			 * so it cannot leak into world / other model draws */
+			qglDisable(GL_TEXTURE_GEN_S);
+			qglDisable(GL_TEXTURE_GEN_T);
+		}
+		else
+		{
+			qglEnable(GL_TEXTURE_2D);
+		}
 	}
 }
 

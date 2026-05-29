@@ -81,6 +81,59 @@ R_InitParticleTexture(void)
 
 	r_notexture = R_LoadPic("***r_notexture***", (byte *)data,
 			8, 0, 8, 0, it_wall, 32);
+
+	R_InitShellTexture();
+}
+
+/*
+ * Sphere-map glow texture for RF_SHELL alias models (gl_glows). A radial
+ * gradient: hot white centre falling to a dim edge. Under GL_SPHERE_MAP
+ * texgen the hot spot tracks the view direction, so a quad/invuln/etc.
+ * shell shimmers like energy instead of rendering as a flat translucent
+ * tint. 64x64 is plenty — it is sampled across a whole model silhouette.
+ */
+#define SHELL_TEX_SIZE 64
+void
+R_InitShellTexture(void)
+{
+	int x, y;
+	static byte data[SHELL_TEX_SIZE][SHELL_TEX_SIZE][4];
+	float c = (SHELL_TEX_SIZE - 1) * 0.5f;
+	/* normalisation so a corner pixel maps to radius ~1.0 */
+	float invmaxr = 1.0f / (c * 1.41421356f);
+
+	for (y = 0; y < SHELL_TEX_SIZE; y++)
+	{
+		for (x = 0; x < SHELL_TEX_SIZE; x++)
+		{
+			float dx = x - c;
+			float dy = y - c;
+			float r = sqrt(dx * dx + dy * dy) * invmaxr;  /* 0 centre .. ~1 edge */
+			float v = 1.0f - r;                            /* bright centre */
+			int iv;
+
+			if (v < 0.0f)
+			{
+				v = 0.0f;
+			}
+
+			/* keep a 0.5 floor so the whole shell stays visible, with a
+			 * brighter view-tracking hotspot on top */
+			iv = (int)((0.5f + 0.5f * v) * 255.0f);
+			if (iv > 255)
+			{
+				iv = 255;
+			}
+
+			data[y][x][0] = iv;
+			data[y][x][1] = iv;
+			data[y][x][2] = iv;
+			data[y][x][3] = 255;
+		}
+	}
+
+	r_shelltexture = R_LoadPic("***shell***", (byte *)data,
+			SHELL_TEX_SIZE, 0, SHELL_TEX_SIZE, 0, it_sprite, 32);
 }
 
 void

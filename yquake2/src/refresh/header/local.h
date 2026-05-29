@@ -246,6 +246,7 @@ extern int numgltextures;
 
 extern image_t *r_notexture;
 extern image_t *r_particletexture;
+extern image_t *r_shelltexture;   /* yquake2-ppc — sphere-map glow for RF_SHELL (gl_glows) */
 extern entity_t *currententity;
 extern model_t *currentmodel;
 extern int r_visframecount;
@@ -274,6 +275,7 @@ extern cvar_t *gl_fullbright;
 extern cvar_t *gl_novis;
 extern cvar_t *gl_nocull;
 extern cvar_t *gl_lerpmodels;
+extern cvar_t *gl_glows;   /* yquake2-ppc — sphere-map energy glow on RF_SHELL alias models */
 
 extern cvar_t *gl_lightlevel;
 extern cvar_t *gl_overbrightbits;
@@ -420,6 +422,7 @@ void R_RenderDlights(void);
 void R_DrawAlphaSurfaces(void);
 void R_RenderBrushPoly(msurface_t *fa);
 void R_InitParticleTexture(void);
+void R_InitShellTexture(void);
 void Draw_InitLocal(void);
 void R_SubdivideSurface(msurface_t *fa);
 qboolean R_CullBox(vec3_t mins, vec3_t maxs);

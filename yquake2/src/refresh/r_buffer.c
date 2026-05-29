@@ -163,7 +163,25 @@ R_ApplyGLBuffer(void)
 		qglColorPointer(4, GL_UNSIGNED_BYTE, 0, gl_buf.clr);
 	}
 
+	/* Compiled vertex arrays (GL_EXT_compiled_vertex_array): lock the
+	 * just-bound arrays so the driver transforms each of the vtx_ptr
+	 * vertices ONCE, even though the index buffer references shared
+	 * fan/strip vertices multiple times. The win is on 1999-2005
+	 * fixed-function / software-T&L Mac drivers (R128, GF2 MX, R9000/9200,
+	 * GMA 950) whose post-transform vertex cache is weak or absent. No-op
+	 * when the extension is absent (qglLockArraysEXT stays 0). Must unlock
+	 * before GLBUFFER_RESET reuses the arrays for the next batch. */
+	if (qglLockArraysEXT != 0)
+	{
+		qglLockArraysEXT(0, vtx_ptr);
+	}
+
 	qglDrawElements(GL_TRIANGLES, idx_ptr, GL_UNSIGNED_SHORT, gl_buf.idx);
+
+	if (qglUnlockArraysEXT != 0)
+	{
+		qglUnlockArraysEXT();
+	}
 
 	if (color)
 	{

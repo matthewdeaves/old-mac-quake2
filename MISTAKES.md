@@ -16,6 +16,58 @@ quirks.
 
 ---
 
+## 2026-05-29 — fixed-function bloom: too slow on PPC + R_LoadPic eats the screen texture
+
+**What we tried:** a fixed-function light bloom post-process (`r_bloom.c`,
+`gl_bloom`) — capture the back buffer with `glCopyTexSubImage2D`, downsample
+into a small effect texture, darken to isolate brights, separable blur,
+additive composite. No ARB_fragment_program/FBO (the KMQuake2 base bloom is
+pure fixed-function). Hooked at the end of `R_RenderView`.
+
+**What went wrong:**
+  1. **Prohibitively slow on the 2001 GPU.** quicksilver R9000 Pro: 66.95 →
+     **25.50 fps** demo1 1024 (−62%) — below even the relaxed ~40fps G4
+     tolerance. The per-frame fullscreen copy + multiple sample passes are
+     fillrate murder on a 1999-2005 part.
+  2. **Visually broken on GMA 950 / Lion.** First cut left the bloom
+     workspace (rendered into the back-buffer bottom-left corner) visible as
+     a black box + a heavy additive wash. Adding a "restore the scene from
+     the captured screen texture, then add bloom" blit fixed the corner in
+     principle but the **whole 3D scene came back black** — almost certainly
+     because `R_LoadPic(..., it_pic, ...)` RESIZES/repacks a large (1024²)
+     pic texture, so the `glCopyTexSubImage2D` capture region overflows the
+     real texture and the copy silently stays empty (memset 0).
+
+**Resolution:** shipped DISABLED (`gl_bloom 0` everywhere, binary default 0).
+Code kept in-tree as wired WIP. **Lessons:** (a) a fullscreen post-process is
+the wrong shape for the PPC fillrate budget — needs sub-res / tiny
+`gl_bloom_size` and probably only ever makes sense on the iMac. (b) Don't use
+`R_LoadPic`/`it_pic` for a render-target — it applies pic resizing/scrap
+logic; a bloom redo needs a dedicated full-size texture created straight via
+`qglTexImage2D` so `glCopyTexSubImage2D` has a matching destination.
+
+---
+
+## 2026-05-29 — procedural/effect textures get freed on map change unless protected
+
+**What we tried:** `gl_glows` and `gl_caustics` build a procedural texture
+once at `R_Init` (in `R_InitParticleTexture`) and stash the `image_t*` in a
+global (`r_shelltexture`, `r_caustictexture`), exactly like `r_particletexture`.
+
+**What went wrong (latent):** `R_FreeUnusedImages` (run on every map change)
+frees any image whose `registration_sequence` != the current one. The two new
+textures were NOT in the protect list, so they'd be freed on the first map
+change and the feature paths would then bind a deleted texnum. It did NOT
+surface in the demo1 bench/screenshots only because those frames barely
+exercise the shell/caustic paths — a real "looked fine, was broken" trap.
+
+**Fix:** protect them in `R_FreeUnusedImages` the same way `r_notexture` /
+`r_particletexture` are (bump `registration_sequence`). **Lesson:** any
+texture created once at init and held in a global MUST be added to the
+`R_FreeUnusedImages` protect block, or it dies at the next map load.
+
+---
+
 ## 2026-05-23 — `gl_stencilshadow 1` on Tiger ATI drivers regresses 60% fps
 
 **What we tried:** Enabled `gl_stencilshadow 1` in autoexec for sawtooth

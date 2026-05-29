@@ -33,6 +33,17 @@ yquake2 5.11 port tuned to six retro Macs spanning 1999–2019. One source tree,
 | **mini-intel** Macmini2,1 2007 | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion | `x86_64` | Intel integrated |
 | **imac-2019** iMac19,1 2019 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` | modern AMD discrete |
 
+## Download & install
+
+Grab the latest `.dmg` from the [Releases](../../releases) page — one disk image runs on **Mac OS X 10.3.9 Panther, 10.4 Tiger, 10.7 Lion, and modern macOS** (PowerPC G3/G4 and 64-bit Intel). To install Quake II on a vintage Mac:
+
+1. **Download** `Quake2-OldMac-*.dmg` and mount it.
+2. **Copy** `Quake2.app`, `ref_gl.so`, `q2ded`, and the `baseq2/` folder into one directory (e.g. `~/Desktop/quake2/`).
+3. **Add your retail data** — drop your own `pak0.pak`, `pak1.pak`, `pak2.pak` (plus `players/` and `video/`) into `baseq2/`. Retail Quake II is on Steam and GOG; the shareware `pak0.pak` also works.
+4. **Double-click** `Quake2.app`. The app auto-detects the machine and applies a hand-tuned per-model config.
+
+No installer, no admin, no system files touched. On modern macOS, clear Gatekeeper with `xattr -dr com.apple.quarantine Quake2.app` (not needed on Panther/Tiger/Lion).
+
 ## Current build — `timedemo demo1.dm2` (median)
 
 Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`docs/screenshots/`](docs/screenshots/) · per-machine cfgs: [`scripts/bundle/`](scripts/bundle/).

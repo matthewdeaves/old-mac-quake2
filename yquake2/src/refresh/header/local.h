@@ -276,6 +276,7 @@ extern cvar_t *gl_novis;
 extern cvar_t *gl_nocull;
 extern cvar_t *gl_lerpmodels;
 extern cvar_t *gl_glows;   /* yquake2-ppc — sphere-map energy glow on RF_SHELL alias models */
+extern cvar_t *gl_trans_lighting;   /* yquake2-ppc — lightmap-modulate translucent surfaces (glass/grates). Map-load latched. */
 
 extern cvar_t *gl_lightlevel;
 extern cvar_t *gl_overbrightbits;

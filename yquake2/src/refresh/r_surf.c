@@ -673,6 +673,95 @@ R_DrawAlphaSurfaces(void)
 	qglEnable(GL_BLEND);
 	R_TexEnv(GL_MODULATE);
 
+	if (gl_trans_lighting->value && (qglSelectTextureSGIS || qglActiveTextureARB))
+	{
+		/* gl_trans_lighting: light glass/grates by their lightmap.
+		 * Self-contained immediate-mode pass (no group buffer): each
+		 * non-turb translucent surface is drawn with multitexture
+		 * colortex(TMU0, GL_MODULATE * primary colour carrying the
+		 * surface alpha) * lightmap(TMU1, GL_MODULATE). Plain GL_MODULATE
+		 * — deliberately NOT the GL_COMBINE_EXT overbright combiner — so
+		 * none of the combiner-scale state R_DrawWorld owns is touched
+		 * (see MISTAKES.md). Water (SURF_DRAWTURB, no lightmap) toggles
+		 * back to the single-texture R_EmitWaterPolys path. The
+		 * lightmaps are built at map load only when gl_trans_lighting was
+		 * set (see r_model.c); toggling at runtime needs a map reload. */
+		qboolean mtex = false;
+		float intens = gl_state.inverse_intensity;
+
+		for (s = r_alpha_surfaces; s; s = s->texturechain)
+		{
+			float alpha = (s->texinfo->flags & SURF_TRANS33) ? 0.33f
+					: (s->texinfo->flags & SURF_TRANS66) ? 0.66f : 1.0f;
+
+			c_brush_polys++;
+
+			if (s->flags & SURF_DRAWTURB)
+			{
+				if (mtex)
+				{
+					R_EnableMultitexture(false);
+					mtex = false;
+				}
+
+				R_Bind(s->texinfo->image->texnum);
+				qglColor4f(intens, intens, intens, alpha);
+				R_EmitWaterPolys(s);
+			}
+			else
+			{
+				glpoly_t *p;
+				float scroll = 0.0f;
+
+				if (!mtex)
+				{
+					R_EnableMultitexture(true);
+					R_SelectTexture(QGL_TEXTURE0);
+					R_TexEnv(GL_MODULATE);
+					R_SelectTexture(QGL_TEXTURE1);
+					R_TexEnv(GL_MODULATE);
+					mtex = true;
+				}
+
+				qglColor4f(intens, intens, intens, alpha);
+				R_MBind(QGL_TEXTURE0, s->texinfo->image->texnum);
+				R_MBind(QGL_TEXTURE1,
+						gl_state.lightmap_textures + s->lightmaptexturenum);
+
+				if (s->texinfo->flags & SURF_FLOWING)
+				{
+					scroll = -64 * ((r_newrefdef.time / 40.0) -
+							(int)(r_newrefdef.time / 40.0));
+					if (scroll == 0.0)
+					{
+						scroll = -64.0;
+					}
+				}
+
+				for (p = s->polys; p; p = p->chain)
+				{
+					int i;
+					int nv = p->numverts;
+					float *v = p->verts[0];
+
+					qglBegin(GL_POLYGON);
+					for (i = 0; i < nv; i++, v += VERTEXSIZE)
+					{
+						qglMTexCoord2fSGIS(QGL_TEXTURE0, v[3] + scroll, v[4]);
+						qglMTexCoord2fSGIS(QGL_TEXTURE1, v[5], v[6]);
+						qglVertex3fv(v);
+					}
+					qglEnd();
+				}
+			}
+		}
+
+		if (mtex)
+		{
+			R_EnableMultitexture(false);
+		}
+	}
+	else
 	for (s = r_alpha_surfaces; s; s = s->texturechain)
 	{
 		c_brush_polys++;

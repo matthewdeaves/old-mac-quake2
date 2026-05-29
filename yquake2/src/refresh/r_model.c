@@ -641,9 +641,15 @@ Mod_LoadFaces(lump_t *l)
 			R_SubdivideSurface(out); /* cut up polygon for warps */
 		}
 
-		/* create lightmaps and polygons */
-		if (!(out->texinfo->flags &
-			  (SURF_SKY | SURF_TRANS33 | SURF_TRANS66 | SURF_WARP)))
+		/* create lightmaps and polygons.
+		 * Stock Q2 skips lightmaps for translucent (TRANS33/66) surfaces,
+		 * so glass/grates render unlit ("floating"). With gl_trans_lighting
+		 * we DO build their lightmaps here so R_DrawAlphaSurfaces can
+		 * modulate them by the room lighting. Sky/warp never get one.
+		 * Latched at map-load: toggling the cvar needs a reload. */
+		if (!(out->texinfo->flags & (SURF_SKY | SURF_WARP)) &&
+			((gl_trans_lighting && gl_trans_lighting->value) ||
+			 !(out->texinfo->flags & (SURF_TRANS33 | SURF_TRANS66))))
 		{
 			LM_CreateSurfaceLightmap(out);
 		}

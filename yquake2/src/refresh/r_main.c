@@ -167,6 +167,7 @@ cvar_t *gl_playermip;
 cvar_t *gl_saturatelighting;
 cvar_t *gl_swapinterval;
 cvar_t *gl_glows;
+cvar_t *gl_trans_lighting;
 cvar_t *gl_texturemode;
 cvar_t *gl_texturealphamode;
 cvar_t *gl_texturesolidmode;
@@ -1158,6 +1159,7 @@ R_Register(void)
 	gl_shadows = ri.Cvar_Get("gl_shadows", "0", CVAR_ARCHIVE);
 	gl_stencilshadow = ri.Cvar_Get("gl_stencilshadow", "0", CVAR_ARCHIVE);
 	gl_glows = ri.Cvar_Get("gl_glows", "1", CVAR_ARCHIVE);
+	gl_trans_lighting = ri.Cvar_Get("gl_trans_lighting", "1", CVAR_ARCHIVE);
 	gl_dynamic = ri.Cvar_Get("gl_dynamic", "1", 0);
 	gl_nobind = ri.Cvar_Get("gl_nobind", "0", 0);
 	gl_round_down = ri.Cvar_Get("gl_round_down", "1", 0);

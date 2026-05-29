@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Primary SEO -->
+<title>Old Mac Quake II — Quake 2 for PowerPC G3/G4 &amp; Intel Macs</title>
+<meta name="description" content="Play Quake II natively on vintage PowerPC G3 and G4 and early Intel Macs. A yquake2 source port tuned for Mac OS X Panther, Tiger and Lion with automatic per-machine hardware tuning. One fat universal binary, free DMG download.">
+<link rel="canonical" href="https://matthewdeaves.github.io/old-mac-quake2/">
+<meta name="author" content="Matthew Deaves">
+<meta name="robots" content="index, follow">
+<meta name="keywords" content="Quake II, Quake 2, yquake2, source port, PowerPC, PPC, Mac OS X, vintage Mac, retro gaming, universal binary, AltiVec, G3, G4, Panther, Tiger, Lion, ATI Rage 128, GeForce2 MX, Radeon 9000, Radeon 9200, GMA 950, PowerMac, Mac mini G4">
+
+<!-- Open Graph (Discord / Reddit / Facebook / forums) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Old Mac Quake II">
+<meta property="og:title" content="Old Mac Quake II — Quake 2 for vintage PowerPC &amp; Intel Macs">
+<meta property="og:description" content="Heavily optimized Quake II (yquake2) port for PowerPC G3/G4 and early Intel Macs. Runs on Mac OS X Panther through modern macOS, auto-tuned per machine. Free DMG download.">
+<meta property="og:url" content="https://matthewdeaves.github.io/old-mac-quake2/">
+<meta property="og:image" content="https://matthewdeaves.github.io/old-mac-quake2/assets/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Old Mac Quake II — Quake 2 on vintage PowerPC and Intel Macs">
+
+<!-- Twitter / X card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Old Mac Quake II — Quake 2 for vintage PowerPC &amp; Intel Macs">
+<meta name="twitter:description" content="Heavily optimized Quake II (yquake2) port for PowerPC G3/G4 and early Intel Macs. Mac OS X Panther through modern macOS. Free download.">
+<meta name="twitter:image" content="https://matthewdeaves.github.io/old-mac-quake2/assets/og-image.jpg">
+
+<!-- ====================================================================
+     Google Search Console verification: paste the verification <meta>
+     tag Google gives you on the line below, then redeploy this branch.
+     ==================================================================== -->
+<!-- <meta name="google-site-verification" content="PASTE_TOKEN_HERE"> -->
+
+<link rel="icon" type="image/png" href="assets/icon.png">
+
+<!-- Structured data: helps Google understand this is downloadable software -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Old Mac Quake II",
+  "description": "A yquake2 source port of Quake II tuned for vintage PowerPC G3, G4 and early Intel Macs running Mac OS X Panther, Tiger and Lion. One fat universal binary (PPC + Intel) with automatic per-machine hardware tuning.",
+  "applicationCategory": "Game",
+  "operatingSystem": "Mac OS X 10.3.9 Panther, 10.4 Tiger, 10.7 Lion, modern macOS",
+  "processorRequirements": "PowerPC G3 / G4 or Intel x86_64",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "license": "https://www.gnu.org/licenses/old-licenses/gpl-2.0.html",
+  "downloadUrl": "https://github.com/matthewdeaves/old-mac-quake2/releases/latest",
+  "codeRepository": "https://github.com/matthewdeaves/old-mac-quake2",
+  "author": { "@type": "Person", "name": "Matthew Deaves" }
+}
+</script>
+
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font: 16px/1.65 -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: #140f0c; color: #ece6dc; -webkit-font-smoothing: antialiased;
+  }
+  a { color: #e08a3c; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  /* full-page-width flow: edge to edge with comfortable side padding */
+  .wrap { width: 100%; margin: 0 auto; padding: 0 clamp(20px, 5vw, 90px); }
+  header {
+    text-align: center; padding: 64px 20px 44px;
+    background: radial-gradient(ellipse at top, #3a2a1c, #140f0c 72%);
+  }
+  header img.icon { width: 140px; height: 140px; image-rendering: auto; }
+  h1 { font-size: clamp(2rem, 4vw, 3rem); margin: 18px 0 8px; letter-spacing: -0.5px; }
+  .tagline { max-width: 900px; margin: 0 auto; font-size: 1.12rem; color: #c9bfb0; }
+  .badges { margin-top: 26px; }
+  .btn {
+    display: inline-block; margin: 6px; padding: 13px 26px; border-radius: 8px;
+    font-weight: 600; font-size: 1.02rem;
+  }
+  .btn.primary { background: #e08a3c; color: #140f0c; }
+  .btn.primary:hover { background: #f0a052; text-decoration: none; }
+  .btn.ghost { border: 1px solid #6b5946; color: #ece6dc; }
+  .btn.ghost:hover { border-color: #e08a3c; text-decoration: none; }
+  h2 {
+    font-size: 1.6rem; margin: 52px 0 14px; padding-bottom: 8px;
+    border-bottom: 1px solid #312619;
+  }
+  h3 { margin: 0 0 8px; }
+  code {
+    background: #241a12; padding: 2px 6px; border-radius: 4px;
+    font: 0.9em "SF Mono", Menlo, Consolas, monospace; color: #f0c08a;
+  }
+  table { border-collapse: collapse; width: 100%; margin: 16px 0; font-size: 0.96rem; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid #2a2117; }
+  th { color: #e08a3c; }
+  tbody tr:hover { background: #1d150e; }
+  .shots {
+    display: grid; gap: 16px; margin: 22px 0;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+  figure { margin: 0; }
+  figure img { width: 100%; border-radius: 8px; border: 1px solid #2a2117; display: block; }
+  figcaption { font-size: 0.82rem; color: #9c9182; margin-top: 6px; text-align: center; }
+  .sisters {
+    display: grid; gap: 18px; margin: 22px 0;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+  .card { background: #1d150e; border: 1px solid #2a2117; border-radius: 10px; padding: 20px 22px; }
+  /* lightbox gallery */
+  .gallery {
+    display: grid; gap: 14px; margin: 22px 0;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .shot { display: block; position: relative; border-radius: 8px; overflow: hidden;
+    border: 1px solid #2a2117; line-height: 0; }
+  .shot img { width: 100%; height: 100%; object-fit: cover; aspect-ratio: 4/3;
+    transition: transform .25s ease, filter .25s ease; }
+  .shot:hover img { transform: scale(1.05); filter: brightness(1.12); }
+  .shot .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 12px 8px;
+    font-size: 0.78rem; color: #f3ead9; line-height: 1.3;
+    background: linear-gradient(transparent, rgba(0,0,0,.78)); opacity: 0; transition: opacity .2s; }
+  .shot:hover .cap { opacity: 1; }
+  #lb { position: fixed; inset: 0; z-index: 999; display: none;
+    background: rgba(8,6,4,.95); align-items: center; justify-content: center; }
+  #lb.open { display: flex; }
+  #lb img { max-width: 94vw; max-height: 86vh; border-radius: 6px; box-shadow: 0 0 40px #000; }
+  #lb .lbcap { position: fixed; bottom: 22px; left: 0; right: 0; text-align: center;
+    color: #d8cdba; font-size: 0.95rem; }
+  #lb button { position: fixed; top: 50%; transform: translateY(-50%);
+    background: rgba(40,30,20,.6); color: #fff; border: 0; font-size: 2.4rem;
+    width: 60px; height: 90px; cursor: pointer; border-radius: 8px; }
+  #lb .prev { left: 18px; } #lb .next { right: 18px; }
+  #lb .close { top: 18px; right: 18px; transform: none; width: 52px; height: 52px; font-size: 1.8rem; }
+  ul, ol { padding-left: 22px; }
+  li { margin: 7px 0; }
+  footer {
+    margin-top: 64px; padding: 34px 20px; text-align: center;
+    color: #8d8273; font-size: 0.88rem; border-top: 1px solid #241a12;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <img class="icon" src="assets/icon.png" alt="Quake II icon — Old Mac Quake II">
+  <h1>Old Mac Quake II</h1>
+  <p class="tagline">A modern <strong>yquake2</strong> source port that runs <strong>Quake II</strong> natively on vintage <strong>PowerPC G3 and G4</strong> and early <strong>Intel Macs</strong> — from a 1999 Power Mac G3 on <strong>Mac OS X 10.3.9 Panther</strong> to a 2019 iMac, with automatic per-machine hardware tuning.</p>
+  <div class="badges">
+    <a class="btn primary" href="https://github.com/matthewdeaves/old-mac-quake2/releases/latest">⬇ Download the latest DMG</a>
+    <a class="btn ghost" href="https://github.com/matthewdeaves/old-mac-quake2">View source on GitHub</a>
+  </div>
+</header>
+
+<div class="wrap">
+
+<p>This is a <strong>Quake II source port</strong> (based on <a href="https://github.com/yquake2/yquake2">yquake2</a> 5.11) tuned to look as good as possible while staying playable on <strong>six retro Macs spanning 1999–2019</strong>. One source tree builds a single <strong>fat universal binary</strong> (PowerPC G3 + PowerPC G4 with AltiVec + Intel x86_64); the right configuration for your machine is selected automatically at launch via <code>sysctl hw.model</code>. Free and open source under the GPL.</p>
+
+<div class="gallery">
+  <a class="shot" href="assets/gallery/sawtooth-06.webp" data-cap="Power Mac G4 · GeForce2 MX · Tiger"><img src="assets/gallery/sawtooth-06-t.webp" alt="Quake II on a Power Mac G4 Sawtooth with NVIDIA GeForce2 MX" loading="lazy"><span class="cap">Power Mac G4 · GeForce2 MX</span></a>
+  <a class="shot" href="assets/gallery/quicksilver-08.webp" data-cap="Power Mac G4 · Radeon 9000 Pro · Tiger"><img src="assets/gallery/quicksilver-08-t.webp" alt="Quake II on a Power Mac G4 Quicksilver with ATI Radeon 9000 Pro" loading="lazy"><span class="cap">Power Mac G4 · Radeon 9000 Pro</span></a>
+  <a class="shot" href="assets/gallery/mini-g4-05.webp" data-cap="Mac mini G4 · Radeon 9200 · Tiger"><img src="assets/gallery/mini-g4-05-t.webp" alt="Quake II on a Mac mini G4 with ATI Radeon 9200 under Tiger" loading="lazy"><span class="cap">Mac mini G4 · Radeon 9200</span></a>
+</div>
+
+<h2 id="supported-macs">Supported Macs &amp; operating systems</h2>
+<p>If you are searching for how to run Quake II on any of these exact machines and OS versions, this port is built and benchmarked for them:</p>
+<table>
+  <thead><tr><th>Machine</th><th>CPU</th><th>Graphics</th><th>Mac OS X</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Power Mac G3</strong> (Blue &amp; White / Yosemite, 1999)</td><td>449 MHz PowerPC 750</td><td>ATI Rage 128 16 MB AGP</td><td>10.3.9 Panther</td></tr>
+    <tr><td><strong>Power Mac G4</strong> (Sawtooth AGP, 1999)</td><td>500 MHz PowerPC 7400</td><td>NVIDIA GeForce2 MX 32 MB</td><td>10.4.11 Tiger</td></tr>
+    <tr><td><strong>Power Mac G4</strong> (Quicksilver, 2001)</td><td>733 MHz PowerPC 7450</td><td>ATI Radeon 9000 Pro 64 MB</td><td>10.4.11 Tiger</td></tr>
+    <tr><td><strong>Mac mini G4</strong> (PowerMac10,1, 2005)</td><td>1.25 GHz PowerPC 7447A</td><td>ATI Radeon 9200 32 MB</td><td>10.4.11 Tiger</td></tr>
+    <tr><td><strong>Mac mini</strong> (Intel Core 2 Duo, 2007)</td><td>2.33 GHz Core 2 Duo</td><td>Intel GMA 950 64 MB</td><td>10.7.5 Lion</td></tr>
+    <tr><td><strong>iMac 27"</strong> (iMac19,1, 2019)</td><td>3.7 GHz Core i5-9600K</td><td>AMD Radeon Pro 580X 8 GB</td><td>modern macOS</td></tr>
+  </tbody>
+</table>
+<p>The same DMG installs on every supported Mac. It is built on Panther so it mounts on everything from <strong>Mac OS X 10.3.9</strong> through the latest macOS, and the <code>.app</code> inside is a fat binary that runs natively as PowerPC on G3/G4 and as Intel x86_64 on Core 2 Duo and newer. PowerPC G5 machines run the G4 AltiVec slice. (Pre-Lion 32-bit-kernel Intel Macs are not supported.)</p>
+
+<h2 id="features">What makes it different</h2>
+<ul>
+  <li><strong>One fat universal binary</strong> — PowerPC 750 (G3), PowerPC 7400 (G4, with hand-written AltiVec paths) and Intel x86_64, glued with <code>lipo</code> into a single <code>.app</code>.</li>
+  <li><strong>Automatic per-machine tuning</strong> — at launch the engine reads <code>hw.model</code> and applies a configuration profile tuned for that exact computer's CPU and GPU.</li>
+  <li><strong>Visuals tuned per GPU era</strong> — world decals (bullet, blood, scorch), linear GL fog, underwater warp, energy-shell glow on power-ups, lightmapped glass and grates, animated water caustics, alias drop-shadows, trilinear and up to 16× anisotropic filtering, MSAA and dynamic lights where the hardware can take it.</li>
+  <li><strong>Stays playable on real hardware</strong> — the 1999 Power Mac G3 with an ATI Rage 128 holds ~25 fps at 1024×768 with the full visual stack, and the G4s and Intel Macs clear 60 fps.</li>
+  <li><strong>Every tweak is toggleable</strong> at runtime so you can A/B individual features on your own Mac without rebuilding.</li>
+</ul>
+
+<h2 id="install">How to install Quake II on your old Mac</h2>
+<ol>
+  <li><strong>Download the DMG</strong> from the <a href="https://github.com/matthewdeaves/old-mac-quake2/releases/latest">latest release</a> (<code>Quake2-OldMac-&lt;version&gt;.dmg</code>) and open the disk image.</li>
+  <li><strong>Copy everything</strong> into one folder, e.g. <code>~/Desktop/quake2/</code>: <code>Quake2.app</code>, <code>ref_gl.so</code>, <code>q2ded</code>, and the <code>baseq2/</code> folder.</li>
+  <li><strong>Add your retail data</strong> — copy your own <code>pak0.pak</code>, <code>pak1.pak</code>, <code>pak2.pak</code> (plus <code>players/</code> and <code>video/</code>) into <code>baseq2/</code>. Retail Quake II is on <a href="https://store.steampowered.com/app/2320/QUAKE_II/">Steam</a> and <a href="https://www.gog.com/en/game/quake_ii_quad_damage">GOG</a>.</li>
+  <li><strong>Double-click <code>Quake2.app</code></strong> and play.</li>
+</ol>
+<p>On modern macOS the unsigned bundle is quarantined — either right-click → Open, or run <code>xattr -dr com.apple.quarantine ~/Desktop/quake2/Quake2.app</code>. Panther, Tiger and Lion do not need this.</p>
+
+<h2 id="gallery">Screenshots across the fleet</h2>
+<div class="gallery">
+  <a class="shot" href="assets/gallery/yosemite-05.webp" data-cap="Power Mac G3 · ATI Rage 128 · Panther"><img src="assets/gallery/yosemite-05-t.webp" alt="Quake II on Power Mac G3 · ATI Rage 128 · Panther" loading="lazy"><span class="cap">Power Mac G3 · ATI Rage 128 · Panther</span></a>
+  <a class="shot" href="assets/gallery/yosemite-07.webp" data-cap="Power Mac G3 · ATI Rage 128 · Panther"><img src="assets/gallery/yosemite-07-t.webp" alt="Quake II on Power Mac G3 · ATI Rage 128 · Panther" loading="lazy"><span class="cap">Power Mac G3 · ATI Rage 128 · Panther</span></a>
+  <a class="shot" href="assets/gallery/sawtooth-02.webp" data-cap="Power Mac G4 · GeForce2 MX · Tiger"><img src="assets/gallery/sawtooth-02-t.webp" alt="Quake II on Power Mac G4 · GeForce2 MX · Tiger" loading="lazy"><span class="cap">Power Mac G4 · GeForce2 MX · Tiger</span></a>
+  <a class="shot" href="assets/gallery/sawtooth-06.webp" data-cap="Power Mac G4 · GeForce2 MX · Tiger"><img src="assets/gallery/sawtooth-06-t.webp" alt="Quake II on Power Mac G4 · GeForce2 MX · Tiger" loading="lazy"><span class="cap">Power Mac G4 · GeForce2 MX · Tiger</span></a>
+  <a class="shot" href="assets/gallery/quicksilver-03.webp" data-cap="Power Mac G4 · Radeon 9000 Pro · Tiger"><img src="assets/gallery/quicksilver-03-t.webp" alt="Quake II on Power Mac G4 · Radeon 9000 Pro · Tiger" loading="lazy"><span class="cap">Power Mac G4 · Radeon 9000 Pro · Tiger</span></a>
+  <a class="shot" href="assets/gallery/quicksilver-08.webp" data-cap="Power Mac G4 · Radeon 9000 Pro · Tiger"><img src="assets/gallery/quicksilver-08-t.webp" alt="Quake II on Power Mac G4 · Radeon 9000 Pro · Tiger" loading="lazy"><span class="cap">Power Mac G4 · Radeon 9000 Pro · Tiger</span></a>
+  <a class="shot" href="assets/gallery/mini-g4-05.webp" data-cap="Mac mini G4 · Radeon 9200 · Tiger"><img src="assets/gallery/mini-g4-05-t.webp" alt="Quake II on Mac mini G4 · Radeon 9200 · Tiger" loading="lazy"><span class="cap">Mac mini G4 · Radeon 9200 · Tiger</span></a>
+  <a class="shot" href="assets/gallery/mini-g4-02.webp" data-cap="Mac mini G4 · Radeon 9200 · Tiger"><img src="assets/gallery/mini-g4-02-t.webp" alt="Quake II on Mac mini G4 · Radeon 9200 · Tiger" loading="lazy"><span class="cap">Mac mini G4 · Radeon 9200 · Tiger</span></a>
+  <a class="shot" href="assets/gallery/mini-g4-08.webp" data-cap="Mac mini G4 · Radeon 9200 · Tiger"><img src="assets/gallery/mini-g4-08-t.webp" alt="Quake II on Mac mini G4 · Radeon 9200 · Tiger" loading="lazy"><span class="cap">Mac mini G4 · Radeon 9200 · Tiger</span></a>
+  <a class="shot" href="assets/gallery/mini-intel-03.webp" data-cap="Intel Mac mini · GMA 950 · Lion"><img src="assets/gallery/mini-intel-03-t.webp" alt="Quake II on Intel Mac mini · GMA 950 · Lion" loading="lazy"><span class="cap">Intel Mac mini · GMA 950 · Lion</span></a>
+  <a class="shot" href="assets/gallery/mini-intel-06.webp" data-cap="Intel Mac mini · GMA 950 · Lion"><img src="assets/gallery/mini-intel-06-t.webp" alt="Quake II on Intel Mac mini · GMA 950 · Lion" loading="lazy"><span class="cap">Intel Mac mini · GMA 950 · Lion</span></a>
+  <a class="shot" href="assets/gallery/mini-intel-demo2-04.webp" data-cap="Intel Mac mini · GMA 950 · Lion"><img src="assets/gallery/mini-intel-demo2-04-t.webp" alt="Quake II on Intel Mac mini · GMA 950 · Lion" loading="lazy"><span class="cap">Intel Mac mini · GMA 950 · Lion</span></a>
+</div>
+
+<h2 id="sisters">Sister projects — vintage Mac id Software ports</h2>
+<div class="sisters">
+  <div class="card">
+    <h3><a href="https://github.com/matthewdeaves/old-mac-quakespasm">Old Mac QuakeSpasm</a></h3>
+    <p>The same six-machine PowerPC + Intel fleet and tooling applied to the original <strong>Quake</strong> (QuakeSpasm base). One universal binary for Panther, Tiger, Lion and modern macOS. <a href="https://matthewdeaves.github.io/old-mac-quakespasm/">Project page →</a></p>
+  </div>
+  <div class="card">
+    <h3><a href="https://github.com/matthewdeaves/old-mac-quake3">Old Mac Quake III</a></h3>
+    <p><strong>Quake III Arena</strong> (ioquake3) on the same fleet, pinned to the last SDL 1.2 commit so it still runs on Panther and Tiger. Yes — Q3 on a 449 MHz G3.</p>
+  </div>
+  <div class="card">
+    <h3><a href="https://github.com/matthewdeaves/macglquake">Mac GLQuake (Classic)</a></h3>
+    <p>A Retro68 PowerPC CFM port of classic GLQuake — a runnable <strong>Quake</strong> for <strong>Mac OS 8.6 / 9</strong>, before OS X.</p>
+  </div>
+</div>
+
+<h2 id="source">Source code &amp; documentation</h2>
+<p>The full source tree, build scripts, benchmark history and engineering notes live on GitHub:
+<a href="https://github.com/matthewdeaves/old-mac-quake2">github.com/matthewdeaves/old-mac-quake2</a>.
+It documents the cross-compile pipeline (one Linux box driving Mac cross-builds), the per-machine autoexec configs, the AltiVec and renderer work, and a rolling benchmark CSV tagged by commit. Built on the upstream <a href="https://github.com/yquake2/yquake2">yquake2</a> engine; GPL-2.0-or-later.</p>
+
+</div>
+
+<footer>
+  <p>Old Mac Quake II · a yquake2 source port for vintage PowerPC and Intel Macs · GPL-2.0-or-later<br>
+  Quake II © id Software. yquake2 by the <a href="https://github.com/yquake2/yquake2">yquake2 developers</a>. Port by <a href="https://github.com/matthewdeaves">Matthew Deaves</a>.</p>
+</footer>
+
+<div id="lb" role="dialog" aria-modal="true">
+  <button class="close" aria-label="Close">&times;</button>
+  <button class="prev" aria-label="Previous">&#8249;</button>
+  <img id="lbimg" alt="">
+  <button class="next" aria-label="Next">&#8250;</button>
+  <div class="lbcap"></div>
+</div>
+<script>
+(function(){
+  var shots=[].slice.call(document.querySelectorAll('.shot'));
+  var lb=document.getElementById('lb'), img=document.getElementById('lbimg'),
+      cap=lb.querySelector('.lbcap'), i=0;
+  function show(n){i=(n+shots.length)%shots.length;var a=shots[i];
+    img.src=a.getAttribute('href');cap.textContent=a.getAttribute('data-cap');img.alt=a.querySelector('img').alt;}
+  function open(n){show(n);lb.classList.add('open');}
+  function close(){lb.classList.remove('open');img.src='';}
+  shots.forEach(function(a,n){a.addEventListener('click',function(e){e.preventDefault();open(n);});});
+  lb.querySelector('.next').addEventListener('click',function(e){e.stopPropagation();show(i+1);});
+  lb.querySelector('.prev').addEventListener('click',function(e){e.stopPropagation();show(i-1);});
+  lb.querySelector('.close').addEventListener('click',close);
+  lb.addEventListener('click',function(e){if(e.target===lb)close();});
+  document.addEventListener('keydown',function(e){if(!lb.classList.contains('open'))return;
+    if(e.key==='Escape')close();else if(e.key==='ArrowRight')show(i+1);else if(e.key==='ArrowLeft')show(i-1);});
+})();
+</script>
+</body>
+</html>

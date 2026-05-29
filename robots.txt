@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://matthewdeaves.github.io/old-mac-quake2/sitemap.xml

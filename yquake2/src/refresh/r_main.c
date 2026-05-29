@@ -59,6 +59,7 @@ glstate_t gl_state;
 image_t *r_notexture; /* use for bad textures */
 image_t *r_particletexture; /* little dot for particles */
 image_t *r_shelltexture; /* sphere-map energy glow for RF_SHELL (gl_glows) */
+image_t *r_caustictexture; /* animated caustic overlay for water surfaces (gl_caustics) */
 
 entity_t *currententity;
 model_t *currentmodel;
@@ -168,6 +169,7 @@ cvar_t *gl_saturatelighting;
 cvar_t *gl_swapinterval;
 cvar_t *gl_glows;
 cvar_t *gl_trans_lighting;
+cvar_t *gl_caustics;
 cvar_t *gl_texturemode;
 cvar_t *gl_texturealphamode;
 cvar_t *gl_texturesolidmode;
@@ -1160,6 +1162,7 @@ R_Register(void)
 	gl_stencilshadow = ri.Cvar_Get("gl_stencilshadow", "0", CVAR_ARCHIVE);
 	gl_glows = ri.Cvar_Get("gl_glows", "1", CVAR_ARCHIVE);
 	gl_trans_lighting = ri.Cvar_Get("gl_trans_lighting", "1", CVAR_ARCHIVE);
+	gl_caustics = ri.Cvar_Get("gl_caustics", "1", CVAR_ARCHIVE);
 	gl_dynamic = ri.Cvar_Get("gl_dynamic", "1", 0);
 	gl_nobind = ri.Cvar_Get("gl_nobind", "0", 0);
 	gl_round_down = ri.Cvar_Get("gl_round_down", "1", 0);

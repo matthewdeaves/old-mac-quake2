@@ -134,6 +134,55 @@ R_InitShellTexture(void)
 
 	r_shelltexture = R_LoadPic("***shell***", (byte *)data,
 			SHELL_TEX_SIZE, 0, SHELL_TEX_SIZE, 0, it_sprite, 32);
+
+	R_InitCausticTexture();
+}
+
+/*
+ * Tileable caustic texture for the water-surface overlay (gl_caustics).
+ * Two crossing sine gratings whose product is sharpened into a bright
+ * "net" of focal ridges — the cheap classic caustic look. Frequencies
+ * are whole cycles across the tile so it wraps seamlessly when the
+ * texcoords are scrolled over time in R_EmitWaterPolys. RGB carries the
+ * brightness and so does alpha, so an additive (GL_SRC_ALPHA, GL_ONE)
+ * blend adds light only where the caustic is bright.
+ */
+#define CAUSTIC_TEX_SIZE 64
+void
+R_InitCausticTexture(void)
+{
+	int x, y;
+	static byte data[CAUSTIC_TEX_SIZE][CAUSTIC_TEX_SIZE][4];
+
+	for (y = 0; y < CAUSTIC_TEX_SIZE; y++)
+	{
+		for (x = 0; x < CAUSTIC_TEX_SIZE; x++)
+		{
+			float u = (float)x / CAUSTIC_TEX_SIZE;
+			float v = (float)y / CAUSTIC_TEX_SIZE;
+			float a = 0.5f + 0.5f * sin((2.0f * M_PI) * (3.0f * u + 1.0f * v));
+			float b = 0.5f + 0.5f * sin((2.0f * M_PI) * (3.0f * v - 1.0f * u));
+			float c = 0.5f + 0.5f * sin((2.0f * M_PI) * 2.0f * (u + v));
+			float n = (a * b + c) * 0.5f;     /* 0..1 net pattern */
+			int iv;
+
+			/* sharpen so only the focal ridges stay bright */
+			n = n * n * n;
+			iv = (int)(n * 255.0f);
+			if (iv > 255)
+			{
+				iv = 255;
+			}
+
+			data[y][x][0] = iv;
+			data[y][x][1] = iv;
+			data[y][x][2] = iv;
+			data[y][x][3] = iv;
+		}
+	}
+
+	r_caustictexture = R_LoadPic("***caustic***", (byte *)data,
+			CAUSTIC_TEX_SIZE, 0, CAUSTIC_TEX_SIZE, 0, it_sprite, 32);
 }
 
 void

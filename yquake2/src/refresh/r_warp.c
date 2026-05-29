@@ -320,6 +320,39 @@ R_EmitWaterPolys(msurface_t *fa)
 
 		qglEnd();
 	}
+
+	/* gl_caustics: second additive pass — an animated caustic "net"
+	 * scrolled across the water surface in world XY, adding dancing
+	 * focal light. Single-texture (no multitexture needed); the caller
+	 * (R_DrawAlphaSurfaces) already has GL_BLEND on, so we only swap the
+	 * blend func to additive and restore it + the colour afterwards. */
+	if (gl_caustics->value && r_caustictexture)
+	{
+		float cscroll = r_newrefdef.time * 0.04;
+
+		R_Bind(r_caustictexture->texnum);
+		qglBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		qglColor4f(0.55f, 0.7f, 0.8f, 1.0f);
+
+		for (bp = fa->polys; bp; bp = bp->next)
+		{
+			p = bp;
+
+			qglBegin(GL_TRIANGLE_FAN);
+
+			for (i = 0, v = p->verts[0]; i < p->numverts; i++, v += VERTEXSIZE)
+			{
+				qglTexCoord2f(v[0] * (1.0f / 64) + cscroll,
+						v[1] * (1.0f / 64) - cscroll);
+				qglVertex3fv(v);
+			}
+
+			qglEnd();
+		}
+
+		qglBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		qglColor4f(1, 1, 1, 1);
+	}
 }
 
 void

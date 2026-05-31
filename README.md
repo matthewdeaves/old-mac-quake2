@@ -53,13 +53,13 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 |---|---:|---:|---:|---|
 | **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA + glows + lit glass + caustics + farsee |
 | **mini-intel** | 219.15 | 98.85 | 60 | picmip 0, trilinear, AF 8x, fog, waterwarp, group-draw, decals 64, 2× MSAA, **glows + lit glass + caustics + farsee + zfix** |
-| **imac-g5** | 116.00 † | 116.10 † | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 64, **stencil shadows + glows + lit glass + caustics + zfix**; ships native 1440×900 fullscreen + 2× MSAA |
+| **imac-g5** | 46.80 † | 46.80 † | 50 † | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 64, **stencil shadows + glows + lit glass + caustics + 2× MSAA + zfix**; native 1440×900 only |
 | **mini-g4** | 96.05 \** | 56.95 \** | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **glows + lit glass + caustics + zfix** |
 | **sawtooth** | 72.90 | 65.45 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, decals 16 |
 | **quicksilver** | 69.30 | 65.30 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **glows + lit glass + caustics + zfix** \* |
 | **yosemite** | 46.40 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, decals 8, **zfix** |
 
-† imac-g5 640/1024 are **windowed** — the demo is CPU-bound on the 2.0 GHz 970, so it runs ~116 fps at *any* resolution, meaning the Radeon 9600 has large headroom. The shipped production default is **native 1440×900 same-mode fullscreen** (the only safe fullscreen on the ATI R300 / Leopard driver — a non-native mode switch hard-hangs the OS) with **2× MSAA + stencil shadows**, which lands at **52.6 fps** at native — a deliberate visuals-over-fps spend of that headroom.
+† imac-g5 ships **native 1440×900 same-mode fullscreen only** — the ATI R300 / Leopard driver hard-hangs the OS on a non-native fullscreen mode switch, so it can't drop resolution. The figure is the full production render (stencil shadows + glows + lit glass + caustics + **2× MSAA**, demo1; demo2 is 45.8). The 2.0 GHz 970 is CPU-bound by the visual stack at ~47 fps regardless of resolution (640/1024 windowed both measure 46.8). This is a deliberate visuals-over-framerate choice — dropping 2× MSAA → ~100 fps. Below the 60 fps fleet target by design (the G5's user floor is "≈50, visuals first").
 
 \* quicksilver's LCD vsync caps both resolutions near 71 fps — visual features have not pushed fps below the cap, meaning there's spare GPU headroom we could spend on further effects.
 \** mini-g4 1024/640 here are **thermal** — the machine was sitting in direct sun during this grid; cool-machine numbers are ~99/126. The 56.95/96.05 figures are the worst observed, not steady-state. See MISTAKES.md.

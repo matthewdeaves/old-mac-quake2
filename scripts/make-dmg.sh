@@ -75,9 +75,18 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # (picked at compile time by the fat slice dyld runs) and the six
 # per-machine overlays (picked at boot by sysctl hw.model via CFBundle —
 # see yquake2/src/common/misc.c).
+#
+# Shipped COMMENT-STRIPPED — the engine's command buffer is a fixed 8 KB
+# (cmd_text_buf[8192]) and the baseline + overlay are appended back-to-back
+# before execution, so their combined size must stay well under 8 KB. The
+# documentation comments alone blow that budget (→ "Cbuf_AddText: overflow",
+# garbled config, R300 GPU wedge on the iMac G5). Same strip as deploy.sh.
 for cfg in ppc750 ppc7400 ppc970 x86_64 \
            yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
-  cp "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" "$RESOURCES/"
+  sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
+      "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \
+    | grep -v '^[[:space:]]*$' \
+    > "$RESOURCES/autoexec-$cfg.cfg"
 done
 
 # Procedural decal textures, same as deploy.sh (Resources/hd-pak/decals/).

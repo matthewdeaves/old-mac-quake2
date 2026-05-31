@@ -115,13 +115,27 @@ chmod +x "$APP/Contents/MacOS/quake2"
 #   * per-machine overlays (the six fleet boxes) — picked at runtime by
 #     sysctl hw.model, layered on top so known machines stay hand-tuned.
 #
-# Bench compatibility: the cfgs deliberately do NOT set gl_mode /
-# gl_customwidth / gl_customheight / gl_swapinterval. bench.sh relies
-# on `+set` for its per-resolution sweep, and uses -noarchautoexec to
-# suppress the hook entirely when it needs full cvar control.
+# Bench compatibility: the overlays DO set gl_mode / gl_customwidth /
+# gl_customheight / vid_fullscreen now, but the bundle hook runs AFTER the
+# initial VID_Init (post-CL_Init) and never vid_restarts, so those only
+# take effect on the NEXT launch — they don't colour a running bench, which
+# sets its mode via cmdline +set. (bench.sh also has -noarchautoexec.)
+#
+# CRITICAL: the cfgs are shipped COMMENT-STRIPPED. The engine appends each
+# cfg to a fixed 8 KB command buffer (cmd_text_buf[8192], cmdparser.c). The
+# per-arch baseline + per-machine overlay are Cbuf_AddText'd back-to-back
+# before execution, so their COMBINED size must stay well under 8 KB. With
+# their documentation comments the two files together exceeded 8 KB on every
+# machine → "Cbuf_AddText: overflow", which dropped/garbled the overlay and
+# (on the iMac G5's R300 driver) wedged the GPU on map load. Stripping the
+# `//` comments + blank lines leaves only the `set` lines (~1-2 KB each),
+# a wide margin. (v2.2.0 shipped un-stripped and hit this; fixed v2.2.1.)
 for cfg in ppc750 ppc7400 ppc970 x86_64 \
            yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
-  cp "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" "$APP/Contents/Resources/"
+  sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
+      "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \
+    | grep -v '^[[:space:]]*$' \
+    > "$APP/Contents/Resources/autoexec-$cfg.cfg"
 done
 
 # Procedural decal textures (built by scripts/gen-decals.py, GPL-clean —

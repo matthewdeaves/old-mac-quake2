@@ -57,8 +57,16 @@ static char *cmd_argv[MAX_STRING_TOKENS];
 static char *cmd_null_string = "";
 static char cmd_args[MAX_STRING_CHARS];
 sizebuf_t cmd_text;
-byte cmd_text_buf[8192];
-char defer_text_buf[8192];
+/* yquake2-ppc: bumped 8192 -> 65536. The two-layer bundle config system
+ * (per-arch baseline + per-machine overlay, misc.c) Cbuf_AddText's BOTH
+ * files back-to-back before execution; with documentation comments their
+ * combined size blew the old 8 KB buffer -> "Cbuf_AddText: overflow",
+ * a garbled config, and (on the iMac G5's ATI R300) a GPU wedge on map
+ * load. The shipped cfgs are now comment-stripped (deploy.sh/make-dmg.sh)
+ * so they're ~2 KB combined, but this larger buffer is the belt-and-
+ * suspenders so an un-stripped or future-grown config can't overflow. */
+byte cmd_text_buf[65536];
+char defer_text_buf[65536];
 
 /*
  * Causes execution of the remainder of the command buffer to be delayed

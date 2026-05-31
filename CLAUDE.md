@@ -481,6 +481,22 @@ so it overrides cleanly. If the tweak wins, fold the new value into
   * **Validated** end-to-end: G5 production double-click → native fullscreen
     capture, no hang; fleet regression clean; G5 production tune 52.6/51.7 fps.
   * Tagged v2.2.0, DMG cut on Panther, pushed. Bench machines shut down after.
+- 2026-05-31 (v2.2.1 hotfix): **v2.2.0 crashed on "start new game" on the iMac
+  G5** (R300 GPU wedge). Root cause: the two-layer bundle config (baseline +
+  overlay) is Cbuf_AddText'd into a fixed 8 KB buffer; my verbose cfg comments
+  pushed the two files >8 KB on EVERY machine → `Cbuf_AddText: overflow`,
+  garbled config, inconsistent renderer state that the R300 couldn't survive on
+  a real map load. Missed because I only validated with `+timedemo`, never an
+  actual new game. Fix: (1) ship comment-STRIPPED cfgs (deploy.sh + make-dmg.sh
+  `sed 's,//.*,,' | grep -v '^$'` → ~2 KB combined; repo files keep their docs);
+  (2) bump `cmd_text_buf`/`defer_text_buf` 8 KB→64 KB (cmdparser.c) as
+  belt-and-suspenders. Validated a real **new game (base1) on every GPU class**
+  (Rage128/Panther, GeForce2/Tiger, R9000/Tiger, R9200/Tiger, GMA950/Lion,
+  R300/Leopard) — all load the map, no overflow, no crash. Also corrected the
+  G5 production numbers: the overflow had been DROPPING the imac-g5 overlay, so
+  earlier benches missed stencil/glows/caustics. True production (native 1440×900,
+  full stack + 2× MSAA, user-confirmed): **46.8/45.8 fps** (demo1/demo2); ~100
+  fps with MSAA off. See MISTAKES.md (2026-05-31 Cbuf entry). Tagged v2.2.1.
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).

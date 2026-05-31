@@ -16,6 +16,51 @@ quirks.
 
 ---
 
+## 2026-05-31 — config comments overflowed the 8 KB command buffer → garbled cfg → R300 GPU wedge on "new game" (shipped in v2.2.0, fixed v2.2.1)
+
+**What shipped broken:** v2.2.0. Starting a new game on the iMac G5 crashed
+Quake II, then black-screened the GPU (half-alive wedge, recovered with an
+SSH `sudo reboot`). The bench grid had been all green — because it only ever
+ran **timedemos**, never an actual new game.
+
+**Root cause:** the two-layer bundle config system Cbuf_AddText's the
+per-arch baseline AND the per-machine overlay back-to-back, before
+execution, into a FIXED 8 KB buffer (`cmd_text_buf[8192]`, cmdparser.c).
+This round I added verbose documentation comments + Display sections to the
+cfgs, pushing each file to 4.7–7.3 KB. Two of them together exceeded 8 KB on
+**every** machine (G5: 4696 + 6772 = 11,468) → `Cbuf_AddText: overflow`. The
+engine drops the overflowing text and the parser desyncs: leftover comment
+words get executed as commands (`Unknown command "the"/"real"/"this"`,
+`Line has unmatched quote, discarded`), and the overlay lands only partially.
+The resulting inconsistent renderer cvar state was survivable on a timedemo
+flythrough but wedged the R300 driver on a real map-load render.
+
+**Why it slipped through:** classic "load-time only / zero risk" smell-test
+failure — *comments in a config file* look about as harmless as a change can
+get. Two compounding blind spots: (1) the cfgs are appended to a small fixed
+engine buffer, so even inert comment bytes have a hard budget; (2) I
+validated exclusively with `+timedemo`, which never spawns the player/world
+the way "new game" does, so the corrupted-state crash never fired in testing.
+
+**The fix (two layers, v2.2.1):**
+1. **Ship comment-stripped cfgs.** deploy.sh + make-dmg.sh now pipe each cfg
+   through `sed 's,//.*,,' | grep -v '^[[:space:]]*$'` when copying into the
+   bundle — the repo files keep all their docs, the shipped files are ~1–2 KB
+   of bare `set` lines (combined ~2 KB, vs the 8 KB limit). Verified the strip
+   preserves every `set` command across all 11 cfgs.
+2. **Bump the buffer 8 KB → 64 KB** (`cmd_text_buf`/`defer_text_buf`,
+   cmdparser.c) as belt-and-suspenders so a future un-stripped or grown cfg
+   can't overflow.
+
+**Lessons:** (a) shipped config text has a hard size budget when the engine
+buffers it — keep shipped cfgs lean (strip comments) and don't trust "it's
+just a comment". (b) A timedemo is NOT a substitute for actually starting a
+new game when validating render/gameplay paths — test the thing the user
+does. (c) When a change is "harmless everywhere", check the one machine with
+the least forgiving driver (the R300) — it turns soft failures into hard ones.
+
+---
+
 ## 2026-05-31 — iMac G5 (ATI R300 / Leopard): non-native fullscreen mode-switch HARD-HANGS the whole OS
 
 **What would have gone wrong:** the stock `bench.sh` / `screenshot.sh`

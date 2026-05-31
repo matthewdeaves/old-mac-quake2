@@ -88,6 +88,28 @@ this fork adds on top of stock yquake2 5.11:
 | `gl_glows` | sphere-map energy shell glow | on multitex, off G3/sawtooth |
 | `gl_trans_lighting` | lightmapped glass/grates (map-load latched) | on multitex, off G3/sawtooth |
 | `gl_caustics` | water-surface caustic overlay | on multitex, off G3/sawtooth |
+
+### Tweaking the caustic look (`gl_caustics`)
+
+The overlay texture is generated procedurally — there is no asset to edit.
+Tune it in `R_InitCausticTexture` (`yquake2/src/refresh/r_misc.c`) and rebuild:
+
+- `caustic_waves[]` — integer `(a,b)` frequency pairs that are *summed*. More
+  pairs / higher numbers → finer, busier, more irregular net. **Keep them
+  integers** or the tile stops wrapping seamlessly. Mixed signs tilt ridges
+  different ways (more organic).
+- `CAUSTIC_POWER` — vein sharpness. ~2–3 = thin hard cords; ~1.3–1.6 = soft
+  broad shimmer. Shipped "K" preset = **1.5**.
+- `CAUSTIC_GAIN` — overall brightness 0..1. "K" = **0.55** (understated);
+  raise toward 1.0 for a stronger effect.
+- Scroll speed + the blue-ish tint live in `R_EmitWaterPolys` (`r_warp.c`):
+  the `cscroll` rate, the per-tile texcoord scale (`1/64`), and the
+  `qglColor4f(0.55,0.7,0.8,1)` tint.
+
+Preview presets fast without a Mac build: `~/caustic_gallery/gen2.py` renders
+candidates to PNG/HTML (open in **Chrome** — snap-Firefox can't read `/tmp` or
+files outside `$HOME`). The product-vs-sum bug that caused the v2.2.6 circle
+grid is written up in MISTAKES.md.
 | `gl_zfix` | polygon-offset coplanar surfaces | on (all) |
 | `gl_farsee` | extended far clip (CVAR_LATCH) | on x86 only |
 | `gl_bloom` (+ alpha/darken/size) | fixed-function light bloom | **off — WIP, broken on GL1, see MISTAKES.md** |

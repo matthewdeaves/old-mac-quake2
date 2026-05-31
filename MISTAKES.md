@@ -16,6 +16,41 @@ quirks.
 
 ---
 
+## 2026-05-31 — `gl_caustics` drew a grid of circles on water: brightness was a PRODUCT of gratings, not a SUM (FIXED v2.2.6)
+
+**The bug:** the `gl_caustics` water overlay (added 12435e1) tiled a tidy grid
+of soft round blobs across every water surface — the user read it as
+"bullet/shotgun-blast decals repeated all over the water." It showed on BOTH
+the G5 (Radeon 9600/Leopard) AND the G3 (Rage 128/Panther).
+
+**Why the both-GPUs fact mattered:** the first instinct (and an Explore agent's
+first theory) was a multitexture/TMU state leak from the new `gl_trans_lighting`
+path — a *driver-specific* GL-state explanation. But an identical artifact on two
+completely different GPUs/drivers means a **deterministic logic bug in shared
+code**, not a state leak. That immediately repointed the investigation from
+`gl_trans_lighting` to the caustic texture generator. (Also: `d38f7aa`'s own
+note says water `SURF_DRAWTURB` early-outs of the lightmap path, so trans-
+lighting was never touching water.) Lesson: *same bug on different drivers ⇒
+look for logic, not driver state.*
+
+**Root cause:** `R_InitCausticTexture` (`r_misc.c`) computed pixel brightness as
+`a*b` — the **product of two sine gratings** — then cubed it. A product of two
+gratings peaks at a *regular lattice of isolated points*; cubing sharpened each
+peak into a round blob ⇒ a grid of circles. (The comment even *claimed* it made
+a "net," but the math made dots.) Real caustics are connected veins, which are
+the *zero-crossing contour of a **sum** of waves*, not the product.
+
+**The fix (v2.2.6):** brightness = `1 - |sum_of_sines| / N`, sharpened with a
+tunable `pow()` and scaled by a gain — connected wavy ridges = a real caustic
+net. Parameterised (`caustic_waves[]` / `CAUSTIC_POWER` / `CAUSTIC_GAIN`) with a
+how-to-tweak block; shipped the soft "K" preset. All frequencies are integers so
+the tile still wraps seamlessly. Decals (`r_decal.c`) were never involved.
+
+**Tooling note:** to let the user pick a preset, rendered candidate textures to
+PNG and opened them in a browser. Snap-Firefox is sandboxed and **cannot read
+`/tmp` or anything outside `$HOME`** ("can't find page"); use Chrome, and stage
+preview files under `$HOME` (`~/caustic_gallery/`).
+
 ## 2026-05-31 — `gl_trans_lighting` port missed a guard → `ERR_DROP` on the first map with non-warp glass (base1) — looked like a fullscreen "crash" (FIXED v2.2.5)
 
 **The bug:** fresh v2.2.4 DMG, verified byte-identical on every machine, yet

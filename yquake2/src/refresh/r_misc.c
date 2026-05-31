@@ -140,19 +140,49 @@ R_InitShellTexture(void)
 
 /*
  * Tileable caustic texture for the water-surface overlay (gl_caustics).
- * Two crossing sine gratings whose product is sharpened into a bright
- * "net" of focal ridges — the cheap classic caustic look. Frequencies
- * are whole cycles across the tile so it wraps seamlessly when the
- * texcoords are scrolled over time in R_EmitWaterPolys. RGB carries the
- * brightness and so does alpha, so an additive (GL_SRC_ALPHA, GL_ONE)
- * blend adds light only where the caustic is bright.
+ *
+ * The bright caustic veins are the zero-crossing contour of a SUM (not a
+ * product) of whole-cycle interference waves. A sum's zero set is a set of
+ * connected wavy ridges — a real caustic "net". (A product of two gratings
+ * instead peaks at a regular lattice of isolated points, which is what the
+ * original code did and why water showed a grid of round "shotgun-blast"
+ * blobs — see MISTAKES.md / docs/STATUS.md v2.2.6.)
+ *
+ * All wave frequencies are whole cycles across the tile, so the texture
+ * wraps seamlessly when its texcoords are scrolled over time in
+ * R_EmitWaterPolys. RGB and alpha all carry the same brightness, so the
+ * additive (GL_SRC_ALPHA, GL_ONE) blend adds light only on the veins.
+ *
+ * ---- How to tweak the look (regenerate by rebuilding; no assets) ----
+ * This is the "K" preset chosen 2026-05-31: a subtle, soft net.
+ *   CAUSTIC_WAVES  — the (a,b) frequency pairs summed. More pairs / higher
+ *                    numbers => finer, busier, more irregular net. Keep them
+ *                    INTEGERS so the tile stays seamless. Mixed signs (e.g.
+ *                    (2,-1)) tilt ridges different ways = more organic.
+ *   CAUSTIC_POWER  — vein sharpness. Higher (2-3) => thin hard cords;
+ *                    lower (1.3-1.6) => soft, broad shimmer. K uses 1.5.
+ *   CAUSTIC_GAIN   — overall brightness 0..1. K uses 0.55 (understated).
+ *                    Raise toward 1.0 for a stronger effect.
+ * Scroll speed and the blue-ish tint live in R_EmitWaterPolys (r_warp.c):
+ *   cscroll rate, the per-tile texcoord scale (currently 1/64), and the
+ *   qglColor4f(0.55,0.7,0.8,1) tint. The on-water look = texture * that
+ *   colour * the additive blend.
+ * Preview presets quickly with ~/caustic_gallery/gen2.py before rebuilding.
  */
 #define CAUSTIC_TEX_SIZE 64
+#define CAUSTIC_POWER 1.5f
+#define CAUSTIC_GAIN  0.55f
 void
 R_InitCausticTexture(void)
 {
 	int x, y;
 	static byte data[CAUSTIC_TEX_SIZE][CAUSTIC_TEX_SIZE][4];
+	/* (a,b) integer frequency pairs, summed. See knobs above. */
+	static const float caustic_waves[][2] = {
+		{2.0f, 1.0f}, {1.0f, 2.0f}, {2.0f, -1.0f},
+		{1.0f, -2.0f}, {3.0f, 1.0f}
+	};
+	const int nwaves = sizeof(caustic_waves) / sizeof(caustic_waves[0]);
 
 	for (y = 0; y < CAUSTIC_TEX_SIZE; y++)
 	{
@@ -160,14 +190,26 @@ R_InitCausticTexture(void)
 		{
 			float u = (float)x / CAUSTIC_TEX_SIZE;
 			float v = (float)y / CAUSTIC_TEX_SIZE;
-			float a = 0.5f + 0.5f * sin((2.0f * M_PI) * (3.0f * u + 1.0f * v));
-			float b = 0.5f + 0.5f * sin((2.0f * M_PI) * (3.0f * v - 1.0f * u));
-			float c = 0.5f + 0.5f * sin((2.0f * M_PI) * 2.0f * (u + v));
-			float n = (a * b + c) * 0.5f;     /* 0..1 net pattern */
-			int iv;
+			float tp = 2.0f * M_PI;
+			float w = 0.0f;
+			float n;
+			int i, iv;
 
-			/* sharpen so only the focal ridges stay bright */
-			n = n * n * n;
+			for (i = 0; i < nwaves; i++)
+			{
+				w += sin(tp * (caustic_waves[i][0] * u +
+						caustic_waves[i][1] * v));
+			}
+
+			/* ridges live where the sum crosses zero => |w| small */
+			n = 1.0f - fabs(w / nwaves);
+			if (n < 0.0f)
+			{
+				n = 0.0f;
+			}
+
+			/* sharpen, then scale brightness */
+			n = pow(n, CAUSTIC_POWER) * CAUSTIC_GAIN;
 			iv = (int)(n * 255.0f);
 			if (iv > 255)
 			{

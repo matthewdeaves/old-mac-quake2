@@ -66,15 +66,28 @@ are in scope as long as we stay above the floor.
 | **sawtooth** PowerMac3,1 (1999) | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger |
 | **quicksilver** PowerMac3,5 (2001) | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger |
 | **mini-g4** PowerMac10,1 (2005) | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger |
-| **imac-g5** PowerMac8,2 (2004) *(pending, not yet networked)* | 2.0 GHz PPC 970FX | ATI Radeon 9600 (likely) | 10.5.8 Leopard |
+| **imac-g5** PowerMac8,2 (2004) *(17" ALS, networked 2026-05-31)* | 2.0 GHz PPC 970FX | ATI Radeon 9600 (RV351) 128 MB | 10.5.8 Leopard (9L31a), native 1440×900 |
 | **mini-intel** Macmini2,1 (2007) | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion |
 | **imac-2019** iMac19,1 (2019) | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia |
 
-The iMac G5 is **not on the network yet** — its build slice + generic
-baseline cfg exist (added 2026-05-31), but exact `hw.model`/GPU
-confirmation, the per-machine overlay cfg, SSH wiring, deploy case, game
-data, and first bench are all DEFERRED until it's reachable. See the
-Status section.
+The iMac G5 is **networked as of 2026-05-31** (`hw.model` = `PowerMac8,2`,
+GPU = ATI Radeon 9600 / RV351 128 MB confirmed via SSH, 17" panel native
+1440×900, account `imacg5`, SSH alias `imac-g5`). Build slice, generic
+ppc970 baseline, per-machine `autoexec-imac-g5.cfg`, `hw.model` map entry,
+deploy/bench/screenshot/parallel-bench wiring, the ppc970 Leopard SDL 1.2
+slice, and the `vid_desktopfullscreen` engine fix are all DONE. Remaining:
+the actual first deploy + bench (deferred only because the box is busy
+running the QuakeSpasm bench — must not contend). See the Status section.
+
+**iMac G5 / Leopard / ATI R300 hazard (READ BEFORE TOUCHING THE G5):**
+the Radeon 9600 (R300) Leopard driver **hard-hangs the entire OS** on a
+non-native fullscreen mode *switch* — grey screen, no SSH, needs the
+physical power button. The fleet bench/screenshot scripts default to
+exactly that on other boxes. Mitigations are in place (`vid_desktopfullscreen`
+same-mode capture; `bench.sh` refuses non-native fullscreen on `imac-g5`),
+but never bypass them and never trigger a remote non-native mode switch
+on the G5. Full write-up: `docs/imac-g5-leopard-port-notes.md` +
+`MISTAKES.md` (2026-05-31 entry).
 
 Build targets (chip-family, not machine-identity):
 - `q2-g3` → yosemite (PPC 750, 10.3.9 SDK)
@@ -147,6 +160,20 @@ The Panther slice came from `~/quakespasm/MacOSX/SDL-panther.dylib`
 (ppc-only, built against 10.3.9 SDK with `--disable-video-x11
 --disable-altivec --disable-cdrom`). Regeneration recipe is in
 `~/quakespasm/CLAUDE.md` under "How the fat SDL was built".
+
+**2026-05-31 — added a 4th slice for the iMac G5.** The Panther ppc slice
+*runs* on Leopard but its fullscreen path is suspect there, so the
+QuakeSpasm project built a dedicated **ppc970 SDL 1.2.15 slice against the
+10.5 SDK** (`-mcpu=970`, stamped `ppc970` subtype) and lipo'd it into
+`~/quakespasm/MacOSX/SDL.framework`. We copy that 4-slice framework
+(x86_64 + i386 + ppc-Panther + ppc970-Leopard) byte-for-byte into
+`~/quake2/MacOSX/SDL.framework` — dyld auto-selects the ppc970 slice on
+the G5, G3/G4 keep the Panther slice → zero regression. Re-sync with
+`rsync -a --delete ~/quakespasm/MacOSX/SDL.framework/ ~/quake2/MacOSX/SDL.framework/`
+if QuakeSpasm rebuilds it. (Gotcha QS hit: SDL's build injects
+`-force_cpusubtype_ALL`, which stamps a generic `ppc` subtype and collides
+with the existing slice — it must be stripped from the generated Makefile
+so `-mcpu=970` stamps a real `ppc970`.)
 
 ## Multi-tenancy on mini-intel (shared with the QuakeSpasm sister project)
 
@@ -224,6 +251,7 @@ this fork adds on top of stock yquake2 5.11:
 | `gl_zfix` | polygon-offset coplanar surfaces | on (all) |
 | `gl_farsee` | extended far clip (CVAR_LATCH) | on x86 only |
 | `gl_bloom` (+ alpha/darken/size) | fixed-function light bloom | **off — WIP, broken on GL1, see MISTAKES.md** |
+| `vid_desktopfullscreen` | native-res same-mode fullscreen capture (no mode switch — the only R300/Leopard-safe fullscreen) | on iMac-class (ppc970 baseline + imac-g5); off elsewhere |
 
 ## Icon pipeline philosophy
 
@@ -404,6 +432,55 @@ so it overrides cleanly. If the tweak wins, fold the new value into
   wire SSH config (Leopard OpenSSH may need the legacy-crypto block);
   ship game data; first bench. Build/lipo verified offline (all four
   slices present); no runtime test yet (no G5 reachable).
+- 2026-05-31 (later same day): **iMac G5 networked + bring-up landed**
+  (branch work on top of `imac-g5-target`). Confirmed `hw.model`
+  `PowerMac8,2`, GPU ATI Radeon 9600 (RV351) 128 MB, 10.5.8 (9L31a), 17"
+  native 1440×900, SSH alias `imac-g5` (user `imacg5`, legacy-crypto
+  block). Wired: `PowerMac8,2`→`autoexec-imac-g5` in the `misc.c` hw.model
+  map; new `autoexec-imac-g5.cfg` overlay (most-capable PPC tune — picmip0,
+  retex, 16x AF, dynamic lights, glows/trans_lighting/caustics, OBB4, decals
+  64, 44 kHz; A/B notes for stencil shadows + 4x MSAA); `imac-g5` cases in
+  `deploy.sh` / `bench.sh` / `screenshot.sh` / `make-dmg.sh` /
+  `parallel-bench.sh`. Pulled the **ppc970 Leopard SDL 1.2.15 slice** into
+  our `SDL.framework` (now 4 slices). **Ported the QuakeSpasm Leopard/R300
+  fix:** new `vid_desktopfullscreen` engine cvar (`r_main.c` +
+  `backends/sdl/refresh.c`) = native-res same-mode capture, the only
+  fullscreen path the R300 driver survives; ON for iMac-class boxes.
+  Hardened `bench.sh`/`screenshot.sh` to refuse / never trigger a non-native
+  fullscreen mode switch on the G5 (would hard-hang the OS — see MISTAKES.md
+  + `docs/imac-g5-leopard-port-notes.md`). Fat binary rebuilt (4 slices,
+  ppc970 carries the new map + cfg). **DEPLOYED + BENCHED** (later 2026-05-31,
+  after the QS bench freed the box). Renderer confirmed `ATI Radeon 9600
+  OpenGL Engine / 2.0 ATI-1.5.48`, desktop-capture logged `Desktop is
+  1440x900`, native same-mode fullscreen validated (SSH survived — no R300
+  hang). Findings: demo is **CPU-bound on the 970FX** — ~116/114 fps (demo1/
+  demo2) flat across 640×480 / 1024×768 / native 1440×900. **Stencil shadows
+  are FREE** (116.1 vs 115.9 — the R9200/Tiger 60% cliff is absent on 9600/
+  Leopard) → enabled. **MSAA is fillrate-bound at native**: 0x=116, 2x=52.5,
+  4x=27 fps; per user pref (visuals over fps, ~50 ok) shipped **2x MSAA**.
+  Final production render (native 1440×900, full tune + stencil + 2x MSAA):
+  **demo1 52.6 / demo2 51.7 fps**.
+- 2026-05-31 (release round, v2.2.0): hardened + generalised the G5 work into
+  a shippable release.
+  * **Engine defense-in-depth:** `GLimp_ForceDesktopFullscreen()` (refresh.c)
+    detects the iMac G5 family by `hw.model` (pre-GL, so it protects the very
+    first VID_Init) and forces same-mode desktop CAPTURE for EVERY fullscreen
+    request, independent of cvar/config. PROVEN with a pathological-config
+    audit: planted `vid_fullscreen 1 + vid_desktopfullscreen 0 + non-native
+    1024x768` in config.cfg, launched with the overlay disabled — the engine
+    logged the requested 1024x768 mode but captured native 1440×900 and the
+    OS did NOT hang. This closes the exact QuakeSpasm Finder-double-click bug.
+  * **Fleet "all fullscreen by default" policy** (user request): every per-arch
+    baseline (ppc750/ppc7400/ppc970/x86_64) now defaults to fullscreen at the
+    panel's NATIVE res via desktop-capture (auto-fits any unknown G3/G4/G5/Intel
+    iMac); every known fleet tower/mini/modern overlay pins a validated SPECIFIC
+    res (1024×768 PPC + GMA, 1920×1080 imac-2019 — native 5K × 8× MSAA would be
+    a ~100× fillrate cliff). Bench/screenshot still own the measured mode via
+    cmdline +set, so this is fps-neutral to benchmarks (verified: mini-g4 57.2,
+    mini-intel 97.9, yosemite 31.9 — all in line with prior baselines).
+  * **Validated** end-to-end: G5 production double-click → native fullscreen
+    capture, no hang; fleet regression clean; G5 production tune 52.6/51.7 fps.
+  * Tagged v2.2.0, DMG cut on Panther, pushed. Bench machines shut down after.
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).

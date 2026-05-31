@@ -29,6 +29,8 @@
 #include "../generic/header/glwindow.h"
 #if defined(__APPLE__)
 #include <OpenGL/gl.h>
+#include <sys/sysctl.h>
+#include <string.h>
 #else
 #include <GL/gl.h>
 #endif
@@ -59,6 +61,53 @@ qboolean have_stencil = false;
 char *displayname = NULL;
 int screen = -1;
 
+/* Desktop resolution captured once at SDL video init (before the first
+ * SDL_SetVideoMode), used by the vid_desktopfullscreen same-mode capture
+ * path. 0 until captured. See GLimp_Init / GLimp_InitGraphics. */
+static int glimp_desktop_width = 0;
+static int glimp_desktop_height = 0;
+
+/*
+ * True on hardware whose GPU driver hard-hangs the whole OS on a non-native
+ * fullscreen video-mode SWITCH, so fullscreen MUST be a same-mode desktop
+ * capture. Detected via hw.model (available before any GL call, so it can
+ * protect the very first VID_Init — unlike the GL renderer string, which
+ * doesn't exist until after the dangerous mode set). Currently the iMac G5
+ * family (ATI R300 / Radeon 9600 on Leopard). Forcing capture is harmless
+ * on the NVIDIA-GPU variants of these models too (just native fullscreen),
+ * so gating on the model alone is safe. Result cached. Non-Apple: always
+ * false (the cvar still drives the optional capture path).
+ */
+static qboolean
+GLimp_ForceDesktopFullscreen(void)
+{
+#if defined(__APPLE__)
+	static int cached = -1;
+
+	if (cached < 0)
+	{
+		char model[64];
+		size_t len = sizeof(model);
+
+		cached = 0;
+		if (sysctlbyname("hw.model", model, &len, NULL, 0) == 0)
+		{
+			/* iMac G5 family: PowerMac8,1 / 8,2 (ALS) / 12,1 (iSight). */
+			if (!strcmp(model, "PowerMac8,2") ||
+					!strcmp(model, "PowerMac8,1") ||
+					!strcmp(model, "PowerMac12,1"))
+			{
+				cached = 1;
+			}
+		}
+	}
+
+	return cached ? true : false;
+#else
+	return false;
+#endif
+}
+
 #ifdef X11GAMMA
 Display *dpy;
 XF86VidModeGamma x11_oldgamma;
@@ -83,6 +132,23 @@ GLimp_Init(void)
 
 		SDL_VideoDriverName(driverName, sizeof(driverName) - 1);
 		ri.Con_Printf(PRINT_ALL, "SDL video driver is \"%s\".\n", driverName);
+
+		/* Capture the DESKTOP resolution now, before the first
+		 * SDL_SetVideoMode. In SDL 1.2 SDL_GetVideoInfo()->current_w/h
+		 * reports the desktop mode only until the first SetVideoMode, after
+		 * which it reports the active surface. Stash it so the
+		 * vid_desktopfullscreen path (GLimp_InitGraphics) can request a
+		 * same-mode fullscreen capture at the panel's native resolution. */
+		{
+			const SDL_VideoInfo *vinfo = SDL_GetVideoInfo();
+			if (vinfo && vinfo->current_w > 0 && vinfo->current_h > 0)
+			{
+				glimp_desktop_width = vinfo->current_w;
+				glimp_desktop_height = vinfo->current_h;
+				ri.Con_Printf(PRINT_ALL, "Desktop is %dx%d.\n",
+						glimp_desktop_width, glimp_desktop_height);
+			}
+		}
 	}
 
 	return true;
@@ -181,6 +247,34 @@ GLimp_InitGraphics(qboolean fullscreen)
 	int flags;
 	int stencil_bits;
 	char title[24];
+
+	/* vid_desktopfullscreen: satisfy a fullscreen request at the captured
+	 * DESKTOP resolution (a same-mode display CAPTURE) instead of switching
+	 * the video mode to a requested non-native size. This auto-selects the
+	 * panel's native res and is the ONLY fullscreen path the ATI R300
+	 * (Radeon 9600 / iMac G5 on Leopard) driver survives — a non-native
+	 * mode switch hard-hangs the whole OS. Harmless elsewhere (default off).
+	 *
+	 * The cvar is set by the per-machine autoexec, but that runs AFTER this
+	 * initial VID_Init — so a stale config.cfg with vid_fullscreen 1 +
+	 * vid_desktopfullscreen 0 could still drive a mode switch on the very
+	 * first frame, before the overlay loads. GLimp_ForceDesktopFullscreen()
+	 * closes that hole: on the iMac G5 hardware (detected pre-GL via
+	 * hw.model) the capture is forced for EVERY fullscreen request,
+	 * independent of any cvar / config — defense in depth against a wedge
+	 * that needs a physical power-cycle to recover.
+	 * Done before the surface-size early-out below so it compares correctly. */
+	{
+		extern cvar_t *vid_desktopfullscreen;
+		int want_capture = (vid_desktopfullscreen && vid_desktopfullscreen->value)
+				|| GLimp_ForceDesktopFullscreen();
+		if (fullscreen && want_capture &&
+				glimp_desktop_width > 0 && glimp_desktop_height > 0)
+		{
+			vid.width = glimp_desktop_width;
+			vid.height = glimp_desktop_height;
+		}
+	}
 
 	if (surface && (surface->w == vid.width) && (surface->h == vid.height))
 	{

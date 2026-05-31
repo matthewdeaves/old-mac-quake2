@@ -30,7 +30,7 @@ yquake2 5.11 port tuned to a fleet of retro Macs spanning 1999–2019. One sourc
 | **sawtooth** PowerMac3,1 1999 | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger | `ppc_7400` | fixed-function |
 | **quicksilver** PowerMac3,5 2001 | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger | `ppc_7400` | early shader ATI |
 | **mini-g4** PowerMac10,1 2005 | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger | `ppc_7400` | early shader ATI |
-| **imac-g5** PowerMac8,2 2004 *(pending)* | 2.0 GHz PPC 970FX | ATI Radeon 9600 (likely) | 10.5.8 Leopard | `ppc970` | DX9 ATI |
+| **imac-g5** PowerMac8,2 2004 (17" ALS) | 2.0 GHz PPC 970FX | ATI Radeon 9600 (RV351) 128 MB | 10.5.8 Leopard, native 1440×900 | `ppc970` | DX9 ATI |
 | **mini-intel** Macmini2,1 2007 | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion | `x86_64` | Intel integrated |
 | **imac-2019** iMac19,1 2019 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` | modern AMD discrete |
 
@@ -41,7 +41,7 @@ Grab the latest `.dmg` from the [Releases](../../releases) page — one disk ima
 1. **Download** `Quake2-OldMac-*.dmg` and mount it.
 2. **Copy** `Quake2.app`, `ref_gl.so`, `q2ded`, and the `baseq2/` folder into one directory (e.g. `~/Desktop/quake2/`).
 3. **Add your retail data** — drop your own `pak0.pak`, `pak1.pak`, `pak2.pak` (plus `players/` and `video/`) into `baseq2/`. Retail Quake II is on Steam and GOG; the shareware `pak0.pak` also works.
-4. **Double-click** `Quake2.app`. The app auto-detects the machine and applies a hand-tuned per-model config.
+4. **Double-click** `Quake2.app`. The app auto-detects the machine and applies a hand-tuned per-model config, then opens **fullscreen** — at the panel's **native resolution** on iMac-class machines (a same-mode display capture, no resolution switch) and at a per-model tuned resolution on the tower/mini boxes. *(On the iMac G5, native same-mode capture is the only safe fullscreen — its ATI Radeon 9600 Leopard driver hard-hangs on a resolution mode switch; the engine enforces the capture on that hardware regardless of settings.)*
 
 No installer, no admin, no system files touched. On modern macOS, clear Gatekeeper with `xattr -dr com.apple.quarantine Quake2.app` (not needed on Panther/Tiger/Lion).
 
@@ -53,10 +53,13 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 |---|---:|---:|---:|---|
 | **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA + glows + lit glass + caustics + farsee |
 | **mini-intel** | 219.15 | 98.85 | 60 | picmip 0, trilinear, AF 8x, fog, waterwarp, group-draw, decals 64, 2× MSAA, **glows + lit glass + caustics + farsee + zfix** |
+| **imac-g5** | 116.00 † | 116.10 † | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 64, **stencil shadows + glows + lit glass + caustics + zfix**; ships native 1440×900 fullscreen + 2× MSAA |
 | **mini-g4** | 96.05 \** | 56.95 \** | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **glows + lit glass + caustics + zfix** |
 | **sawtooth** | 72.90 | 65.45 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, decals 16 |
 | **quicksilver** | 69.30 | 65.30 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **glows + lit glass + caustics + zfix** \* |
 | **yosemite** | 46.40 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, decals 8, **zfix** |
+
+† imac-g5 640/1024 are **windowed** — the demo is CPU-bound on the 2.0 GHz 970, so it runs ~116 fps at *any* resolution, meaning the Radeon 9600 has large headroom. The shipped production default is **native 1440×900 same-mode fullscreen** (the only safe fullscreen on the ATI R300 / Leopard driver — a non-native mode switch hard-hangs the OS) with **2× MSAA + stencil shadows**, which lands at **52.6 fps** at native — a deliberate visuals-over-fps spend of that headroom.
 
 \* quicksilver's LCD vsync caps both resolutions near 71 fps — visual features have not pushed fps below the cap, meaning there's spare GPU headroom we could spend on further effects.
 \** mini-g4 1024/640 here are **thermal** — the machine was sitting in direct sun during this grid; cool-machine numbers are ~99/126. The 56.95/96.05 figures are the worst observed, not steady-state. See MISTAKES.md.
@@ -102,6 +105,8 @@ If you want the Phase A "raw fps" build back, every visual cvar is runtime-toggl
 | **Lightmapped glass/grates** — translucent surfaces lit by the room instead of rendering "floating" | `gl_trans_lighting` | KMQuake2 (re-impl) | ~0 on demo |
 | **Water caustics** — animated additive caustic shimmer on water surfaces | `gl_caustics` | KMQuake2 (re-impl) | −1–3% (water in view) |
 | **Compiled vertex arrays** on the group-draw path; coplanar z-fix; extended draw distance | `gl_zfix` `gl_farsee` | own / yq2 | neutral |
+| **Native-res desktop fullscreen** — same-mode display capture (auto-fits any panel, no mode switch); hardwired on the iMac G5 where a mode switch hard-hangs the ATI R300 / Leopard driver | `vid_desktopfullscreen` | QS port (re-impl) | neutral |
+| **Drop/stencil shadows** on the G5 (real projected shadow volumes — the R9200's 60% driver cliff is absent on the 9600/Leopard) | `gl_stencilshadow` | yq2 | ~0 on G5 |
 
 `gl_bloom` (fixed-function light bloom) is wired but **disabled** — too slow on PPC and visually incorrect on the GL1 path; see [`MISTAKES.md`](MISTAKES.md).
 

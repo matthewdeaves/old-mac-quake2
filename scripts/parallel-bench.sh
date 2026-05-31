@@ -16,7 +16,7 @@
 #                demo2 fills in only on a non-quick run. (demo3.dm2 doesn't
 #                ship in the retail pak0 — verified empirically.)
 #   --no-<host>  skip a specific machine
-#                (yosemite|sawtooth|quicksilver|mini-g4|mini-intel|imac-2019)
+#                (yosemite|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019)
 #
 # Env-var overrides (take precedence):
 #   DEMOS="demo1"                       default: "demo1 demo2 demo3", or "demo1" with --quick
@@ -38,7 +38,7 @@ set -euo pipefail
 RESET=0
 QUICK=1
 declare -A SKIP
-for M in yosemite sawtooth quicksilver mini-g4 mini-intel imac-2019; do
+for M in yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
   SKIP[$M]=0
 done
 
@@ -51,6 +51,7 @@ for arg in "$@"; do
     --no-sawtooth)      SKIP[sawtooth]=1 ;;
     --no-quicksilver)   SKIP[quicksilver]=1 ;;
     --no-mini-g4)       SKIP[mini-g4]=1 ;;
+    --no-imac-g5)       SKIP[imac-g5]=1 ;;
     --no-mini-intel)    SKIP[mini-intel]=1 ;;
     --no-imac-2019)     SKIP[imac-2019]=1 ;;
     -h|--help)          sed -n '2,30p' "$0"; exit 0 ;;
@@ -83,7 +84,7 @@ fi
 
 # Active legs — order is fastest to slowest, so the wall-time tail
 # corresponds to the long-pole G3.
-ALL_LEGS=(imac-2019 mini-intel quicksilver mini-g4 sawtooth yosemite)
+ALL_LEGS=(imac-2019 mini-intel imac-g5 quicksilver mini-g4 sawtooth yosemite)
 ACTIVE_LEGS=()
 for LEG in "${ALL_LEGS[@]}"; do
   if [ "${SKIP[$LEG]}" -eq 0 ]; then
@@ -141,7 +142,17 @@ done
 echo "[parallel-bench] start: $(date)"
 for LEG in "${ACTIVE_LEGS[@]}"; do
   (
-    for R in $RESES; do
+    # The iMac G5 (ATI R300 / Leopard) must NOT do a non-native fullscreen
+    # mode switch — it hard-hangs the whole OS. bench.sh refuses non-native
+    # fullscreen on imac-g5, so the shared $RESES sweep (1024x768/640x480)
+    # would yield zero rows. Give the G5 its native panel res instead, which
+    # benches via the R300-safe same-mode capture.
+    if [ "$LEG" = "imac-g5" ]; then
+      LEG_RESES="${G5_RESES:-1440x900}"
+    else
+      LEG_RESES="$RESES"
+    fi
+    for R in $LEG_RESES; do
       for D in $DEMOS; do
         "$REPO_ROOT/scripts/bench.sh" "$LEG" "$D" "$R" "$RUNS"
       done

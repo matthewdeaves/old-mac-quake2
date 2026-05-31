@@ -2,7 +2,7 @@
 # Run a Q2 timedemo benchmark on a target machine.
 # Assumes the bundle is already deployed (scripts/deploy.sh first).
 #
-# usage: scripts/bench.sh <yosemite|sawtooth|quicksilver|mini-g4|mini-intel|imac-2019> <demo> <WxH> [runs]
+# usage: scripts/bench.sh <yosemite|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019> <demo> <WxH> [runs]
 #   demo:  demo1 | demo2 | demo3   (the .dm2 suffix is added automatically)
 #   WxH:   1024x768 | 640x480 | ...
 #   runs:  default 3
@@ -70,6 +70,42 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 W="${RES%x*}"; H="${RES#*x}"
 
+# ---- iMac G5 (ATI R300 / Leopard) headless-safety rail ---------------
+# The Radeon 9600 (R300) Leopard driver HARD-HANGS the whole OS on a
+# fullscreen video-mode SWITCH to a non-native resolution: grey screen,
+# no ping, no SSH, fans to max (the SMU thermal failsafe) — recoverable
+# ONLY by the physical power button. A same-mode fullscreen request at
+# the native panel resolution is a display CAPTURE with no mode change,
+# which the driver survives cleanly (QuakeSpasm got 119 fps that way).
+# So on the G5 we force fullscreen to the native 1440x900 panel and
+# REFUSE any other resolution under fullscreen. Set G5_WINDOWED=1 to
+# bench windowed (vid_fullscreen 0) instead — safe at any res and
+# recoverable over SSH worst-case; use it for first bring-up.
+# Ref: ~/Desktop/imac-g5-leopard-port-notes.md (QuakeSpasm port findings).
+# VID_FS = vid_fullscreen, VID_DFS = vid_desktopfullscreen. Both are set
+# EXPLICITLY on the cmdline below so the measured mode never depends on a
+# leftover config.cfg from a prior production launch (which may have
+# archived vid_desktopfullscreen 1 on an iMac).
+VID_FS=1
+VID_DFS=0
+if [ "$TARGET" = "imac-g5" ]; then
+  G5_NATIVE_RES="1440x900"   # 17" iMac G5 panel; 20" model would be 1680x1050
+  if [ "${G5_WINDOWED:-0}" = "1" ]; then
+    VID_FS=0
+    echo "[bench imac-g5] WINDOWED (vid_fullscreen 0) — safe at any res, SSH-recoverable"
+  elif [ "$RES" != "$G5_NATIVE_RES" ]; then
+    echo "[bench imac-g5] REFUSING fullscreen at non-native $RES — the R300 driver" >&2
+    echo "  hard-hangs the OS on a non-native mode switch (needs the power button)." >&2
+    echo "  Use RES=$G5_NATIVE_RES (native, same-mode capture) or set G5_WINDOWED=1." >&2
+    exit 3
+  else
+    # Native res via the CAPTURE path (vid_desktopfullscreen 1) — guaranteed
+    # no mode switch, the only R300-safe fullscreen.
+    VID_DFS=1
+    echo "[bench imac-g5] native-res same-mode CAPTURE $G5_NATIVE_RES (R300-safe)"
+  fi
+fi
+
 # Per-machine timeout (timedemo wall-clock budget) and cooldown
 # (post-run sleep before next run kicks off). G3 needs minutes for the
 # demo + extra cooldown because the Rage 128 driver leaves the display
@@ -82,6 +118,7 @@ case "$TARGET" in
   sawtooth)    HOST=sawtooth;    TIMEOUT=180; COOLDOWN=3 ;;
   quicksilver) HOST=quicksilver; TIMEOUT=120; COOLDOWN=2 ;;
   mini-g4)     HOST=mini-g4;     TIMEOUT=120; COOLDOWN=2 ;;
+  imac-g5)     HOST=imac-g5;     TIMEOUT=90;  COOLDOWN=2 ;;
   mini-intel)  HOST=mini-intel;  TIMEOUT=60;  COOLDOWN=1 ;;
   imac-2019)   HOST=imac-2019;   TIMEOUT=45;  COOLDOWN=1 ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
@@ -105,6 +142,7 @@ case "$TARGET" in
   sawtooth)    META_CPU="PPC 7400 @ 500MHz";   META_GPU="NVIDIA GeForce2 MX 32MB";    META_OS="10.4.11 Tiger" ;;
   quicksilver) META_CPU="PPC 7450 @ 733MHz";   META_GPU="ATI Radeon 9000 Pro 64MB";   META_OS="10.4.11 Tiger" ;;
   mini-g4)     META_CPU="PPC 7447A @ 1.25GHz"; META_GPU="ATI Radeon 9200 32MB";       META_OS="10.4.11 Tiger" ;;
+  imac-g5)     META_CPU="PPC 970FX @ 2.0GHz";  META_GPU="ATI Radeon 9600 128MB";      META_OS="10.5.8 Leopard" ;;
   mini-intel)  META_CPU="Core 2 Duo @ 2.33GHz";META_GPU="Intel GMA 950 64MB";         META_OS="10.7.5 Lion" ;;
   imac-2019)   META_CPU="i5-9600K @ 3.7GHz";   META_GPU="AMD Radeon Pro 580X 8GB";    META_OS="15.7 Sequoia" ;;
 esac
@@ -157,7 +195,7 @@ for i in $(seq 1 $RUNS); do
       ENGINE=./quake2
     fi
     \$ENGINE -nolauncher \\
-      +set vid_fullscreen 1 +set vid_gamma 1 \\
+      +set vid_fullscreen $VID_FS +set vid_desktopfullscreen $VID_DFS +set vid_gamma 1 \\
       +set gl_mode -1 +set gl_customwidth $W +set gl_customheight $H \\
       +set gl_swapinterval 0 \\
       +set s_initsound 0 \\

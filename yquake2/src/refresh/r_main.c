@@ -178,6 +178,7 @@ cvar_t *gl_anisotropic_avail;
 cvar_t *gl_lockpvs;
 
 cvar_t *vid_fullscreen;
+cvar_t *vid_desktopfullscreen;   /* yquake2-ppc: native same-mode capture (see refresh.c) */
 cvar_t *vid_gamma;
 cvar_t *vid_ref;
 
@@ -1207,6 +1208,13 @@ R_Register(void)
 	gl_saturatelighting = ri.Cvar_Get("gl_saturatelighting", "0", 0);
 
 	vid_fullscreen = ri.Cvar_Get("vid_fullscreen", "0", CVAR_ARCHIVE);
+	/* yquake2-ppc: when set, fullscreen requests are satisfied at the
+	 * captured DESKTOP resolution via a same-mode display CAPTURE rather
+	 * than a video-mode SWITCH. Auto-picks each panel's native res and is
+	 * the only fullscreen path the ATI R300 (Radeon 9600 / iMac G5 Leopard)
+	 * driver survives — a non-native mode switch hard-hangs the whole OS.
+	 * Default off; enabled per-machine for iMac-class boxes (autoexec). */
+	vid_desktopfullscreen = ri.Cvar_Get("vid_desktopfullscreen", "0", CVAR_ARCHIVE);
 	vid_gamma = ri.Cvar_Get("vid_gamma", "1.0", CVAR_ARCHIVE);
 	vid_ref = ri.Cvar_Get("vid_ref", "soft", CVAR_ARCHIVE);
 

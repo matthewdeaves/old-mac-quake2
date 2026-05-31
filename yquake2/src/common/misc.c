@@ -442,6 +442,7 @@ Qcommon_Init(int argc, char **argv)
 			{ "PowerMac3,1",  "autoexec-sawtooth"    },
 			{ "PowerMac3,5",  "autoexec-quicksilver" },
 			{ "PowerMac10,1", "autoexec-mini-g4"     },
+			{ "PowerMac8,2",  "autoexec-imac-g5"     },
 			{ "Macmini2,1",   "autoexec-mini-intel"  },
 			{ "iMac19,1",     "autoexec-imac-2019"   },
 		};

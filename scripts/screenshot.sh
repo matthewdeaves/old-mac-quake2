@@ -57,9 +57,22 @@ else
 fi
 
 case "$TARGET" in
-  yosemite|sawtooth|quicksilver|mini-g4|mini-intel|imac-2019) HOST="$TARGET" ;;
+  yosemite|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019) HOST="$TARGET" ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac
+
+# Video mode for the capture session. All boxes default to a 1024x768
+# mode-switch fullscreen for consistent shot dimensions — EXCEPT the iMac
+# G5, whose ATI R300 / Leopard driver hard-hangs the whole OS on a
+# non-native mode switch (needs the physical power button). On the G5 we
+# force the native same-mode CAPTURE (vid_desktopfullscreen 1); width/height
+# are then ignored and shots come out at the panel's native res.
+# See ~/Desktop/imac-g5-leopard-port-notes.md.
+SS_FS=1; SS_DFS=0; SS_W=1024; SS_H=768
+if [ "$TARGET" = "imac-g5" ]; then
+  SS_DFS=1
+  echo "[screenshot imac-g5] native-res same-mode CAPTURE (R300-safe; shots at native res)"
+fi
 
 mkdir -p "$REPO_ROOT/docs/screenshots"
 
@@ -116,8 +129,8 @@ ssh "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
     ENGINE=./quake2
   fi
   \$ENGINE -nolauncher \\
-    +set vid_fullscreen 1 \\
-    +set gl_mode -1 +set gl_customwidth 1024 +set gl_customheight 768 \\
+    +set vid_fullscreen $SS_FS +set vid_desktopfullscreen $SS_DFS \\
+    +set gl_mode -1 +set gl_customwidth $SS_W +set gl_customheight $SS_H \\
     +set s_initsound 0 \\
     +set scr_centertime 0 \\
     +set deathmatch 0 +set coop 0 \\

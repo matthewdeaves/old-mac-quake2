@@ -31,7 +31,7 @@
 
 set -euo pipefail
 
-TARGET="${1:?usage: $0 <yosemite|sawtooth|quicksilver|mini-g4|mini-intel|imac-2019>}"
+TARGET="${1:?usage: $0 <yosemite|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019>}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 case "$TARGET" in
@@ -55,6 +55,15 @@ case "$TARGET" in
     ;;
   mini-g4)
     HOST=mini-g4
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Desktop/Quake 2/baseq2'
+    ;;
+  imac-g5)
+    # PowerMac8,2 — iMac G5, Leopard 10.5.8. Ships the ppc970 fat slice.
+    # Leopard rsync is modern enough; no --protocol shim needed (unlike
+    # the Panther G3). Game data staged under Desktop/Quake 2/ like the
+    # other PPC boxes.
+    HOST=imac-g5
     RSYNC_EXTRA=""
     GAME_DATA_DIR='Desktop/Quake 2/baseq2'
     ;;
@@ -111,7 +120,7 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # on `+set` for its per-resolution sweep, and uses -noarchautoexec to
 # suppress the hook entirely when it needs full cvar control.
 for cfg in ppc750 ppc7400 ppc970 x86_64 \
-           yosemite sawtooth quicksilver mini-g4 mini-intel imac-2019; do
+           yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
   cp "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" "$APP/Contents/Resources/"
 done
 

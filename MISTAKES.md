@@ -16,6 +16,52 @@ quirks.
 
 ---
 
+## 2026-05-31 — iMac G5 (ATI R300 / Leopard): non-native fullscreen mode-switch HARD-HANGS the whole OS
+
+**What would have gone wrong:** the stock `bench.sh` / `screenshot.sh`
+launch the engine with `vid_fullscreen 1` + `gl_mode -1` + a non-native
+`gl_customwidth/height` (e.g. 1024x768 or 640x480). On every other box
+that's fine. On the iMac G5 (`PowerMac8,2`, ATI Radeon 9600 / RV351,
+Mac OS X 10.5.8) it is a landmine: the R300 Leopard driver **hard-hangs
+the entire OS** on a fullscreen video-mode *switch* to a non-native size.
+Not a crash — a full GPU/kernel lockup: grey screen, no ping, no SSH,
+fans ramp to max (the SMU thermal failsafe). Recoverable ONLY by the
+physical power button. Benching the G5 headless with the stock scripts
+would have bricked it with no remote recovery.
+
+**Root cause:** discovered first on the QuakeSpasm sister port (see
+`docs/imac-g5-leopard-port-notes.md`). The R300 is the only fleet GPU
+advertising GL2.0, and its Leopard driver mishandles fullscreen mode
+switches (and GLSL/VBO, which our `ref_gl` doesn't use — verified: no
+VBO/FBO/GLSL/NPOT/auto-mipmap in `src/refresh/`, so that half of the
+QuakeSpasm bug doesn't apply to us; only the mode-switch half does).
+
+**The fix:** never switch modes on the G5 — do a same-mode *display
+capture* at the panel's native resolution instead.
+- New engine cvar `vid_desktopfullscreen` (`r_main.c` + `backends/sdl/
+  refresh.c`): captures the desktop res at SDL video init and substitutes
+  it for the requested size when fullscreen, so SDL captures the current
+  mode with no switch. Auto-picks 1440x900 (17") / 1680x1050 (20").
+  Default off — zero effect on every other machine. ON in the `ppc970`
+  baseline + `imac-g5` overlay.
+- `bench.sh`: on `imac-g5`, REFUSES non-native fullscreen (`exit 3`),
+  defaults to native-res capture (`vid_desktopfullscreen 1`), and offers
+  `G5_WINDOWED=1` for safe windowed iteration. Both vid cvars are set
+  explicitly on the cmdline so a leftover archived value can't change the
+  measured mode.
+- `screenshot.sh`: same — native capture on the G5, never a mode switch.
+- `parallel-bench.sh`: the G5 leg benches at native `1440x900`, not the
+  shared 1024x768/640x480 sweep (which it would refuse).
+
+**Lesson:** the "load-time only / zero risk" smell test failed here — a
+one-line resolution flag that is inert everywhere else can take a whole
+machine down on one specific GPU+OS. When adding a box with a
+new-to-the-fleet GPU/OS combo, assume the fullscreen path is the first
+thing that will bite, and validate it windowed / same-mode before ever
+triggering a remote mode switch you can't physically recover from.
+
+---
+
 ## 2026-05-29 — fixed-function bloom: too slow on PPC + R_LoadPic eats the screen texture
 
 **What we tried:** a fixed-function light bloom post-process (`r_bloom.c`,

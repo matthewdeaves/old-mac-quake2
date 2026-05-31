@@ -76,7 +76,7 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # per-machine overlays (picked at boot by sysctl hw.model via CFBundle —
 # see yquake2/src/common/misc.c).
 for cfg in ppc750 ppc7400 ppc970 x86_64 \
-           yosemite sawtooth quicksilver mini-g4 mini-intel imac-2019; do
+           yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
   cp "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" "$RESOURCES/"
 done
 

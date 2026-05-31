@@ -182,6 +182,26 @@ roadmap see `PPC_PLAN.md`; for things that went wrong see `MISTAKES.md`.
   (1024×768 R9200, 38.5 fps), G5 (native 1440×900 capture R9600, 30.0 fps, no
   R300 hang) — all rendered the demo to completion. See MISTAKES.md (DMG byte-
   flip entry). Tagged v2.2.4.
+- 2026-05-31 (v2.2.5): **`gl_trans_lighting` "start a new game" freeze (base1).**
+  The verified v2.2.4 DMG installed clean everywhere, yet "start a new game"
+  *froze* on the G4-mini and iMac G5 (pegged process, no crash log, ignored
+  SIGTERM) while the G3 was fine — looked like a fullscreen/R300 wedge. It wasn't:
+  with `logfile 2` flushed, base1 printed `R_BuildLightMap called for non-lit
+  surface` (`ERR_DROP`), which longjmps to a console the engine then redraws
+  forever (presents as a freeze). Cause: our `gl_trans_lighting` port (lightmap-
+  modulate glass/grates) builds lightmaps for `SURF_TRANS33/66` at map load via
+  `LM_CreateSurfaceLightmap → R_BuildLightMap`, but `R_BuildLightMap`'s **stock**
+  guard rejects those flags as "non-lit". kmquake2 (the feature's upstream)
+  relaxes that exact line to `(SURF_SKY|SURF_WARP)` — we copied the feature but
+  not the guard, so it dropped on the first non-warp translucent surface
+  (base1's glass; base2 hid it because its trans surfaces are mostly `SURF_DRAWTURB`
+  water). The "G3 ok / G4+G5 fail" split tracked *which features the config
+  enables*, not the CPU — a red herring. Fix: one line in `r_light.c`
+  (`SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP` → `SURF_SKY|SURF_WARP`),
+  matching kmquake2. Validated fleet-wide via the verified DMG (install-from-
+  mounted-image, production launch, user-confirmed in-game base1): G5, G3, Lion
+  Intel mini, quicksilver, G4-mini all play "Outer Base" clean. See MISTAKES.md.
+  Tagged v2.2.5.
 
 ## Foundations (one-time facts)
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).

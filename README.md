@@ -113,7 +113,7 @@ If you want the Phase A "raw fps" build back, every visual cvar is runtime-toggl
 ## How the binary picks its config
 
 <p align="center">
-  <img src="docs/images/architecture.svg" width="92%" alt="Architecture: Ubuntu orchestrator drives mini-intel cross-builds; deploy.sh ships one Quake2.app to all six bench machines; sysctl hw.model dispatches the per-machine autoexec at boot" />
+  <img src="docs/images/architecture.svg" width="92%" alt="Architecture: Ubuntu orchestrator drives mini-intel cross-builds; deploy.sh ships one Quake2.app to all seven bench machines; sysctl hw.model dispatches the per-machine autoexec at boot" />
 </p>
 
 All six per-machine cfgs ship inside `Quake2.app/Contents/Resources/`. The engine ([`yquake2/src/common/misc.c`](yquake2/src/common/misc.c) → `Q2_ExecConfigFromBundle`, called from `Qcommon_Init` after `CL_Init`) reads the one matching the host via `sysctlbyname("hw.model", ...)`. Layered after `default.cfg` → `yq2.cfg` → `config.cfg` so its cvars win.
@@ -121,7 +121,7 @@ All six per-machine cfgs ship inside `Quake2.app/Contents/Resources/`. The engin
 ## How it's built
 
 <p align="center">
-  <img src="docs/images/build-pipeline.svg" width="92%" alt="Build pipeline: edit on Ubuntu, rsync to mini-intel, three flock-serialised sub-builds (g3 + g4 + lion), lipo into one Mach-O universal in build/q2-fat" />
+  <img src="docs/images/build-pipeline.svg" width="92%" alt="Build pipeline: edit on Ubuntu, rsync to mini-intel, four flock-serialised sub-builds (g3 + g4 + g5 + lion), lipo into one Mach-O universal in build/q2-fat" />
 </p>
 
 Cross-builds on mini-intel (last machine with working `gcc-4.0` + `MacOSX10.3.9.sdk` + `MacOSX10.4u.sdk`). Three flock-serialised sub-builds glued with `lipo -create` into `build/q2-fat/quake2`.

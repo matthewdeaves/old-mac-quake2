@@ -164,8 +164,9 @@ R_InitShellTexture(void)
  *                    (2,-1)) tilt ridges different ways = more organic.
  *   CAUSTIC_POWER  — vein sharpness. Higher (2-3) => thin hard cords;
  *                    lower (1.3-1.6) => soft, broad shimmer. Shipped: 1.5.
- *   CAUSTIC_GAIN   — overall brightness 0..1. Shipped: 0.15 (faint, set by
- *                    the G5 test). Raise toward 0.3-0.5 for a stronger effect.
+ *   CAUSTIC_GAIN   — overall brightness 0..1. Shipped: 0.30 (set by G5 test:
+ *                    0.55 washed out the water, 0.15 was too faint). Raise
+ *                    toward 0.5 for stronger, drop toward 0.15 for fainter.
  * Scroll speed and the blue-ish tint live in R_EmitWaterPolys (r_warp.c):
  *   cscroll rate, the per-tile texcoord scale (currently 1/64), and the
  *   qglColor4f(0.55,0.7,0.8,1) tint. The on-water look = texture * that
@@ -174,7 +175,7 @@ R_InitShellTexture(void)
  */
 #define CAUSTIC_TEX_SIZE 64
 #define CAUSTIC_POWER 1.5f
-#define CAUSTIC_GAIN  0.15f
+#define CAUSTIC_GAIN  0.30f
 void
 R_InitCausticTexture(void)
 {

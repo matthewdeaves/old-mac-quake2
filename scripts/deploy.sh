@@ -8,10 +8,11 @@
 # Ships a self-contained Quake2.app bundle to ~/Desktop/quake2/:
 #   Quake2.app/
 #     Contents/Info.plist
-#     Contents/MacOS/quake2                  (fat: ppc750 + ppc7400 + x86_64)
+#     Contents/MacOS/quake2                  (fat: ppc750 + ppc7400 + ppc970 + x86_64)
 #     Contents/MacOS/SDL.framework/          (fat: ppc + i386 + x86_64)
 #     Contents/Resources/Quake2.icns
-#     Contents/Resources/autoexec-<machine>.cfg × 6   ← all six ship inside
+#     Contents/Resources/autoexec-<arch>.cfg × 4      ← per-arch baselines
+#     Contents/Resources/autoexec-<machine>.cfg × 6   ← per-machine overlays
 #   ref_gl.so                                ← outside .app (Q2's basedir=.)
 #   baseq2/
 #     game.so                                ← outside .app (Q2's gamedir)
@@ -96,15 +97,21 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # boot via CFBundle + sysctl hw.model, layered AFTER the standard
 # default.cfg → yq2.cfg → config.cfg chain so it always wins.
 #
-# All six cfgs ship in every deploy (regardless of $TARGET) so the
-# bundle is self-contained and machine-portable — dropping the .app
-# onto any of the six fleet machines works without redeployment.
+# Two cfg layers ship in every deploy (regardless of $TARGET) so the
+# bundle is self-contained and machine-portable — dropping the .app onto
+# ANY G3/G4/G5/Intel Mac works without redeployment:
+#   * per-arch baselines (ppc750/ppc7400/ppc970/x86_64) — picked at
+#     compile time by the fat slice dyld runs; the "sane generic on
+#     everything else" floor for machines not in the hw.model map.
+#   * per-machine overlays (the six fleet boxes) — picked at runtime by
+#     sysctl hw.model, layered on top so known machines stay hand-tuned.
 #
 # Bench compatibility: the cfgs deliberately do NOT set gl_mode /
 # gl_customwidth / gl_customheight / gl_swapinterval. bench.sh relies
 # on `+set` for its per-resolution sweep, and uses -noarchautoexec to
 # suppress the hook entirely when it needs full cvar control.
-for cfg in yosemite sawtooth quicksilver mini-g4 mini-intel imac-2019; do
+for cfg in ppc750 ppc7400 ppc970 x86_64 \
+           yosemite sawtooth quicksilver mini-g4 mini-intel imac-2019; do
   cp "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" "$APP/Contents/Resources/"
 done
 

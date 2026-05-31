@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # Build a yquake2 binary on the cross-build host (mini-intel, Lion).
-# - g3/g4: cross-compile PPC via gcc-4.0 + 10.3.9/10.4u SDKs
-# - lion : native x86_64 build on the Lion box itself
+# - g3/g4/g5: cross-compile PPC via gcc-4.0 + 10.3.9/10.4u/10.5 SDKs
+# - lion    : native x86_64 build on the Lion box itself
 #
-# The build TARGET names (g3/g4/lion) refer to chip family + SDK, NOT machine
-# identity (single g4 binary serves sawtooth + quicksilver + mini-g4).
+# The build TARGET names (g3/g4/g5/lion) refer to chip family + SDK, NOT
+# machine identity (single g4 binary serves sawtooth + quicksilver + mini-g4).
 #
-# usage: scripts/build.sh <g3|g4|lion>
+# usage: scripts/build.sh <g3|g4|g5|lion>
 # output: build/q2-<target>/{quake2, ref_gl.so, baseq2/game.so, q2ded}
 # env:    BUILD_HOST (ssh alias, default 'mini-intel')
 
 set -euo pipefail
 
-TARGET="${1:?usage: $0 <g3|g4|lion>}"
+TARGET="${1:?usage: $0 <g3|g4|g5|lion>}"
 BUILD_HOST="${BUILD_HOST:-mini-intel}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -56,6 +56,32 @@ case "$TARGET" in
     VMIN=10.4
     OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=7400 -maltivec -mabi=altivec -mtune=7450 -O3 -F../MacOSX -Wl,-w"
     ;;
+  g5)
+    # iMac G5 (PowerMac8,2, single 970FX @ 2.0 GHz) on Leopard 10.5.8.
+    # The 970 has AltiVec (so the __VEC__ code paths apply, same as g4) but
+    # a deep, heavily out-of-order pipeline with different AltiVec latencies
+    # than the 7450 — so it gets its own -mcpu=970 scheduling pass against
+    # the 10.5 SDK rather than reusing the g4 slice.
+    #
+    # `-arch ppc -mcpu=970` stamps cpusubtype ppc970 (Apple gcc propagates
+    # -mcpu into the Mach-O subtype, the same mechanism that gives g4 its
+    # ppc7400 stamp), so this is a distinct lipo member: dyld prefers it on
+    # the G5, while G4 hosts (ppc7450, not a 970 descendant) fall back to
+    # the ppc7400 slice and any G3 runs the ppc750 floor.
+    #
+    # Apple gcc defines only __VEC__/__ALTIVEC__/__ppc__ for -mcpu=970 (no
+    # __ppc970__), so the 970 slice is indistinguishable from the 7400 slice
+    # at compile time. -DQ2_ARCH_PPC970 (rides into CFLAGS via OSX_ARCH)
+    # gives misc.c a hook to load the generic-G5 autoexec baseline
+    # (autoexec-ppc970) FIRST, before the __VEC__ → ppc7400 branch.
+    #
+    # 32-bit ABI (-arch ppc, not ppc64): Leopard runs the 32-bit slice fine
+    # and we have no need for 64-bit GPRs here.
+    CC=/usr/bin/gcc-4.0
+    SDK=/Developer/SDKs/MacOSX10.5.sdk
+    VMIN=10.5
+    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=970 -maltivec -mabi=altivec -O3 -DQ2_ARCH_PPC970 -F../MacOSX -Wl,-w"
+    ;;
   lion)
     # Native x86_64 on Lion. Use clang for modern C support. No -isysroot
     # — let clang use its default (Lion's Xcode 4.6.x SDK).
@@ -64,7 +90,7 @@ case "$TARGET" in
     OSX_ARCH="-arch x86_64 -mmacosx-version-min=$VMIN -O3 -Qunused-arguments -F../MacOSX"
     ;;
   *)
-    echo "unknown target: $TARGET (expected: g3|g4|lion)" >&2
+    echo "unknown target: $TARGET (expected: g3|g4|g5|lion)" >&2
     exit 2
     ;;
 esac

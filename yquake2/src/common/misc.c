@@ -412,19 +412,31 @@ Qcommon_Init(int argc, char **argv)
 	 * QuakeSpasm sister project does the same — Host_Init runs the
 	 * bundle exec at the very end, after VID_Init / CL_Init.
 	 *
-	 * The fat universal's per-arch dispatch (ppc750 / ppc7400 /
-	 * x86_64) can't tell mini-intel (GMA 950) from iMac19,1 (Pro
-	 * 580X) — both are x86_64; nor among the three G4s. hw.model
-	 * sysctl disambiguates: each known machine gets its hand-tuned
-	 * visual + resolution stack from Quake2.app/Contents/Resources/.
-	 * Unknown models fall through silently.
+	 * Two layers, "best on known machines, sane generic on everything
+	 * else":
 	 *
-	 * -noarchautoexec cmdline arg suppresses the hook entirely —
-	 * used by bench/screenshot scripts whose own +set / +cmd would
-	 * otherwise be clobbered by the autoexec's production defaults.
+	 *   Layer 1 (per-arch baseline) — selected at COMPILE time, so the
+	 *   right baseline is baked into the fat slice dyld actually runs on
+	 *   the host (ppc970 on a G5, ppc7400 on a G4, ppc750 on a G3,
+	 *   x86_64 on Intel). Guarantees ANY G3/G4/G5/Intel Mac gets sane
+	 *   generic settings even if its specific hw.model isn't mapped.
+	 *
+	 *   Layer 2 (per-machine overlay) — selected at RUNTIME by hw.model,
+	 *   layered AFTER the baseline so it wins on the known bench boxes.
+	 *   The fat universal's per-slice dispatch can't tell mini-intel
+	 *   (GMA 950) from iMac19,1 (Pro 580X) — both are x86_64; nor among
+	 *   the three G4s, nor a G5 from a G4 once both are running their
+	 *   own slice. hw.model sysctl disambiguates: each known machine
+	 *   gets its hand-tuned visual + resolution stack. Unknown models
+	 *   keep just the Layer-1 baseline.
+	 *
+	 * -noarchautoexec cmdline arg suppresses BOTH layers — used by
+	 * bench/screenshot scripts whose own +set / +cmd would otherwise be
+	 * clobbered by the autoexec's production defaults.
 	 */
 	if (!COM_CheckParm("-noarchautoexec"))
 	{
+		/* Declarations first (C89, for the gcc-4.0 Panther/Tiger path). */
 		static const struct { const char *model; const char *cfg; } q2_machine_map[] = {
 			{ "PowerMac1,1",  "autoexec-yosemite"    },
 			{ "PowerMac3,1",  "autoexec-sawtooth"    },
@@ -436,6 +448,27 @@ Qcommon_Init(int argc, char **argv)
 		char model[64];
 		size_t mlen = sizeof(model);
 		size_t i;
+
+		/*
+		 * Layer 1: generic per-arch baseline. The ppc970 slice ALSO
+		 * defines __VEC__ (the 970 has AltiVec), so it must be checked
+		 * FIRST via the Q2_ARCH_PPC970 build macro — Apple gcc emits no
+		 * __ppc970__ predefined macro for -mcpu=970, so without the
+		 * explicit -DQ2_ARCH_PPC970 flag (set by scripts/build.sh's g5
+		 * case) the 970 slice would be indistinguishable from the 7400
+		 * slice and fall into the ppc7400 branch below.
+		 */
+#if defined(Q2_ARCH_PPC970)
+		Q2_ExecConfigFromBundle("autoexec-ppc970");
+#elif defined(__VEC__) || defined(__ALTIVEC__)
+		Q2_ExecConfigFromBundle("autoexec-ppc7400");
+#elif defined(__ppc__) || defined(__POWERPC__) || defined(__powerpc__)
+		Q2_ExecConfigFromBundle("autoexec-ppc750");
+#elif defined(__x86_64__)
+		Q2_ExecConfigFromBundle("autoexec-x86_64");
+#endif
+
+		/* Layer 2: per-machine overlay, picked by hw.model at runtime. */
 		memset(model, 0, sizeof(model));
 		if (sysctlbyname("hw.model", model, &mlen, NULL, 0) == 0)
 		{

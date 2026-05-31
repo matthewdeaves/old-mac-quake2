@@ -66,12 +66,22 @@ are in scope as long as we stay above the floor.
 | **sawtooth** PowerMac3,1 (1999) | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger |
 | **quicksilver** PowerMac3,5 (2001) | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger |
 | **mini-g4** PowerMac10,1 (2005) | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger |
+| **imac-g5** PowerMac8,2 (2004) *(pending, not yet networked)* | 2.0 GHz PPC 970FX | ATI Radeon 9600 (likely) | 10.5.8 Leopard |
 | **mini-intel** Macmini2,1 (2007) | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion |
 | **imac-2019** iMac19,1 (2019) | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia |
+
+The iMac G5 is **not on the network yet** — its build slice + generic
+baseline cfg exist (added 2026-05-31), but exact `hw.model`/GPU
+confirmation, the per-machine overlay cfg, SSH wiring, deploy case, game
+data, and first bench are all DEFERRED until it's reachable. See the
+Status section.
 
 Build targets (chip-family, not machine-identity):
 - `q2-g3` → yosemite (PPC 750, 10.3.9 SDK)
 - `q2-g4` → sawtooth + quicksilver + mini-g4 (PPC 7400 baseline, 10.4u SDK)
+- `q2-g5` → imac-g5 (PPC 970FX, 10.5 SDK, `-mcpu=970 -maltivec`; stamps a
+  distinct `ppc970` Mach-O subtype so dyld prefers it on a G5 while G4s
+  fall back to ppc7400)
 - `q2-lion` → mini-intel + imac-2019 (x86_64, native Lion toolchain)
 
 SSH aliases + legacy crypto config: same `~/.ssh/config` as the
@@ -97,7 +107,15 @@ x86_64`; we override per target via `OSX_ARCH=` in `scripts/build.sh`.
 PPC build flag override pattern (matches QuakeSpasm):
 - G3:   `-isysroot /Developer/SDKs/MacOSX10.3.9.sdk -mmacosx-version-min=10.3.9 -arch ppc -mcpu=750 -O3`
 - G4:   `-isysroot /Developer/SDKs/MacOSX10.4u.sdk  -mmacosx-version-min=10.4   -arch ppc -mcpu=7400 -maltivec -mabi=altivec -O3 -mtune=7450`
+- G5:   `-isysroot /Developer/SDKs/MacOSX10.5.sdk   -mmacosx-version-min=10.5   -arch ppc -mcpu=970 -maltivec -mabi=altivec -O3 -DQ2_ARCH_PPC970`
 - Lion: `-arch x86_64 -mmacosx-version-min=10.7 -O3`
+
+The `-DQ2_ARCH_PPC970` flag is load-bearing: Apple gcc defines no
+`__ppc970__` macro for `-mcpu=970` (only `__VEC__`/`__ALTIVEC__`/`__ppc__`,
+same as the G4), so the 970 slice is indistinguishable from the 7400 slice
+at compile time. `misc.c` checks `Q2_ARCH_PPC970` FIRST — before the
+`__VEC__ → ppc7400` branch — to load the generic-G5 baseline. The 10.5 SDK
+is already installed on mini-intel at `/Developer/SDKs/MacOSX10.5.sdk`.
 
 ## Expected Tiger/Panther patch class
 
@@ -245,21 +263,25 @@ machines via `deploy.sh` (rsync). Required dirs:
 ## Do not duplicate from QuakeSpasm
 
 - **SSH config** — already in `~/.ssh/config` with legacy crypto
-- **Cross-build toolchain on mini-intel** — gcc-4.0 + 10.3.9/10.4u SDKs already installed
+- **Cross-build toolchain on mini-intel** — gcc-4.0 + 10.3.9/10.4u/10.5 SDKs already installed
 - **Vendored prereqs/** — Xcode 3.2.6, Xcode 2.5, SDL 1.2.15 sources live in
   `~/quakespasm/prereqs/`. ~5 GB. Don't duplicate; reference.
 - **host-bin tooling** — `qsreboot.sh` already installed on every bench
   Mac. Same reboot-recovery path applies to Q2 crashes.
 - **Legacy crypto SSH** — `~/.ssh/id_rsa_tiger` already wired up.
 
-## Don't run g3 and g4 builds in parallel
+## Don't run PPC builds in parallel (g3 / g4 / g5)
 
 Same race condition as QuakeSpasm: concurrent invocations rsync to the
 same path on mini-intel and `make -j2` in the same dir. The .o files
 race and the binary ends up stamped with the *other* target's CPU
 subtype. Symptom: G3 binary becomes `ppc7400`, Panther loads it, then
-crashes during NIB init on a 750. `scripts/build.sh` will take a flock
-to serialize — don't bypass.
+crashes during NIB init on a 750. With the G5 slice added the hazard is
+worse (three PPC targets now share the same `-arch ppc` .o tree, only
+differing by `-mcpu`), so the wrong-subtype stamp is even easier to hit.
+`scripts/build.sh` takes a flock to serialize — don't bypass.
+`scripts/build-fat.sh` runs g3→g4→g5→lion strictly sequentially for the
+same reason.
 
 ## Deploy is fat-only (no per-target mode)
 
@@ -271,16 +293,33 @@ wiped out the .app. Per-target mode is gone. `scripts/build.sh g3|g4|lion`
 still exists for fast single-slice iteration during dev, but those slices
 only feed `scripts/build-fat.sh` — they don't deploy independently.
 
-## Bundle is self-contained (CFBundle-loaded autoexec)
+## Bundle is self-contained (CFBundle-loaded autoexec, two layers)
 
-Per-machine cfgs (`autoexec-<machine>.cfg`) ship INSIDE
-`Quake2.app/Contents/Resources/`. The engine reads the right one at
-boot via `CFBundleCopyResourceURL` + `sysctlbyname("hw.model", ...)`.
-See `yquake2/src/common/misc.c:Q2_ExecConfigFromBundle` and the call
-site in `Qcommon_Init` AFTER `CL_Init()` (the call site placement is
-load-bearing — renderer cvars like `gl_picmip` don't exist until
-`CL_Init` has loaded `ref_gl.so`, so an earlier hook would silently
-drop those cvar lines as unknown commands).
+Autoexec cfgs ship INSIDE `Quake2.app/Contents/Resources/` and load in
+TWO layers (mirrors the QuakeSpasm sister project — "best on known
+machines, sane generic on everything else"):
+
+- **Layer 1 — per-arch baseline** (`autoexec-ppc750/ppc7400/ppc970/
+  x86_64.cfg`): selected at COMPILE time. dyld picks the fat slice that
+  matches the host CPU, so the baseline baked into that slice is the one
+  that runs. This is the floor that makes the game playable on ANY
+  G3/G4/G5/Intel Mac, not just the bench boxes. Selection lives in
+  `misc.c` via `#if Q2_ARCH_PPC970 / __VEC__ / __ppc__ / __x86_64__`.
+  The `Q2_ARCH_PPC970` check MUST come first — the 970 slice also
+  defines `__VEC__`, so without the explicit build macro it would fall
+  into the ppc7400 branch.
+- **Layer 2 — per-machine overlay** (`autoexec-<machine>.cfg`): selected
+  at RUNTIME via `sysctlbyname("hw.model", ...)`, layered AFTER the
+  baseline so it wins on the six known fleet boxes. Unknown models keep
+  just the Layer-1 baseline.
+
+Both layers append to `Cbuf` in order (baseline first, overlay second),
+so the overlay's `set` lines override the baseline's. See
+`yquake2/src/common/misc.c:Q2_ExecConfigFromBundle` and the call site in
+`Qcommon_Init` AFTER `CL_Init()` (the call site placement is load-bearing
+— renderer cvars like `gl_picmip` don't exist until `CL_Init` has loaded
+`ref_gl.so`, so an earlier hook would silently drop those cvar lines as
+unknown commands).
 
 The cfgs use `set CVAR VALUE` syntax (not bare `CVAR VALUE`). This
 matters because Q2's command parser only routes bare assignments
@@ -291,9 +330,9 @@ DLL eventually pulls them in via `Cvar_Get` (which honours the
 existing value).
 
 End-user install: drop `Quake2.app` + your own `baseq2/pak*.pak` next
-to each other. The .app travels with all six machines' per-machine
-cfgs inside it — same .app runs on G3 Panther, G4 Tiger, Intel Lion,
-and modern Sequoia.
+to each other. The .app travels with all four per-arch baselines + all
+six machines' per-machine overlays inside it — same .app runs on G3
+Panther, G4 Tiger, G5 Leopard, Intel Lion, and modern Sequoia.
 
 ## Bench / screenshot scripts pass -noarchautoexec
 
@@ -348,6 +387,23 @@ so it overrides cleanly. If the tweak wins, fold the new value into
   (quicksilver 25fps) and renders incorrectly on the GL1 path; see
   MISTAKES.md. `scripts/make-dmg.sh` added (Panther-built UDZO `.dmg`).
   Note: G4 fps floor is now ~40 for feature work (user pref), not 60.
+- 2026-05-31: iMac G5 (PowerMac8,2, 970FX @ 2.0 GHz, Leopard 10.5.8)
+  added as a 4th PowerPC fat slice (branch `imac-g5-target`). New `g5`
+  build target (10.5 SDK, `-mcpu=970 -maltivec -DQ2_ARCH_PPC970`), 4-way
+  lipo in `build-fat.sh` (ppc750+ppc7400+ppc970+x86_64). Also closed a
+  gap vs the QuakeSpasm design: Q2 previously had ONLY the per-machine
+  (hw.model) config layer, so unknown Macs got stock yquake2 defaults.
+  Added the **per-arch baseline layer** (`autoexec-ppc750/ppc7400/ppc970/
+  x86_64.cfg`, compile-time selected in `misc.c`) so ANY G3/G4/G5/Intel
+  Mac now gets a sane generic tune, with the per-machine overlay still
+  winning on the six known boxes. ppc970 baseline seeded conservatively
+  from the proven ppc7400 tune (won't regress). **DEFERRED until the iMac
+  G5 is on the network:** confirm exact hw.model + GPU via SSH; add
+  per-machine `autoexec-imac-g5.cfg` + a `PowerMac8,2` entry to the
+  hw.model map in `misc.c`; add an `imac-g5` HOST case to `deploy.sh`;
+  wire SSH config (Leopard OpenSSH may need the legacy-crypto block);
+  ship game data; first bench. Build/lipo verified offline (all four
+  slices present); no runtime test yet (no G5 reachable).
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).

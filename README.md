@@ -9,7 +9,7 @@
   <img src="docs/icon-source/quake2-icon-256.png" width="200" alt="Quake II icon" />
 </p>
 
-yquake2 5.11 port tuned to six retro Macs spanning 1999–2019. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + Intel x86_64) inside a single self-contained `Quake2.app` bundle. Per-machine `autoexec.cfg` ships inside the .app and is dispatched by `sysctl hw.model` at boot.
+yquake2 5.11 port tuned to a fleet of retro Macs spanning 1999–2019. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + PPC G5 + Intel x86_64) inside a single self-contained `Quake2.app` bundle. Two config layers ship inside the .app: a per-arch baseline picked by the running fat slice, and a per-machine overlay dispatched by `sysctl hw.model` at boot — so it runs well on *any* G3/G4/G5/Intel Mac, best on the known ones.
 
 > **Sister projects on the same fleet:** [`old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm) (Quake 1) and [`old-mac-quake3`](https://github.com/matthewdeaves/old-mac-quake3) (Quake III Arena — early WIP, pinned to the last SDL 1.2 commit of ioquake3 so it runs on Panther/Tiger). Both share this project's build infrastructure, fat universal binary approach, and bench rack.
 
@@ -30,12 +30,13 @@ yquake2 5.11 port tuned to six retro Macs spanning 1999–2019. One source tree,
 | **sawtooth** PowerMac3,1 1999 | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger | `ppc_7400` | fixed-function |
 | **quicksilver** PowerMac3,5 2001 | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger | `ppc_7400` | early shader ATI |
 | **mini-g4** PowerMac10,1 2005 | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger | `ppc_7400` | early shader ATI |
+| **imac-g5** PowerMac8,2 2004 *(pending)* | 2.0 GHz PPC 970FX | ATI Radeon 9600 (likely) | 10.5.8 Leopard | `ppc970` | DX9 ATI |
 | **mini-intel** Macmini2,1 2007 | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion | `x86_64` | Intel integrated |
 | **imac-2019** iMac19,1 2019 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` | modern AMD discrete |
 
 ## Download & install
 
-Grab the latest `.dmg` from the [Releases](../../releases) page — one disk image runs on **Mac OS X 10.3.9 Panther, 10.4 Tiger, 10.7 Lion, and modern macOS** (PowerPC G3/G4 and 64-bit Intel). To install Quake II on a vintage Mac:
+Grab the latest `.dmg` from the [Releases](../../releases) page — one disk image runs on **Mac OS X 10.3.9 Panther, 10.4 Tiger, 10.5 Leopard, 10.7 Lion, and modern macOS** (PowerPC G3/G4/G5 and 64-bit Intel). To install Quake II on a vintage Mac:
 
 1. **Download** `Quake2-OldMac-*.dmg` and mount it.
 2. **Copy** `Quake2.app`, `ref_gl.so`, `q2ded`, and the `baseq2/` folder into one directory (e.g. `~/Desktop/quake2/`).
@@ -127,7 +128,7 @@ Cross-builds on mini-intel (last machine with working `gcc-4.0` + `MacOSX10.3.9.
 </p>
 
 ```bash
-scripts/build-fat.sh                              # 3-arch universal binary
+scripts/build-fat.sh                              # 4-arch universal binary
 scripts/deploy.sh <machine>                       # ship to one of the 6 hosts
 scripts/bench.sh <machine> demo1 1024x768 3       # 3 timedemo runs, append to CSV
 scripts/parallel-bench.sh                         # full matrix, all reachable legs concurrent
@@ -144,10 +145,11 @@ Drop `Quake2.app` and a `baseq2/` directory next to each other — anywhere: `~/
   Quake2.app/
     Contents/
       Info.plist
-      MacOS/quake2                   (fat: ppc750 + ppc7400 + x86_64)
+      MacOS/quake2                   (fat: ppc750 + ppc7400 + ppc970 + x86_64)
       MacOS/SDL.framework/           (fat: ppc + i386 + x86_64)
       Resources/Quake2.icns
-      Resources/autoexec-*.cfg × 6   (per-machine, picked by sysctl)
+      Resources/autoexec-<arch>.cfg × 4     (per-arch baseline, picked by slice)
+      Resources/autoexec-<machine>.cfg × 6  (per-machine overlay, picked by sysctl)
       Resources/hd-pak/decals/       (bundled world-decal textures)
   ref_gl.so
   baseq2/
@@ -163,13 +165,13 @@ The repo does **not** distribute `.pak` files — bring your own from Steam / GO
 yquake2/         engine source (vendored at QUAKE2_5_11 tag, 033550cd)
 scripts/
   build.sh           single-arch build via mini-intel
-  build-fat.sh       3-arch lipo merge → build/q2-fat/
+  build-fat.sh       4-arch lipo merge → build/q2-fat/
   deploy.sh          rsync fat .app to one machine
   make-dmg.sh        stage + hdiutil a distributable .dmg (built on Panther for max compat)
   bench.sh           one demo × resolution
   parallel-bench.sh  whole grid in parallel
   screenshot.sh      capture in-game PNGs from one host
-  bundle/            Info.plist + autoexec-<machine>.cfg files (shipped inside .app)
+  bundle/            Info.plist + autoexec-<arch>/<machine>.cfg files (shipped inside .app)
 benchmarks/      results.csv + raw qconsole.log per run
 docs/
   images/        SVG architecture diagrams (rendered above)

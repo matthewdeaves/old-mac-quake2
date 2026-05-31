@@ -3,9 +3,9 @@
 # the runtime-loaded libraries + a user-facing README — the easy way to
 # hand the build to the old Macs.
 #
-# The contents are staged exactly like deploy.sh: the fat 3-arch binary,
-# SDL.framework, per-machine autoexec cfgs and decal textures inside the
-# .app; ref_gl.so / q2ded / baseq2/game.so OUTSIDE it (Q2 resolves those
+# The contents are staged exactly like deploy.sh: the fat 4-arch binary,
+# SDL.framework, per-arch + per-machine autoexec cfgs and decal textures
+# inside the .app; ref_gl.so / q2ded / baseq2/game.so OUTSIDE it (Q2 resolves those
 # via basedir=. — see deploy.sh for the why). Linux has no hdiutil, so a
 # Mac (the Panther G3 by default) does the actual hdiutil create; we stage
 # on Ubuntu, ship the folder over, build the .dmg there, and fetch it back.
@@ -25,9 +25,9 @@
 # pre:   build/q2-fat present (scripts/build-fat.sh; built here if missing)
 # post:  dist/Quake2-OldMac-<version>.dmg
 #
-# One .dmg installs on every supported Mac — the fat binary's three slices
-# (ppc750 / ppc7400 / x86_64) + the CFBundle per-machine autoexec layer mean
-# one disk image serves G3 Panther through modern Intel.
+# One .dmg installs on every supported Mac — the fat binary's four slices
+# (ppc750 / ppc7400 / ppc970 / x86_64) + the CFBundle per-arch & per-machine
+# autoexec layers mean one disk image serves G3 Panther through modern Intel.
 
 set -euo pipefail
 
@@ -44,10 +44,15 @@ if [ ! -f "$BUILD_DIR/quake2" ]; then
   echo "[make-dmg] build/q2-fat missing — building it"
   scripts/build-fat.sh
 fi
-# Sanity: must be the 3-slice fat, not a stray single-arch binary.
-if ! file "$BUILD_DIR/quake2" | grep -q 'ppc_750' || \
+# Sanity: must be the 4-slice fat, not a stray single-arch binary. We
+# assert the architecture COUNT (3→4 once the g5 slice lands) plus the two
+# endpoint subtypes whose `file` names are stable across versions
+# (ppc_750, x86_64). The authoritative per-slice ppc970 check is lipo -info
+# in build-fat.sh; GNU `file`'s name for cpusubtype 100 is less reliable.
+if ! file "$BUILD_DIR/quake2" | grep -q '4 architectures' || \
+   ! file "$BUILD_DIR/quake2" | grep -q 'ppc_750'         || \
    ! file "$BUILD_DIR/quake2" | grep -q 'x86_64'; then
-  echo "[make-dmg] $BUILD_DIR/quake2 is not the 3-arch fat binary — run scripts/build-fat.sh" >&2
+  echo "[make-dmg] $BUILD_DIR/quake2 is not the 4-arch fat binary (need ppc750+ppc7400+ppc970+x86_64) — run scripts/build-fat.sh" >&2
   exit 1
 fi
 
@@ -66,9 +71,12 @@ cp -a "$REPO_ROOT/MacOSX/SDL.framework"      "$APP/Contents/MacOS/"
 cp    "$BUILD_DIR/quake2"                    "$APP/Contents/MacOS/"
 chmod +x "$APP/Contents/MacOS/quake2"
 
-# All six per-machine cfgs ship inside the bundle (picked at boot by
-# sysctl hw.model via CFBundle — see yquake2/src/common/misc.c).
-for cfg in yosemite sawtooth quicksilver mini-g4 mini-intel imac-2019; do
+# Both cfg layers ship inside the bundle: the four per-arch baselines
+# (picked at compile time by the fat slice dyld runs) and the six
+# per-machine overlays (picked at boot by sysctl hw.model via CFBundle —
+# see yquake2/src/common/misc.c).
+for cfg in ppc750 ppc7400 ppc970 x86_64 \
+           yosemite sawtooth quicksilver mini-g4 mini-intel imac-2019; do
   cp "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" "$RESOURCES/"
 done
 
@@ -91,12 +99,12 @@ Quake II — Old-Mac fat build ($VERSION)
 
 A yquake2 5.11 fork tuned to look as good as possible while staying playable
 on retro Macs from 1999 to today. ONE universal binary (PowerPC G3 + PowerPC
-G4/AltiVec + Intel x86_64); the right code slice and the right per-machine
-visual/perf config are picked automatically at launch.
+G4/AltiVec + PowerPC G5 + Intel x86_64); the right code slice and the right
+per-machine visual/perf config are picked automatically at launch.
 
-Supported: Mac OS X 10.3.9 Panther (G3) and up, through modern Intel macOS.
-(PowerPC G3/G4 and 64-bit Intel only — pre-Lion 32-bit Intel Macs are not
-supported.)
+Supported: Mac OS X 10.3.9 Panther (G3) and up — Tiger (G4), Leopard (G5),
+Lion, through modern Intel macOS. (PowerPC G3/G4/G5 and 64-bit Intel only —
+pre-Lion 32-bit Intel Macs are not supported.)
 
 INSTALL
 -------

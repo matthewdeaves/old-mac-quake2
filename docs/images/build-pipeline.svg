@@ -21,8 +21,8 @@
   <rect width="1320" height="1020" fill="#faf6ef"/>
 
   <!-- Title -->
-  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Build pipeline — three slices, one fat binary</text>
-  <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/build-fat.sh</tspan> on Ubuntu — runs three flock-serialised sub-builds on the Lion mini, then lipos them into one Mach-O universal</text>
+  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Build pipeline — four slices, one fat binary</text>
+  <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/build-fat.sh</tspan> on Ubuntu — runs four flock-serialised sub-builds on the Lion mini, then lipos them into one Mach-O universal</text>
 
   <!-- Vertical guide rail with stage numbers down the left -->
   <g transform="translate(50, 130)">
@@ -72,14 +72,13 @@
   <!-- arrow 2 → 3 (split into 3 visible legs) -->
   <g stroke="#3a3a3a" stroke-width="1.6" fill="none">
     <path d="M 50 348 L 50 380"/>
-    <path d="M 50 380 L 285 380"/>
-    <path d="M 50 380 L 660 380"/>
-    <path d="M 50 380 L 1035 380"/>
-    <path d="M 285 380 L 285 414" marker-end="url(#bp-ar)"/>
-    <path d="M 660 380 L 660 414" marker-end="url(#bp-ar)"/>
-    <path d="M 1035 380 L 1035 414" marker-end="url(#bp-ar)"/>
+    <path d="M 50 380 L 1129 380"/>
+    <path d="M 241 380 L 241 414" marker-end="url(#bp-ar)"/>
+    <path d="M 537 380 L 537 414" marker-end="url(#bp-ar)"/>
+    <path d="M 833 380 L 833 414" marker-end="url(#bp-ar)"/>
+    <path d="M 1129 380 L 1129 414" marker-end="url(#bp-ar)"/>
   </g>
-  <text x="68" y="372" font-size="11" font-style="italic" fill="#666">three sub-builds, one at a time (flock-guarded — concurrent makes race on .o files)</text>
+  <text x="68" y="372" font-size="11" font-style="italic" fill="#666">four sub-builds, one at a time (flock-guarded — concurrent makes race on .o files)</text>
 
   <!-- ============================================================ -->
   <!-- Stage 3 :: three sub-builds                                     -->
@@ -91,73 +90,90 @@
     <text x="100" y="22" font-size="15" font-weight="700" fill="#1a1a1a">Compile each slice on the Lion mini</text>
     <text x="100" y="42" font-size="12" fill="#777"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">yquake2/Makefile</tspan> · MACH_TYPE=ppc|x86_64 · install_name_tool patches @executable_path/SDL.framework</text>
 
-    <!-- Three toolchain cards in a row -->
+    <!-- Four toolchain cards in a row -->
     <g transform="translate(100, 56)">
       <!-- g3 -->
       <g transform="translate(0, 0)">
-        <rect x="0" y="0" width="370" height="140" rx="10" fill="#ffffff" stroke="#cdd9c8" stroke-width="1" filter="url(#bp-shadow)"/>
+        <rect x="0" y="0" width="282" height="140" rx="10" fill="#ffffff" stroke="#cdd9c8" stroke-width="1" filter="url(#bp-shadow)"/>
         <rect x="0" y="0" width="6" height="140" rx="3" fill="#5fb1d8"/>
-        <text x="22" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh g3</text>
-        <text x="22" y="44" font-size="11" fill="#888">PowerPC 750 · Panther 10.3.9</text>
+        <text x="20" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh g3</text>
+        <text x="20" y="44" font-size="11" fill="#888">PowerPC 750 · Panther 10.3.9</text>
         <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#333">
-          <text x="22" y="68">CC = /usr/bin/gcc-4.0</text>
-          <text x="22" y="84">SDK = MacOSX10.3.9.sdk</text>
-          <text x="22" y="100">CFLAGS = -mcpu=750 -O3 -arch ppc</text>
-          <text x="22" y="116">         -mmacosx-version-min=10.3</text>
+          <text x="20" y="68">CC = /usr/bin/gcc-4.0</text>
+          <text x="20" y="84">SDK = MacOSX10.3.9.sdk</text>
+          <text x="20" y="100">CFLAGS = -mcpu=750 -O3</text>
+          <text x="20" y="116">         -arch ppc -mmacosx-version-min=10.3</text>
         </g>
       </g>
       <!-- g4 -->
-      <g transform="translate(395, 0)">
-        <rect x="0" y="0" width="370" height="140" rx="10" fill="#ffffff" stroke="#d3cce4" stroke-width="1" filter="url(#bp-shadow)"/>
+      <g transform="translate(296, 0)">
+        <rect x="0" y="0" width="282" height="140" rx="10" fill="#ffffff" stroke="#d3cce4" stroke-width="1" filter="url(#bp-shadow)"/>
         <rect x="0" y="0" width="6" height="140" rx="3" fill="#8b5cf6"/>
-        <text x="22" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh g4</text>
-        <text x="22" y="44" font-size="11" fill="#888">PowerPC 7400 + AltiVec · Tiger 10.4</text>
+        <text x="20" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh g4</text>
+        <text x="20" y="44" font-size="11" fill="#888">PowerPC 7400 + AltiVec · Tiger 10.4</text>
         <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#333">
-          <text x="22" y="68">CC = /usr/bin/gcc-4.0</text>
-          <text x="22" y="84">SDK = MacOSX10.4u.sdk</text>
-          <text x="22" y="100">CFLAGS = -mcpu=7400 -maltivec</text>
-          <text x="22" y="116">         -mabi=altivec -mtune=7450 -O3</text>
+          <text x="20" y="68">CC = /usr/bin/gcc-4.0</text>
+          <text x="20" y="84">SDK = MacOSX10.4u.sdk</text>
+          <text x="20" y="100">CFLAGS = -mcpu=7400 -maltivec</text>
+          <text x="20" y="116">         -mabi=altivec -mtune=7450 -O3</text>
+        </g>
+      </g>
+      <!-- g5 -->
+      <g transform="translate(592, 0)">
+        <rect x="0" y="0" width="282" height="140" rx="10" fill="#ffffff" stroke="#e7cf9c" stroke-width="1" filter="url(#bp-shadow)"/>
+        <rect x="0" y="0" width="6" height="140" rx="3" fill="#d08700"/>
+        <text x="20" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh g5</text>
+        <text x="20" y="44" font-size="11" fill="#888">PowerPC 970 + AltiVec · Leopard 10.5</text>
+        <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#333">
+          <text x="20" y="68">CC = /usr/bin/gcc-4.0</text>
+          <text x="20" y="84">SDK = MacOSX10.5.sdk</text>
+          <text x="20" y="100">CFLAGS = -mcpu=970 -maltivec</text>
+          <text x="20" y="116">         -mabi=altivec -O3 -DQ2_ARCH_PPC970</text>
         </g>
       </g>
       <!-- lion -->
-      <g transform="translate(790, 0)">
-        <rect x="0" y="0" width="370" height="140" rx="10" fill="#ffffff" stroke="#bfe2d4" stroke-width="1" filter="url(#bp-shadow)"/>
+      <g transform="translate(888, 0)">
+        <rect x="0" y="0" width="282" height="140" rx="10" fill="#ffffff" stroke="#bfe2d4" stroke-width="1" filter="url(#bp-shadow)"/>
         <rect x="0" y="0" width="6" height="140" rx="3" fill="#10b981"/>
-        <text x="22" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh lion</text>
-        <text x="22" y="44" font-size="11" fill="#888">x86_64 · Lion 10.7 · native</text>
+        <text x="20" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh lion</text>
+        <text x="20" y="44" font-size="11" fill="#888">x86_64 · Lion 10.7 · native</text>
         <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#333">
-          <text x="22" y="68">CC = /usr/bin/clang  (Apple LLVM 2.9)</text>
-          <text x="22" y="84">SDK = (default Lion toolchain)</text>
-          <text x="22" y="100">CFLAGS = -arch x86_64 -O3</text>
-          <text x="22" y="116">         -mmacosx-version-min=10.7</text>
+          <text x="20" y="68">CC = /usr/bin/clang  (Apple LLVM 2.9)</text>
+          <text x="20" y="84">SDK = (default Lion toolchain)</text>
+          <text x="20" y="100">CFLAGS = -arch x86_64 -O3</text>
+          <text x="20" y="116">         -mmacosx-version-min=10.7</text>
         </g>
       </g>
     </g>
 
-    <!-- Output slice labels under each card -->
+    <!-- Output slice labels under each card (centres: 141 437 733 1029) -->
     <g transform="translate(100, 210)" font-size="11" font-weight="700" fill="#0f8a5f">
-      <text x="185" y="0" text-anchor="middle">→ ppc750 slice</text>
-      <text x="185" y="14" text-anchor="middle" font-weight="500" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#666">build/q2-g3</text>
+      <text x="141" y="0" text-anchor="middle">→ ppc750 slice</text>
+      <text x="141" y="14" text-anchor="middle" font-weight="500" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#666">build/q2-g3</text>
 
-      <text x="580" y="0" text-anchor="middle">→ ppc7400 slice</text>
-      <text x="580" y="14" text-anchor="middle" font-weight="500" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#666">build/q2-g4</text>
+      <text x="437" y="0" text-anchor="middle">→ ppc7400 slice</text>
+      <text x="437" y="14" text-anchor="middle" font-weight="500" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#666">build/q2-g4</text>
 
-      <text x="975" y="0" text-anchor="middle">→ x86_64 slice</text>
-      <text x="975" y="14" text-anchor="middle" font-weight="500" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#666">build/q2-lion</text>
+      <text x="733" y="0" text-anchor="middle">→ ppc970 slice</text>
+      <text x="733" y="14" text-anchor="middle" font-weight="500" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#666">build/q2-g5</text>
+
+      <text x="1029" y="0" text-anchor="middle">→ x86_64 slice</text>
+      <text x="1029" y="14" text-anchor="middle" font-weight="500" font-family="ui-monospace, Menlo, Consolas, monospace" fill="#666">build/q2-lion</text>
     </g>
   </g>
 
   <!-- arrows from each sub-build down to lipo manifold -->
   <g stroke="#0f8a5f" stroke-width="1.8" fill="none">
-    <path d="M 285 656 L 285 690"/>
-    <path d="M 660 656 L 660 690"/>
-    <path d="M 1035 656 L 1035 690"/>
+    <path d="M 241 656 L 241 690"/>
+    <path d="M 537 656 L 537 690"/>
+    <path d="M 833 656 L 833 690"/>
+    <path d="M 1129 656 L 1129 690"/>
     <!-- horizontal manifold -->
-    <path d="M 285 690 L 1035 690"/>
+    <path d="M 241 690 L 1129 690"/>
     <!-- merge down to lipo box -->
     <path d="M 660 690 L 660 728" marker-end="url(#bp-ar-green)"/>
   </g>
-  <text x="660" y="710" text-anchor="middle" font-size="10.5" font-style="italic" fill="#0f8a5f">three slices ready · lipo runs on Lion (Linux doesn't ship lipo)</text>
+  <text x="660" y="710" text-anchor="middle" font-size="10.5" font-style="italic" fill="#0f8a5f">four slices ready · lipo runs on Lion (Linux doesn't ship lipo)</text>
 
   <!-- ============================================================ -->
   <!-- Stage 4 :: lipo                                                 -->
@@ -171,8 +187,8 @@
       <rect x="0" y="0" width="6" height="92" rx="3" fill="#3b6dd5"/>
       <text x="22" y="28" font-size="14" font-weight="700" fill="#1a1a1a">lipo on Lion</text>
       <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#444">
-        <text x="22" y="54">scp 3 slices → /tmp/ on mini-intel</text>
-        <text x="22" y="74">lipo -create  q2-{g3,g4,lion}  -output  q2-fat</text>
+        <text x="22" y="54">scp 4 slices → /tmp/ on mini-intel</text>
+        <text x="22" y="74">lipo -create  q2-{g3,g4,g5,lion}  -output  q2-fat</text>
       </g>
     </g>
   </g>
@@ -193,7 +209,7 @@
     <g transform="translate(330, 0)">
       <rect x="0" y="0" width="660" height="84" rx="10" fill="#eaf6ee" stroke="#a3cfb3" stroke-width="1.4" filter="url(#bp-shadow)"/>
       <text x="22" y="32" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#1a1a1a">build/q2-fat</text>
-      <text x="22" y="54" font-size="12" fill="#444">Mach-O universal · 3 slices: ppc750 + ppc7400 + x86_64 · ~5 KB padding overhead vs sum-of-slices</text>
+      <text x="22" y="54" font-size="12" fill="#444">Mach-O universal · 4 slices: ppc750 + ppc7400 + ppc970 + x86_64 · ~5 KB padding overhead vs sum-of-slices</text>
       <text x="22" y="74" font-size="11.5" fill="#0f8a5f" font-weight="600"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">deploy.sh &lt;machine&gt;</tspan> ships the same Quake2.app to every host — dyld picks the right slice automatically</text>
     </g>
   </g>

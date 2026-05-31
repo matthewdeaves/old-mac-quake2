@@ -16,6 +16,35 @@ quirks.
 
 ---
 
+## 2026-05-31 — `deploy-dmg.sh` verified the DMG but NOT the installed files → shipped a corrupt renderer to the G3 (FIXED)
+
+**The bug:** after testing v2.2.6 on the G5/G4, the G3's installed `ref_gl.so`
+md5'd to `7dcb39e5…` instead of the build's `060cc6dc…` — **699 KB of a 1.9 MB
+file differed**, starting in the first PPC slice. Same size, same 4-arch layout,
+gross byte corruption. The G5's install was byte-perfect; only the G3 was bad.
+
+**Root cause two layers deep:**
+1. The G3 (yosemite, PowerMac1,1, 1999) has a 25-yr-old disk + non-ECC RAM and
+   **silently corrupts a mount→install copy** — same flaky-hardware class as the
+   earlier DMG byte-flip (which is why we build DMGs on Tiger, not the G3).
+2. **`deploy-dmg.sh` only verified the DMG-on-Desktop md5, never the final
+   installed binaries.** So a clean DMG could still yield a corrupt
+   `~/Desktop/quake2/ref_gl.so` and the script reported success. The corrupt
+   renderer loaded fine (valid Mach-O) but would misrender.
+
+**The fix:** `deploy-dmg.sh` now md5-verifies every installed binary
+(`ref_gl.so`, the in-bundle `quake2`, `game.so`, `q2ded`) against the mounted
+image and **retries the copy up to 4× per file**, failing loud (exit 7) if it
+can't get a clean copy. On re-deploy the G3 came up byte-perfect on the first
+retry; all three machines now verified `060cc6dc…`.
+
+**Lesson:** verify the artifact at the LAST hop the user actually runs, not an
+earlier one. We already learned this for the DMG itself (make-dmg verifies
+contents, not just the UDIF checksum); the install step had the same blind spot.
+Also: a wrong md5 on a flaky box may be transient — retry-and-verify beats
+fail-and-stop. See also `docs/BUILD.md` (Panther `hdiutil` mounts under
+`/Volumes/<volname>`, ignores `-mountpoint` in an ad-hoc invocation).
+
 ## 2026-05-31 — `gl_caustics` drew a grid of circles on water: brightness was a PRODUCT of gratings, not a SUM (FIXED v2.2.6)
 
 **The bug:** the `gl_caustics` water overlay (added 12435e1) tiled a tidy grid

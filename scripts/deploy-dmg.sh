@@ -55,14 +55,49 @@ mkdir -p "$MNT"
 hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$HOME/Desktop/$DMG_BASE" >/dev/null
 
 mkdir -p "$DEST/baseq2"
+
+# md5 helper (portable Panther→Lion: `md5` on macOS prints "MD5 (f) = HASH").
+_md5() { md5 "$1" 2>/dev/null | awk '{print $NF}'; }
+
+# Copy one file from mount→dest and VERIFY the installed bytes match the source,
+# retrying on mismatch. The G3 (yosemite) has 25-yr-old disk + non-ECC RAM and
+# silently corrupts copies (~700 KB of a 1.9 MB ref_gl.so flipped once — see
+# MISTAKES.md). deploy used to verify only the DMG-on-Desktop, never the final
+# installed file, so it shipped a corrupt renderer that loaded but misrendered.
+copy_verified() {
+  src="$1"; dst="$2"
+  [ -e "$src" ] || { echo "  MISSING in image: $src" >&2; return 1; }
+  want=$(_md5 "$src")
+  k=1
+  while [ $k -le 4 ]; do
+    rm -f "$dst"; cp -p "$src" "$dst"; sync
+    got=$(_md5 "$dst")
+    if [ "$got" = "$want" ]; then return 0; fi
+    echo "  [verify] $(basename "$dst") mismatch (try $k): $got != $want — retrying" >&2
+    k=$((k+1)); sleep 1
+  done
+  echo "  FATAL: $(basename "$dst") still corrupt after retries ($got != $want)" >&2
+  return 1
+}
+
 # Replace the app wholesale so no stale bundle files survive. ditto keeps the
-# bundle bit, perms (+x on the binary) and resource forks.
-rm -rf "$DEST/Quake2.app"
-ditto "$MNT/Quake2.app" "$DEST/Quake2.app"
+# bundle bit, perms (+x on the binary) and resource forks. Verify the binary
+# inside the installed bundle byte-for-byte (with a ditto retry) since that is
+# the executable that actually runs.
+APP_BIN="Quake2.app/Contents/MacOS/quake2"
+appok=no
+for k in 1 2 3 4; do
+  rm -rf "$DEST/Quake2.app"; ditto "$MNT/Quake2.app" "$DEST/Quake2.app"; sync
+  if [ "$(_md5 "$DEST/$APP_BIN")" = "$(_md5 "$MNT/$APP_BIN")" ]; then appok=yes; break; fi
+  echo "  [verify] app binary mismatch (try $k) — re-dittoing" >&2; sleep 1
+done
+[ "$appok" = yes ] || { echo "  FATAL: app binary still corrupt after retries" >&2; exit 7; }
+
 # Loose runtime libs that live OUTSIDE the bundle (Q2 basedir=. resolves them).
-cp -p "$MNT/ref_gl.so"        "$DEST/ref_gl.so"
-cp -p "$MNT/baseq2/game.so"  "$DEST/baseq2/game.so"
-[ -f "$MNT/q2ded" ] && cp -p "$MNT/q2ded" "$DEST/q2ded" || true
+copy_verified "$MNT/ref_gl.so"       "$DEST/ref_gl.so"       || exit 7
+copy_verified "$MNT/baseq2/game.so"  "$DEST/baseq2/game.so"  || exit 7
+[ -f "$MNT/q2ded" ] && { copy_verified "$MNT/q2ded" "$DEST/q2ded" || exit 7; }
+echo "  [verify] installed binaries match the image byte-for-byte ✅"
 
 # detach — retry until the slow-disk flush completes; only THEN rmdir the now-
 # empty mountpoint (rmdir can't touch mounted contents, so it's safe).

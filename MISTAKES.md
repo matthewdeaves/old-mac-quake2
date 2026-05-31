@@ -16,34 +16,45 @@ quirks.
 
 ---
 
-## 2026-05-31 — `deploy-dmg.sh` verified the DMG but NOT the installed files → shipped a corrupt renderer to the G3 (FIXED)
+## 2026-05-31 — chased a phantom "G3 corrupt renderer"; real cause was MY stale DMG mounts breaking the deploy (FIXED + a real deploy-verify win)
 
-**The bug:** after testing v2.2.6 on the G5/G4, the G3's installed `ref_gl.so`
-md5'd to `7dcb39e5…` instead of the build's `060cc6dc…` — **699 KB of a 1.9 MB
-file differed**, starting in the first PPC slice. Same size, same 4-arch layout,
-gross byte corruption. The G5's install was byte-perfect; only the G3 was bad.
+**The symptom:** while testing v2.2.6, the G3's installed `ref_gl.so` md5'd to
+`7dcb39e5…` not the build's `060cc6dc…`, and the in-bundle `quake2` binary went
+*missing*. Re-deploys printed `DMG on Desktop verified intact` then **stopped** —
+no install, no `done` line.
 
-**Root cause two layers deep:**
-1. The G3 (yosemite, PowerMac1,1, 1999) has a 25-yr-old disk + non-ECC RAM and
-   **silently corrupts a mount→install copy** — same flaky-hardware class as the
-   earlier DMG byte-flip (which is why we build DMGs on Tiger, not the G3).
-2. **`deploy-dmg.sh` only verified the DMG-on-Desktop md5, never the final
-   installed binaries.** So a clean DMG could still yield a corrupt
-   `~/Desktop/quake2/ref_gl.so` and the script reported success. The corrupt
-   renderer loaded fine (valid Mach-O) but would misrender.
+**The WRONG theory (don't repeat):** I assumed flaky-G3 hardware (old disk /
+non-ECC RAM silently corrupting the copy) — the same story as the earlier
+DMG-byte-flip. **It was wrong.** The G3 has a near-new SSD. Direct proof: mounting
+the on-Desktop DMG on the G3 and hashing its *internal* `ref_gl.so` gave
+`060cc6dc…` three times deterministically, and a copy-to-disk hashed clean too.
+The hardware reads and copies perfectly. *Lesson: don't reach for "flaky retro
+hardware" before proving it — hash the file in place and copy-test it first.*
 
-**The fix:** `deploy-dmg.sh` now md5-verifies every installed binary
-(`ref_gl.so`, the in-bundle `quake2`, `game.so`, `q2ded`) against the mounted
-image and **retries the copy up to 4× per file**, failing loud (exit 7) if it
-can't get a clean copy. On re-deploy the G3 came up byte-perfect on the first
-retry; all three machines now verified `060cc6dc…`.
+**The REAL cause:** my own diagnostic `hdiutil attach` commands left the v2.2.6
+image **attached** on the G3 (a stale `/dev/disk2` / `/Volumes/Quake2 OldMac
+v2.2.6`). `deploy-dmg.sh` mounts the same image at `$HOME/q2install-mnt`; with the
+image already attached, that mount came up empty, so `ditto "$MNT/Quake2.app" …`
+copied nothing and — under `set -e` — the remote install aborted right after
+`rm -rf "$DEST/Quake2.app"`. Result: bundle binary deleted, loose libs left stale
+from a prior install. The `7dcb39e5…`/missing-binary state was a half-finished
+deploy, not corruption. Force-detaching all images on the G3 and re-running
+deployed cleanly; all three machines then verified byte-perfect.
 
-**Lesson:** verify the artifact at the LAST hop the user actually runs, not an
-earlier one. We already learned this for the DMG itself (make-dmg verifies
-contents, not just the UDIF checksum); the install step had the same blind spot.
-Also: a wrong md5 on a flaky box may be transient — retry-and-verify beats
-fail-and-stop. See also `docs/BUILD.md` (Panther `hdiutil` mounts under
-`/Volumes/<volname>`, ignores `-mountpoint` in an ad-hoc invocation).
+**Two real fixes kept:**
+1. `deploy-dmg.sh` now md5-verifies every installed binary (`ref_gl.so`, in-bundle
+   `quake2`, `game.so`, `q2ded`) against the mounted image, retries the copy up to
+   4×, and fails loud (exit 7). This is the win: it turns a silent half-install
+   into a hard error instead of a "done" that lies.
+2. Operational: **detach stale mounts before deploying**, and don't leave
+   ad-hoc diagnostic mounts of the release image lying around on a target — they
+   poison the next deploy's mountpoint. (The deploy already detaches its *own*
+   `$MNT`, but not a foreign attach of the same image.)
+
+**Lesson:** verify at the LAST hop the user runs (install dir), not just an earlier
+one (DMG-on-Desktop) — the install step had the same blind spot make-dmg already
+closed for the image. And: a failing deploy that still prints a success-ish line
+is worse than one that errors — the verify gate fixes that.
 
 ## 2026-05-31 — `gl_caustics` drew a grid of circles on water: brightness was a PRODUCT of gratings, not a SUM (FIXED v2.2.6)
 

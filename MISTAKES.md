@@ -16,6 +16,56 @@ quirks.
 
 ---
 
+## 2026-05-31 — `gl_trans_lighting` port missed a guard → `ERR_DROP` on the first map with non-warp glass (base1) — looked like a fullscreen "crash" (FIXED v2.2.5)
+
+**The bug:** fresh v2.2.4 DMG, verified byte-identical on every machine, yet
+"start a new game" **froze** on the G4-mini and the iMac G5 (state `R`/`U`,
+pegged CPU, ignored SIGTERM) while the G3 was fine. It looked like a fullscreen /
+R300 wedge. It was not. With `logfile 2` flushed, the real cause printed:
+
+```
+Outer Base
+Map: base1
+ERROR: R_BuildLightMap called for non-lit surface     <- r_light.c ERR_DROP
+==== ShutdownGame ====
+```
+
+`ERR_DROP` longjmps back and drops to a full console; the engine then just
+redraws that console forever (`SCR_UpdateScreen → Con_DrawConsole → CGLFlushDrawable`),
+which *presents as a freeze*, not a crash — no crash log, process alive, pegged.
+
+**Root cause:** we ported kmquake2's `gl_trans_lighting` (lightmap-modulate
+glass/grates). At map load, `r_model.c` calls `LM_CreateSurfaceLightmap` for
+`SURF_TRANS33/66` surfaces when the cvar is on; that calls `R_BuildLightMap`.
+But `R_BuildLightMap`'s **stock** guard rejects `SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP`
+as "non-lit". kmquake2 relaxes that exact line to `(SURF_SKY|SURF_WARP)` — we
+copied the feature but **not the guard change**, so the feature `ERR_DROP`'d on
+the first non-warp translucent surface. base1 ("Outer Base") has glass windows
+→ instant drop. base2's translucent surfaces are mostly water (`SURF_DRAWTURB`,
+caught by `LM_CreateSurfaceLightmap`'s early-return), which is why a *direct*
+`+map base2` could look like it loaded.
+
+**The fix (one line, matches kmquake2):** `r_light.c` guard
+`(SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP)` → `(SURF_SKY|SURF_WARP)`.
+Non-warp trans surfaces carry real BSP lightmap samples and are meant to be lit;
+when `gl_trans_lighting` is off they never reach `R_BuildLightMap` anyway.
+
+**Lessons:**
+1. **A "fullscreen crash" that leaves a live, pegged process with no crash log is
+   almost always an `ERR_DROP` to console — read the flushed log first.** The
+   production launch uses `logfile 1` (buffered), so the error never hit disk;
+   reproduce with `+set logfile 2` (and `+set vid_fullscreen 0` windowed) to see it.
+2. **The architecture split (G3 ok / G4+G5 fail) was a red herring** — it tracked
+   *which features the per-machine config enables*, not the CPU. Bisect by the
+   actual variable (here: `gl_trans_lighting`), not the coincident one.
+3. **`+map base2` ≠ "new game".** The proper first level is `base1`; its content
+   (non-warp glass) is what triggered the bug. Test the *real* first map.
+4. **When porting a feature, port the whole diff** — including the defensive
+   guards it relaxes. A feature copied without its guard change is a latent
+   ERR_DROP waiting for the right map.
+
+---
+
 ## 2026-05-31 — DMG packaging flipped ONE byte → illegal-instruction crash on the G4 (FIXED v2.2.4)
 
 **The bug:** the v2.2.3 `.dmg` crashed instantly on the G4-mini ("opens then

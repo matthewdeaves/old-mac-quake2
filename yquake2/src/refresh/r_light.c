@@ -503,8 +503,17 @@ R_BuildLightMap(msurface_t *surf, byte *dest, int stride)
 	int nummaps;
 	float *bl;
 
-	if (surf->texinfo->flags &
-		(SURF_SKY | SURF_TRANS33 | SURF_TRANS66 | SURF_WARP))
+	/* Only SKY and WARP surfaces genuinely lack a lightmap. Non-warp
+	 * translucent surfaces (SURF_TRANS33/66 — glass, grates) DO carry
+	 * valid BSP lightmap samples and are lit by gl_trans_lighting, which
+	 * builds their lightmap at map load via LM_CreateSurfaceLightmap.
+	 * The stock guard also rejected TRANS33/66, so the gl_trans_lighting
+	 * port hard-ERR_DROP'd ("non-lit surface") on the first map with a
+	 * non-warp translucent surface — e.g. base1's glass. Relaxing the
+	 * mask to SKY|WARP matches kmquake2 (the feature's upstream), where
+	 * this same line is commented down to (SURF_SKY|SURF_WARP). When
+	 * gl_trans_lighting is off, trans surfaces never reach here anyway. */
+	if (surf->texinfo->flags & (SURF_SKY | SURF_WARP))
 	{
 		ri.Sys_Error(ERR_DROP, "R_BuildLightMap called for non-lit surface");
 	}

@@ -116,7 +116,8 @@ Build targets (chip-family, not machine-identity):
 
 ## Status
 
-Current: **v2.2.4** (DMG packaging integrity + Tiger build host). Full per-round
-history is in **`docs/STATUS.md`**. Next: bloom redo (dedicated render-target,
-sub-res budget); AltiVec `R_BuildLightMap`; GL1 gamma correction; re-bench
-mini-g4 cool.
+Current: **v2.2.5** (fix `gl_trans_lighting` → `R_BuildLightMap` `ERR_DROP` on
+non-warp glass: base1 "start a new game" froze on G4/G5; see MISTAKES.md). Full
+per-round history is in **`docs/STATUS.md`**. Next: bloom redo (dedicated
+render-target, sub-res budget); AltiVec `R_BuildLightMap`; GL1 gamma correction;
+re-bench mini-g4 cool.

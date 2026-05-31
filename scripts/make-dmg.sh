@@ -13,14 +13,25 @@
 # usage: scripts/make-dmg.sh [version-label]
 #   version-label: e.g. v2.1.0 (default: short HEAD hash)
 #
-# env: DMG_HOST  Mac to run hdiutil on. DEFAULT: yosemite (the Panther G3).
-#               This matters: a UDZO image built by Lion's hdiutil reports
-#               "no mountable file systems" on Mac OS X 10.3.9 — the UDIF
-#               container version is too new for Panther's DiskImageMounter.
-#               An image built on the OLDEST target OS mounts everywhere
-#               from 10.3.9 → modern (old→new compat holds; new→old doesn't).
-#               Override with DMG_HOST=quicksilver (Tiger) / =mini-intel
-#               (Lion) for a faster build if you only ship to Tiger+.
+# env: DMG_HOST  Mac to run hdiutil on. DEFAULT: quicksilver (Tiger 10.4).
+#               WHY TIGER, NOT THE G3 OR LION (all empirically tested 2026-05-31):
+#                 * Lion's hdiutil writes a UDIF container Panther's 2003-vintage
+#                   DiskImageMounter can't parse — "no mountable file systems" on
+#                   10.3.9. NO hdiutil flag fixes it: UDZO, uncompressed UDRO, and
+#                   an Apple-Partition-Map (-layout SPUD) image all fail to mount
+#                   on Panther. So Lion is out for any image that must reach a G3.
+#                 * A TIGER-built UDZO mounts on Panther AND everything newer
+#                   (old→new compat holds; new→old doesn't). Tiger is the oldest
+#                   OS we need for the hdiutil step.
+#                 * We do NOT use the 1999 Panther G3 for this: it's the flakiest
+#                   hardware in the fleet (non-ECC RAM / 25-yr-old disk — the source
+#                   of the 2026-05-31 single-byte-flip that shipped a corrupt G4
+#                   slice). The end-to-end content verification below now catches
+#                   any such flip on ANY host, but there's no reason to build on
+#                   the worst hardware when a healthy Tiger box does the job.
+#               The BINARY is always built on Lion (mini-intel) by build-fat.sh;
+#               DMG_HOST only runs the hdiutil packaging step on the staged tree.
+#               Override DMG_HOST=mini-g4 (also Tiger) if quicksilver is offline.
 #
 # pre:   build/q2-fat present (scripts/build-fat.sh; built here if missing)
 # post:  dist/Quake2-OldMac-<version>.dmg
@@ -35,7 +46,16 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 VERSION="${1:-$(git rev-parse --short HEAD)}"
-DMG_HOST="${DMG_HOST:-yosemite}"   # Panther host → image mounts on every target
+# Tiger host → image mounts on Panther→modern (see header). If DMG_HOST is not
+# set explicitly, auto-pick the first REACHABLE Tiger box so a powered-off
+# quicksilver doesn't break the default — both write Panther-mountable images.
+if [ -z "${DMG_HOST:-}" ]; then
+  for cand in quicksilver mini-g4; do
+    if ssh -o ConnectTimeout=6 -o BatchMode=yes "$cand" true 2>/dev/null; then DMG_HOST="$cand"; break; fi
+  done
+  DMG_HOST="${DMG_HOST:-quicksilver}"
+  echo "[make-dmg] DMG_HOST not set — using reachable Tiger host: $DMG_HOST"
+fi
 VOLNAME="Quake2 OldMac $VERSION"
 OUT="$REPO_ROOT/dist/Quake2-OldMac-$VERSION.dmg"
 
@@ -158,23 +178,83 @@ Project: https://github.com/matthewdeaves/old-mac-quake2
 License: GPL-2.0-or-later (see the project repo).
 EOF
 
-# ---- build the .dmg on a Mac (hdiutil is macOS-only) ---------------------
+# ---- build the .dmg on a Mac, with END-TO-END content verification -------
+# CRITICAL (learned the hard way — see MISTAKES.md 2026-05-31 "DMG byte-flip"):
+# `hdiutil verify` only checks the UDIF container's *internal* checksum — that
+# the compressed blocks decompress to whatever was stored. It does NOT verify
+# that what was stored matches our source. A single byte flipped anywhere in
+# the rsync→hdiutil chain (e.g. a bad sector / RAM glitch on the 25-year-old
+# Panther G3 we build on) passes `hdiutil verify` and ships a corrupt binary.
+# That exact failure turned a register-save (stw r31) in the ppc7400 slice's
+# Con_Print into an illegal 64-bit opcode → EXC_PPC_PRIVINST → instant crash
+# on every G4, while deploy.sh (which ships build/q2-fat directly, no DMG) was
+# fine. So: after building, mount the finished image and md5 the actual
+# binaries inside it against the source. Retry on mismatch; fail loud if it
+# can't be made clean (never ship a corrupt DMG again).
 REMOTE="/tmp/q2-dmg-$VERSION"
 # Panther (yosemite) ships rsync 2.5.x — needs --protocol=29, same as deploy.sh.
 RSYNC_EXTRA=""
 [ "$DMG_HOST" = "yosemite" ] && RSYNC_EXTRA="--protocol=29"
-echo "[make-dmg] ship staged image to $DMG_HOST and run hdiutil"
-ssh "$DMG_HOST" "rm -rf '$REMOTE' && mkdir -p '$REMOTE'"
-rsync -a --partial $RSYNC_EXTRA -e 'ssh -o ServerAliveInterval=15' "$IMG/" "$DMG_HOST:$REMOTE/img/"
-# UDZO = zlib-compressed read-only image; widest compatibility incl. Panther.
-ssh "$DMG_HOST" "rm -f '$REMOTE/out.dmg' && \
-  hdiutil create -volname '$VOLNAME' -srcfolder '$REMOTE/img' \
-    -ov -format UDZO '$REMOTE/out.dmg' && \
-  hdiutil verify '$REMOTE/out.dmg' >/dev/null"
+
+# The corruptible PPC/x86 binaries whose fidelity we assert end-to-end. The
+# staged $IMG copies are plain local `cp` of build/q2-fat, so $IMG md5s ARE
+# the true-source md5s.
+VERIFY_FILES="Quake2.app/Contents/MacOS/quake2 ref_gl.so baseq2/game.so"
+SRC_SUMS=$(cd "$IMG" && for f in $VERIFY_FILES; do \
+             printf '%s  %s\n' "$(md5sum "$f" | cut -d' ' -f1)" "$f"; done)
 
 mkdir -p "$REPO_ROOT/dist"
+
+attempt=0; verified=no
+while [ "$attempt" -lt 3 ]; do
+  attempt=$((attempt + 1))
+  echo "[make-dmg] attempt $attempt/3: ship staged image to $DMG_HOST and run hdiutil"
+  ssh "$DMG_HOST" "rm -rf '$REMOTE' && mkdir -p '$REMOTE'"
+  rsync -a $RSYNC_EXTRA -e 'ssh -o ServerAliveInterval=15' "$IMG/" "$DMG_HOST:$REMOTE/img/"
+  # UDZO = zlib-compressed read-only image; widest compatibility incl. Panther.
+  ssh "$DMG_HOST" "rm -f '$REMOTE/out.dmg' && \
+    hdiutil create -volname '$VOLNAME' -srcfolder '$REMOTE/img' \
+      -ov -format UDZO '$REMOTE/out.dmg' && \
+    hdiutil verify '$REMOTE/out.dmg' >/dev/null"
+
+  # md5 the binaries INSIDE the finished image (mount → hash → detach). Mount
+  # at a private mountpoint (not /Volumes) to dodge BSD-grep parsing and any
+  # stale same-name mount left by a previous run. Tolerant of detach races.
+  # NB: the file list is hardcoded in the remote script (NOT passed as args) —
+  # ssh runs the command through a remote shell that word-splits on spaces, so
+  # a multi-path "$VERIFY_FILES" arg would be silently truncated to its first
+  # path. Keep this list in sync with $VERIFY_FILES above.
+  DMG_SUMS=$(ssh "$DMG_HOST" bash -s "$REMOTE" <<'REMOTE_EOF' || true
+REM="$1"; MP="$REM/mnt"
+mkdir -p "$MP"
+hdiutil detach "$MP" >/dev/null 2>&1 || true
+hdiutil attach -nobrowse -readonly -mountpoint "$MP" "$REM/out.dmg" >/dev/null 2>&1 || exit 7
+for f in Quake2.app/Contents/MacOS/quake2 ref_gl.so baseq2/game.so; do
+  printf '%s  %s\n' "$(md5 "$MP/$f" 2>/dev/null | awk '{print $NF}')" "$f"
+done
+hdiutil detach "$MP" >/dev/null 2>&1 || hdiutil detach -force "$MP" >/dev/null 2>&1 || true
+REMOTE_EOF
+)
+  if [ "$DMG_SUMS" = "$SRC_SUMS" ]; then verified=yes; break; fi
+  echo "[make-dmg] WARNING: DMG contents differ from source (attempt $attempt) — retrying" >&2
+  echo "--- source ---"; echo "$SRC_SUMS"
+  echo "--- in dmg ---"; echo "$DMG_SUMS"
+done
+
+[ "$verified" = yes ] || {
+  echo "[make-dmg] FATAL: could not produce an uncorrupted DMG after $attempt attempts on $DMG_HOST." >&2
+  echo "           The build host may have a failing disk/RAM. Try a different DMG_HOST." >&2
+  exit 1
+}
+echo "[make-dmg] verified: quake2 / ref_gl.so / game.so inside the DMG match source byte-for-byte"
+
+# Fetch, then verify scp didn't corrupt the container either.
 scp -q "$DMG_HOST:$REMOTE/out.dmg" "$OUT"
+RMT_DMG_MD5=$(ssh "$DMG_HOST" "md5 '$REMOTE/out.dmg' | awk '{print \$NF}'")
+LCL_DMG_MD5=$(md5sum "$OUT" | cut -d' ' -f1)
+[ "$RMT_DMG_MD5" = "$LCL_DMG_MD5" ] || {
+  echo "[make-dmg] FATAL: scp corrupted $OUT ($RMT_DMG_MD5 != $LCL_DMG_MD5)" >&2; exit 1; }
 ssh "$DMG_HOST" "rm -rf '$REMOTE'" 2>/dev/null || true
 
-echo "[make-dmg] OK — $OUT"
+echo "[make-dmg] OK — $OUT (contents verified byte-identical to source)"
 ls -lh "$OUT"

@@ -16,6 +16,53 @@ quirks.
 
 ---
 
+## 2026-05-31 — DMG packaging flipped ONE byte → illegal-instruction crash on the G4 (FIXED v2.2.4)
+
+**The bug:** the v2.2.3 `.dmg` crashed instantly on the G4-mini ("opens then
+quits") with `EXC_BAD_INSTRUCTION` / `Code[0]=0x2` (`EXC_PPC_PRIVINST`) at
+`Con_Print+8`, deep in `Qcommon_Init → Swap_Init → Com_Printf → Con_Print`.
+Disassembling the shipped ppc7400 slice showed a single 32-bit word at that
+address had become `0xe7e1fffc` — an undecodable opcode (PPC primary opcode 57,
+`lfdp`, 64-bit-only) that traps as privileged on a G4. The INTENDED instruction
+was `stw r31,0xfffc(r1)` = `0x93e1fffc` (a register save in the PIC prologue).
+**Exactly one byte had flipped: `0x93`→`0xe7`.** The local `build/q2-fat/quake2`
+was clean (that byte-flip appeared ZERO times in it); only the DMG copy was
+corrupt.
+
+**Why it slipped through:** deploy.sh ships `build/q2-fat` straight to the target
+and benched fine; make-dmg.sh takes an extra hop — rsync the staged tree to a
+Mac, `hdiutil create` a UDZO, scp it back. The flip happened somewhere on that
+hop (almost certainly a RAM/disk glitch on the 1999 non-ECC Panther G3 we were
+building the DMG on — TCP+SSH+rsync all checksum the wire, so it was NOT a
+transfer-protocol loss). Crucially **`hdiutil verify` did NOT catch it**: it
+only checks the UDIF container decompresses to what was stored, not that what
+was stored matches the source. And we'd only ever tested with `+timedemo`, never
+the actual DMG-installed double-click path, so the corrupt artifact shipped.
+
+**The fix (three parts):**
+1. **End-to-end content verification in make-dmg.sh** — after building, mount the
+   finished image and md5 `quake2` / `ref_gl.so` / `game.so` *inside it* against
+   the source; retry up to 3× and FAIL LOUD if it can't be made byte-identical.
+   Corruption on ANY host can never ship again. Also md5-checks the scp-back.
+2. **Build the DMG on Tiger, not the G3.** Empirically tested 2026-05-31: Lion's
+   hdiutil writes a container Panther can't mount (no flag fixes it — UDZO, UDRO,
+   `-layout SPUD` all fail on 10.3.9); a TIGER-built UDZO mounts on Panther →
+   modern. So the oldest OS we need for `hdiutil` is Tiger (10.4) — a far
+   healthier box than the 1999 G3. `DMG_HOST` now defaults to quicksilver
+   (mini-g4 as fallback). The binary is still built on Lion as always.
+3. **Test the real artifact.** New `scripts/deploy-dmg.sh` (install from the
+   mounted DMG, the way a human does) + `scripts/smoke-dmg.sh` (launch the
+   installed copy with the PRODUCTION config, not -noarchautoexec, and auto-exit
+   via a demo). The loop is: fix → make-dmg (verified) → deploy-dmg → smoke-dmg
+   on G3/G4/G5 → human starts a new game.
+
+**Lesson:** `hdiutil verify` is NOT a content check. Never trust a multi-hop
+packaging pipeline to preserve bytes — verify the shipped artifact against the
+source byte-for-byte. And don't run the build/packaging on the flakiest hardware
+in the fleet when a healthier machine does the same job.
+
+---
+
 ## 2026-05-31 — per-machine config applied AFTER CL_Init → refresh-DLL reload → G3 "start a new game" crash (v2.2.x regression, FIXED v2.2.3)
 
 **The bug:** from v2.2.0 ("all fullscreen by default") onward the per-arch

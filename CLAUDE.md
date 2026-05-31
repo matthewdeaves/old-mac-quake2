@@ -571,6 +571,28 @@ so it overrides cleanly. If the tweak wins, fold the new value into
   full fleet demo sweep green and user-confirmed (yosemite 1024×768 25fps;
   quicksilver 64.0; mini-g4 56.8; mini-intel 94.8; imac-g5 native 1440×900 30fps
   w/ 2× MSAA). DMG cut + shipped to every desktop. Tagged v2.2.3.
+- 2026-05-31 (v2.2.4): **DMG packaging integrity + a healthier build host.** The
+  v2.2.3 *binary* was correct (deploy.sh + bench were clean), but the v2.2.3
+  *DMG* shipped a single flipped byte in the ppc7400 slice's `Con_Print` (a PIC-
+  prologue `stw r31` → an undecodable 64-bit opcode) → `EXC_PPC_PRIVINST` insta-
+  crash on the G4-mini at startup. The flip happened in the DMG hop (RAM/disk
+  glitch on the 1999 Panther G3 we were building the image on); `hdiutil verify`
+  doesn't catch it (it only checks the container, not source fidelity). Fixes:
+  (1) `make-dmg.sh` now does **end-to-end content verification** — mounts the
+  finished image and md5s `quake2`/`ref_gl.so`/`game.so` inside it against
+  source, retries 3×, fails loud; plus an scp-back md5 check. (2) **DMG host
+  moved off the G3 to Tiger** (`DMG_HOST` default → quicksilver, mini-g4
+  fallback): empirically, Lion's hdiutil can't write a Panther-mountable image
+  (UDZO/UDRO/`-layout SPUD` all fail on 10.3.9) but a Tiger-built UDZO mounts
+  Panther→modern, and Tiger is far healthier hardware than the 1999 G3. Binary
+  still built on Lion. (3) New `scripts/deploy-dmg.sh` (install from the mounted
+  DMG like a human) + `scripts/smoke-dmg.sh` (launch the installed copy with the
+  PRODUCTION config — not -noarchautoexec — and auto-exit via a demo). Validated
+  end-to-end: v2.2.4 DMG (verified byte-identical to source) installed from the
+  mounted image + production-launched on G3 (1024×768 Rage128, 20.6 fps), G4-mini
+  (1024×768 R9200, 38.5 fps), G5 (native 1440×900 capture R9600, 30.0 fps, no
+  R300 hang) — all rendered the demo to completion. See MISTAKES.md (DMG byte-
+  flip entry). Tagged v2.2.4.
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).

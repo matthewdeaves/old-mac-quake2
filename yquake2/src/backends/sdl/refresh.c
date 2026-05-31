@@ -466,21 +466,28 @@ GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen)
 void
 GLimp_Shutdown(void)
 {
-	/* Clear the backbuffer and make it
-	   current. This may help some broken
-	   video drivers like the AMD Catalyst
-	   to avoid artifacts in unused screen
-	   areas, */
-	qglClearColor(0.0, 0.0, 0.0, 0.0);
-	qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	GLimp_EndFrame();
+	/* Clear the backbuffer and make it current. This may help some broken
+	   video drivers like the AMD Catalyst to avoid artifacts in unused
+	   screen areas.
 
+	   GUARDED on a live `surface`: during a refresh-DLL reload
+	   (VID_LoadRefresh) this function can be RE-ENTERED after the surface
+	   has already been freed — e.g. an error cascade where GLimp_InitGraphics
+	   fails -> ri.Sys_Error -> Com_Error(ERR_FATAL) -> VID_Shutdown ->
+	   R_Shutdown -> GLimp_Shutdown a second time. On the ATI Rage 128 /
+	   Panther the stale-context SDL_GL_SwapBuffers here is a hard crash
+	   (EXC_BAD_ACCESS in SDL_GL_SwapBuffers, see MISTAKES.md). None of the
+	   fleet GPUs are the AMD Catalyst part this hack targets, so skipping
+	   the clear+swap when there is no live surface is harmless. */
 	if (surface)
 	{
-		SDL_FreeSurface(surface);
-	}
+		qglClearColor(0.0, 0.0, 0.0, 0.0);
+		qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		GLimp_EndFrame();
 
-	surface = NULL;
+		SDL_FreeSurface(surface);
+		surface = NULL;
+	}
 
 	if (SDL_WasInit(SDL_INIT_EVERYTHING) == SDL_INIT_VIDEO)
 	{

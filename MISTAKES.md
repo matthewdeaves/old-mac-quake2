@@ -16,6 +16,99 @@ quirks.
 
 ---
 
+## 2026-05-31 — per-machine config applied AFTER CL_Init → refresh-DLL reload → G3 "start a new game" crash (v2.2.x regression, FIXED v2.2.3)
+
+**The bug:** from v2.2.0 ("all fullscreen by default") onward the per-arch
++ per-machine autoexec set `vid_fullscreen 1` / `gl_mode -1` for every box.
+Those cfgs were `Cbuf_AddText`'d in `Qcommon_Init` AFTER `CL_Init()` — i.e.
+AFTER `VID_Init` had already loaded the renderer in the engine-default
+WINDOWED mode. Changing `gl_mode`/`vid_fullscreen` post-init makes
+`R_BeginFrame` (r_main.c) escalate the change into a FULL refresh-DLL
+reload: it sets `vid_ref->modified`, and the next `VID_CheckChanges`
+tears down + reloads `ref_gl.so` via `VID_LoadRefresh`. On the ATI Rage
+128 / Panther (G3) that reload path is fatal — `Com_Error` cascade →
+`VID_Shutdown` → `R_Shutdown` → `GLimp_Shutdown` → `SDL_GL_SwapBuffers`
+on a torn-down context → `EXC_BAD_ACCESS`. Symptom: the menu came up
+fine, then **"start a new game" hard-crashed the G3** (the reload fired on
+the first rendered world frame). The documented "v2.2.2 / 2nd-launch"
+behaviour masked it — and bench/`+set` never tripped it because **`+set`
+is an EARLY command** (`Cbuf_AddEarlyCommands`), applied BEFORE
+`CL_Init`, so the renderer came up in the final mode with no reload.
+
+**Why earlier attempts missed it:** v2.2.1 validated "start a new game"
+but on the G3 used `+set vid_fullscreen 0` (windowed) — which net-cancels
+the cfg's `vid_fullscreen 1`, so no mode change, no reload, no crash. The
+crash only appears when the cfg actually drives a fullscreen change at
+runtime. A `vid_restart`-at-boot workaround (see the entry below) was the
+wrong fix — it just forces the same fatal reload deliberately.
+
+**The fix (v2.2.3):** apply the bundle config BEFORE `CL_Init`/`VID_Init`
+— relocated in `misc.c` to right after `exec config.cfg` and before
+`Cbuf_AddEarlyCommands(true)` (so `+set` still overrides). The cfgs use
+`set CVAR VALUE` which creates cvars on demand, so renderer cvars are
+picked up unchanged by ref_gl's `Cvar_Get` when it lazy-loads (identical
+to how config.cfg's saved cvars already reach the first init). Net: the
+renderer comes up in the FINAL mode on the first frame, no reload ever,
+on every machine — and per-machine defaults now apply on the FIRST launch.
+Defense-in-depth: `GLimp_Shutdown` (refresh.c) now guards its cosmetic
+backbuffer clear+swap on a live `surface`, so any future reload can't
+re-crash on a stale context.
+
+**Lesson:** on this SDL-1.2 + runtime-loaded-ref_gl engine, NEVER change
+`gl_mode`/`vid_fullscreen` after the renderer's first init on the G3 — it
+means a full DLL reload, which the Rage 128 can't survive. Get the video
+cvars in BEFORE `VID_Init` (like `+set` does). Validated: G3 + G5
+start-a-game ALIVE, fleet demo sweep green.
+
+## 2026-05-31 — `killall -KILL` on a fullscreen G5 leaves the screen BLACK (R300 capture not released)
+
+A watch-run killed a fullscreen iMac G5 session with `killall -KILL` only
+(no `-TERM` first). SIGKILL skips SDL's shutdown, so the R300/Leopard
+captured framebuffer was never released → **black screen** (OS fine, ssh
+alive). Recovery: relaunch quake2 and exit cleanly with `-TERM` (SDL
+restores the desktop on shutdown). ALWAYS `killall -TERM` (sleep) then
+`-KILL` as a backstop — `bench.sh` already does this; the harm came from
+an ad-hoc KILL. The Rage 128 G3 tolerates a hard KILL; the R300 G5 does
+NOT. See `smoke-test-method` memory.
+
+## 2026-05-31 — first-launch `vid_restart` to apply per-machine defaults crashes Panther/Rage128 (tried in v2.2.2, REVERTED)
+
+**The idea:** the two bundle cfgs (per-arch baseline + per-machine overlay)
+are Cbuf'd in `Qcommon_Init` AFTER the initial `VID_Init` (renderer cvars
+like `gl_mode`/`gl_customwidth` don't exist until `CL_Init` loads `ref_gl`),
+so the per-machine fullscreen + resolution + picmip/retex tune only takes
+effect on the 2ND launch (once `config.cfg` has archived the values). To make
+it apply on the FIRST launch I added a `vid_restart` after the cfgs load
+(guarded by `timedemo==0` so benches aren't re-moded).
+
+**What broke:** it worked on G4 / G5 / Intel, but **hard-crashed the G3**
+(yosemite, Panther 10.3.9, ATI Rage 128). Stack (crash.rtf):
+`VID_CheckChanges → VID_LoadRefresh → QGL_Shutdown → Com_Error →
+VID_Shutdown → R_Shutdown → GLimp_Shutdown → SDL_GL_SwapBuffers` →
+`EXC_BAD_ACCESS at 0x134`. The refresh-DLL reload errors out on the old
+Rage128/Panther GL stack, and the error-cleanup path calls `GLimp_Shutdown`,
+which does `GLimp_EndFrame()` (= `SDL_GL_SwapBuffers`) on an already
+torn-down GL context → segfault.
+
+**Why the compile-time guard didn't save it:** I tried
+`#if !(defined(__ppc__) && !defined(__VEC__) && !defined(Q2_ARCH_PPC970))`
+to exclude the bare-G3 (ppc750) slice. Verified `gcc-4.0 -arch ppc -mcpu=750`
+defines only `__ppc__`/`__POWERPC__` (not `__VEC__`), so the macro *should*
+exclude it — yet the crash persisted identically. Rather than keep chasing a
+fragile per-slice preprocessor guard, the fix was to **drop the vid_restart
+entirely**. Per-machine video defaults apply on the 2nd launch on every
+machine (reliable); a one-line "nicety" isn't worth crashing the oldest box.
+
+**Lessons:** (a) `vid_restart` (full refresh-DLL reload + SDL video teardown)
+is NOT safe to issue automatically on the legacy Panther/Rage128 stack —
+treat it as interactive-menu-only there. (b) "tested green on 4 of 5" is not
+"works" — the 5th (oldest, least forgiving) is exactly where a video-init
+change bites, same lesson as the R300 fullscreen hazard. (c) when a fix needs
+a per-slice compile guard to be safe, that's a signal the fix itself is wrong
+for this fleet — prefer the mechanism that needs no special-casing.
+
+---
+
 ## 2026-05-31 — config comments overflowed the 8 KB command buffer → garbled cfg → R300 GPU wedge on "new game" (shipped in v2.2.0, fixed v2.2.1)
 
 **What shipped broken:** v2.2.0. Starting a new game on the iMac G5 crashed

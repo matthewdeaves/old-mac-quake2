@@ -130,7 +130,8 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # (on the iMac G5's R300 driver) wedged the GPU on map load. Stripping the
 # `//` comments + blank lines leaves only the `set` lines (~1-2 KB each),
 # a wide margin. (v2.2.0 shipped un-stripped and hit this; fixed v2.2.1.)
-for cfg in ppc750 ppc7400 ppc970 x86_64 \
+for cfg in controls \
+           ppc750 ppc7400 ppc970 x86_64 \
            yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \

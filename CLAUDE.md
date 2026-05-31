@@ -211,6 +211,27 @@ break the sister project. The first version of Q2's `build.sh` should
 hard-code `mini-intel:quake2/` and assert the path is project-local
 before rsync.
 
+## What a smoke test MUST be (demo run, auto-exits)
+
+A smoke test is an **actual demo run that auto-exits** — use
+`scripts/bench.sh <machine> demo1 <WxH> 1` (it runs `+set timedemo 1
++demomap demo1.dm2`, polls `qconsole.log` for the `frames…seconds…fps`
+line, then `killall`s). Proof of success = an fps line printed (the world
+rendered through `R_RenderView`/`R_MarkLeaves` to completion).
+
+Two methods are BANNED — both caused real damage on 2026-05-31:
+- **`+map <map>`** loads a map and sits there **fullscreen forever**; the
+  process never exits, so it grabs the display. A failed kill left two G4s
+  stranded on black screens, looking like a crash. A demo auto-exits.
+- **Engine-load-only / "did it start" checks** don't exercise world
+  rendering, where the real crashes live. The user explicitly rejected
+  these. Always do a real demo run.
+
+NB: a clean demo run does NOT clear a *gameplay* crash — `start a new game`
+spawns a live server + entities, a different path from demo playback (e.g.
+the 2026-05-31 G3 `R_MarkLeaves` in-game fault that the demo did not hit).
+For an in-game regression, also test an actual new game, not just a demo.
+
 ## Bench-and-commit cadence (carry over from QuakeSpasm)
 
 Same discipline: smoke bench on dirty tree, commit code change, then
@@ -324,9 +345,13 @@ only feed `scripts/build-fat.sh` — they don't deploy independently.
 ## Bundle is self-contained (CFBundle-loaded autoexec, two layers)
 
 Autoexec cfgs ship INSIDE `Quake2.app/Contents/Resources/` and load in
-TWO layers (mirrors the QuakeSpasm sister project — "best on known
+THREE layers (mirrors the QuakeSpasm sister project — "best on known
 machines, sane generic on everything else"):
 
+- **Layer 0 — shared controls** (`autoexec-controls.cfg`): universal,
+  machine-independent WASD + mouse-look scheme (parity with the
+  QuakeSpasm fleet build). Execed FIRST so a later layer could override a
+  key (none do). Overrides stock yquake2's ESDF layout.
 - **Layer 1 — per-arch baseline** (`autoexec-ppc750/ppc7400/ppc970/
   x86_64.cfg`): selected at COMPILE time. dyld picks the fat slice that
   matches the host CPU, so the baseline baked into that slice is the one
@@ -341,13 +366,26 @@ machines, sane generic on everything else"):
   baseline so it wins on the six known fleet boxes. Unknown models keep
   just the Layer-1 baseline.
 
-Both layers append to `Cbuf` in order (baseline first, overlay second),
-so the overlay's `set` lines override the baseline's. See
+All layers append to `Cbuf` in order (controls → baseline → overlay), so
+each later layer's `set` lines override the earlier. See
 `yquake2/src/common/misc.c:Q2_ExecConfigFromBundle` and the call site in
-`Qcommon_Init` AFTER `CL_Init()` (the call site placement is load-bearing
-— renderer cvars like `gl_picmip` don't exist until `CL_Init` has loaded
-`ref_gl.so`, so an earlier hook would silently drop those cvar lines as
-unknown commands).
+`Qcommon_Init`.
+
+**Call-site placement is LOAD-BEARING — it is BEFORE `CL_Init()`/`VID_Init`
+(right after `exec config.cfg`, before `Cbuf_AddEarlyCommands(true)`):**
+- The cfgs use `set CVAR VALUE`, which CREATES the cvar on demand, so
+  renderer cvars (`gl_picmip`, `gl_mode`, …) created here are picked up
+  unchanged by ref_gl's `Cvar_Get` when it lazy-loads — identical to how
+  the saved `config.cfg` (also execed before `CL_Init`) already reaches
+  the first init. So there is NO need to wait for `ref_gl.so` to load.
+- Crucially, the VIDEO-MODE cvars are set BEFORE `VID_Init` loads the
+  renderer, so it comes up in the FINAL mode on the first frame with NO
+  refresh-DLL reload. Applying them AFTER `CL_Init` (the old placement)
+  triggered a reload on the first rendered frame that **hard-crashed the
+  Rage128/Panther G3 on "start a new game"** (see MISTAKES.md 2026-05-31).
+- `+set` from the cmdline (bench scripts) is an early command applied just
+  after this block, so it still overrides the bundle config — keeping
+  benches deterministic.
 
 The cfgs use `set CVAR VALUE` syntax (not bare `CVAR VALUE`). This
 matters because Q2's command parser only routes bare assignments
@@ -497,6 +535,42 @@ so it overrides cleanly. If the tweak wins, fold the new value into
   earlier benches missed stencil/glows/caustics. True production (native 1440×900,
   full stack + 2× MSAA, user-confirmed): **46.8/45.8 fps** (demo1/demo2); ~100
   fps with MSAA off. See MISTAKES.md (2026-05-31 Cbuf entry). Tagged v2.2.1.
+- 2026-05-31 (v2.2.2): config-only round on the proven (two-launch) engine.
+  yosemite kept at 1024x768 (25.2 fps, above floor, user choice); **both Intel
+  boxes now carry the full visual stack** — mini-intel gained stencil shadows +
+  8x MSAA (benched FREE on the GMA950 — demo is CPU-bound) + 128 decals (aniso
+  stays 8 = GMA950 hw cap), matching imac-2019. NOTE: a first-launch
+  `vid_restart` (to apply per-machine fullscreen+res on the 1st launch instead
+  of the 2nd) was implemented, tested green on G4/G5/Intel, but **REVERTED** —
+  it hard-crashes Panther/Rage128 (the G3): GLimp_Shutdown -> SDL_GL_SwapBuffers
+  on a torn-down context during the refresh-DLL reload (crash.rtf / MISTAKES.md).
+  Per-machine video defaults therefore apply on the **2nd launch** (1st launch =
+  engine-default windowed; relaunch = the tuned fullscreen+res). Reliable on all
+  5 GPU classes. (v2.2.2 was documented but never tagged — the G3 "start a new
+  game" crash below was still live in it.)
+- 2026-05-31 (v2.2.3): **THE G3 START-A-GAME CRASH IS FIXED, + WASD/mouse-look,
+  + first-launch defaults.** Root cause: the per-machine autoexec was applied
+  AFTER CL_Init (post renderer-init), so its `vid_fullscreen 1`/`gl_mode -1`
+  escalated into a full refresh-DLL reload (`R_BeginFrame`→`vid_ref->modified`→
+  `VID_LoadRefresh`), which is FATAL on the Rage128/Panther (GLimp_Shutdown→
+  SDL_GL_SwapBuffers on a torn-down context). The menu came up, then "start a
+  new game" hard-crashed the G3. Fix: **apply the bundle config BEFORE CL_Init/
+  VID_Init** (misc.c — right after `exec config.cfg`, before
+  `Cbuf_AddEarlyCommands(true)` so `+set` still wins). The `set CVAR VALUE`
+  syntax creates cvars on demand, so ref_gl picks them up via Cvar_Get on lazy-
+  load (same as config.cfg). Net: renderer comes up in the FINAL mode on the
+  first frame, **no reload ever, on any machine** — and per-machine defaults
+  (incl. fullscreen + res) now apply on the **FIRST launch**. Also: the old
+  reverted first-launch `vid_restart` is gone; `GLimp_Shutdown` now guards its
+  cosmetic clear+swap on a live surface (defense-in-depth). **New WASD + mouse-
+  look default control scheme** (shared `autoexec-controls.cfg`, parity with the
+  QuakeSpasm fleet build: W/S forward-back, A/D strafe, mouse freelook, SPACE
+  jump, C crouch — overrides stock yquake2's ESDF layout). G5 video cvars made
+  deterministic (`gl_mode -1` + native dims, no stale config.cfg leak). Validated
+  end-to-end: G3 + G5 **start-a-game ALIVE** (in-game world render, correct res),
+  full fleet demo sweep green and user-confirmed (yosemite 1024×768 25fps;
+  quicksilver 64.0; mini-g4 56.8; mini-intel 94.8; imac-g5 native 1440×900 30fps
+  w/ 2× MSAA). DMG cut + shipped to every desktop. Tagged v2.2.3.
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C
   (KMQuake2 visual features, FoD Q2 Mac Cocoa patterns).

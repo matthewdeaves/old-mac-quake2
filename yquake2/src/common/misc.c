@@ -360,57 +360,34 @@ Qcommon_Init(int argc, char **argv)
 	Cbuf_AddText("exec yq2.cfg\n");
 	Cbuf_AddText("exec config.cfg\n");
 
-	Cbuf_AddEarlyCommands(true);
-	Cbuf_Execute();
-
-	/* init commands and vars */
-	Cmd_AddCommand("z_stats", Z_Stats_f);
-	Cmd_AddCommand("error", Com_Error_f);
-
-	host_speeds = Cvar_Get("host_speeds", "0", 0);
-	log_stats = Cvar_Get("log_stats", "0", 0);
-	developer = Cvar_Get("developer", "0", 0);
-	modder = Cvar_Get("modder", "0", 0);
-	timescale = Cvar_Get("timescale", "1", 0);
-	fixedtime = Cvar_Get("fixedtime", "0", 0);
-	logfile_active = Cvar_Get("logfile", "1", CVAR_ARCHIVE);
-#ifndef DEDICATED_ONLY
-	showtrace = Cvar_Get("showtrace", "0", 0);
-#endif
-
-#ifdef DEDICATED_ONLY
-	dedicated = Cvar_Get("dedicated", "1", CVAR_NOSET);
-#else
-	dedicated = Cvar_Get("dedicated", "0", CVAR_NOSET);
-#endif
-
-	s = va("%s %s %s %s", VERSION, CPUSTRING, __DATE__, BUILDSTRING);
-	Cvar_Get("version", s, CVAR_SERVERINFO | CVAR_NOSET);
-
-	if (dedicated->value)
-	{
-		Cmd_AddCommand("quit", Com_Quit);
-	}
-
-	Sys_Init();
-	NET_Init();
-	Netchan_Init();
-	SV_Init();
-#ifndef DEDICATED_ONLY
-	CL_Init();
-#endif
-
 #if defined(__APPLE__) && !defined(DEDICATED_ONLY)
 	/*
-	 * PPC port: per-machine autoexec layered AFTER the standard
-	 * default.cfg → yq2.cfg → config.cfg → cmdline +set chain, and
-	 * crucially AFTER SV_Init() + CL_Init() have registered all
-	 * engine cvars (cl_maxfps, gl_picmip, gl_dynamic, etc.). At this
-	 * point any cvar the cfg references is guaranteed to exist, so
-	 * the cfg's `cvar value` lines route through Cvar_Command instead
-	 * of being silently dropped as unknown commands. Compare:
-	 * QuakeSpasm sister project does the same — Host_Init runs the
-	 * bundle exec at the very end, after VID_Init / CL_Init.
+	 * PPC port — per-machine autoexec, layered on top of the standard
+	 * default.cfg -> yq2.cfg -> config.cfg chain, but BEFORE the cmdline
+	 * +set early-commands (so an explicit +set, e.g. from the bench
+	 * scripts, still overrides) and BEFORE SV_Init()/CL_Init().
+	 *
+	 * Applying it HERE — before VID_Init loads the renderer — is LOAD-
+	 * BEARING and the fix for the G3/Rage128 "start a game" crash. The
+	 * cfgs use `set CVAR VALUE`, which CREATES each cvar if it does not
+	 * exist yet, so renderer cvars (gl_picmip, gl_mode, ...) created here
+	 * are picked up unchanged by ref_gl's Cvar_Get when it lazy-loads —
+	 * identical mechanics to how config.cfg's saved renderer cvars already
+	 * reach the first init. Crucially the VIDEO-MODE cvars (vid_fullscreen,
+	 * vid_desktopfullscreen, gl_mode, gl_customwidth/height, gl_msaa_samples)
+	 * are in the cvars BEFORE VID_Init's first GLimp_InitGraphics, so the
+	 * renderer comes up in the FINAL mode on the first frame — no post-init
+	 * gl_mode/vid_fullscreen change, hence no refresh-DLL reload
+	 * (VID_LoadRefresh). That reload is FATAL on the Rage 128 / Panther:
+	 * GLimp_Shutdown -> SDL_GL_SwapBuffers on a torn-down context, then a
+	 * Com_Error(ERR_FATAL) cascade (see MISTAKES.md). The earlier "apply
+	 * after CL_Init" placement set vid_fullscreen post-init and crashed the
+	 * G3 on the first rendered frame ("start a new game"). Applying early is
+	 * exactly what cmdline `+set` already does (early-commands, below),
+	 * which is why bench / explicit +set fullscreen ALWAYS worked. Net
+	 * result: per-machine defaults — including fullscreen + resolution —
+	 * apply on the FIRST launch on every machine (G3/G4/G5/Intel), with
+	 * built-in-screen boxes capturing their native desktop resolution.
 	 *
 	 * Two layers, "best on known machines, sane generic on everything
 	 * else":
@@ -451,6 +428,16 @@ Qcommon_Init(int argc, char **argv)
 		size_t i;
 
 		/*
+		 * Layer 0: shared default control scheme (WASD + mouse-look,
+		 * A/D strafe — parity with the QuakeSpasm fleet build). Execed
+		 * FIRST so the per-arch baseline / per-machine overlay below
+		 * could still override a key; none do. Universal, machine-
+		 * independent, so it lives in one file rather than duplicated
+		 * into every baseline cfg.
+		 */
+		Q2_ExecConfigFromBundle("autoexec-controls");
+
+		/*
 		 * Layer 1: generic per-arch baseline. The ppc970 slice ALSO
 		 * defines __VEC__ (the 970 has AltiVec), so it must be checked
 		 * FIRST via the Q2_ARCH_PPC970 build macro — Apple gcc emits no
@@ -483,6 +470,46 @@ Qcommon_Init(int argc, char **argv)
 			}
 		}
 	}
+#endif
+
+	Cbuf_AddEarlyCommands(true);
+	Cbuf_Execute();
+
+	/* init commands and vars */
+	Cmd_AddCommand("z_stats", Z_Stats_f);
+	Cmd_AddCommand("error", Com_Error_f);
+
+	host_speeds = Cvar_Get("host_speeds", "0", 0);
+	log_stats = Cvar_Get("log_stats", "0", 0);
+	developer = Cvar_Get("developer", "0", 0);
+	modder = Cvar_Get("modder", "0", 0);
+	timescale = Cvar_Get("timescale", "1", 0);
+	fixedtime = Cvar_Get("fixedtime", "0", 0);
+	logfile_active = Cvar_Get("logfile", "1", CVAR_ARCHIVE);
+#ifndef DEDICATED_ONLY
+	showtrace = Cvar_Get("showtrace", "0", 0);
+#endif
+
+#ifdef DEDICATED_ONLY
+	dedicated = Cvar_Get("dedicated", "1", CVAR_NOSET);
+#else
+	dedicated = Cvar_Get("dedicated", "0", CVAR_NOSET);
+#endif
+
+	s = va("%s %s %s %s", VERSION, CPUSTRING, __DATE__, BUILDSTRING);
+	Cvar_Get("version", s, CVAR_SERVERINFO | CVAR_NOSET);
+
+	if (dedicated->value)
+	{
+		Cmd_AddCommand("quit", Com_Quit);
+	}
+
+	Sys_Init();
+	NET_Init();
+	Netchan_Init();
+	SV_Init();
+#ifndef DEDICATED_ONLY
+	CL_Init();
 #endif
 
 	/* add + commands from command line */

@@ -342,10 +342,11 @@ R_EmitWaterPolys(msurface_t *fa)
 
 			for (i = 0, v = p->verts[0]; i < p->numverts; i++, v += VERTEXSIZE)
 			{
-								/* Morph the caustic texcoords through the same turbsin table the
-				   water warp uses, so the net breathes/warps over time instead of
-				   just sliding. Table lookup, no per-vertex sin() (PPC-cheap). Half
-				   the water's spatial frequency so it reads as its own slow swell. */
+				/* Morph the caustic texcoords through the same turbsin table
+				   the water warp uses, so the net breathes/warps over time
+				   instead of just sliding. Table lookup, no per-vertex sin()
+				   (PPC-cheap). Half the water's spatial frequency so it reads
+				   as its own slow swell. */
 				float ws = r_turbsin[(int)((v[1] * 0.0625f + rdt) * TURBSCALE) & 255];
 				float wt = r_turbsin[(int)((v[0] * 0.0625f + rdt) * TURBSCALE) & 255];
 				qglTexCoord2f(v[0] * (1.0f / 64) + cscroll + ws * (1.0f / 64),

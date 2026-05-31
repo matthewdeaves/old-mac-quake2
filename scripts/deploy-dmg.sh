@@ -74,6 +74,16 @@ done
 [ "$detached" = yes ] || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
 rmdir "$MNT" 2>/dev/null || true
 
+# Tidy: drop any OTHER Quake2-OldMac-*.dmg left on the Desktop from previous
+# rounds — keep only the one we just installed from. The bench Macs have small
+# disks and these images pile up across releases.
+for old in "$HOME"/Desktop/Quake2-OldMac-*.dmg; do
+  [ -e "$old" ] || continue
+  if [ "$(basename "$old")" != "$DMG_BASE" ]; then
+    rm -f "$old" && echo "removed old image $(basename "$old")"
+  fi
+done
+
 echo "installed:"
 ls -la "$DEST" | awk '{print "  "$NF}' | grep -vE '^\s+\.$|^\s+\.\.$' | grep -v '^  $' || true
 echo "app binary archs:"

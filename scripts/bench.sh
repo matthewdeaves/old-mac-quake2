@@ -124,6 +124,18 @@ case "$TARGET" in
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac
 
+# The bench fleet is SHARED — multiple Claude agents (this Q2 port + the
+# QuakeSpasm Q1 sister project) drive the same Macs. A second game on a box
+# already running one corrupts the measurement and can wedge a fullscreen box.
+# Bail if anything Quake-ish is live; FORCE=1 overrides a stale process.
+BUSY="$(ssh "$HOST" "ps -axo comm,pid 2>/dev/null | grep -iE 'quake2|quakespasm|q2ded|/quake' | grep -v grep || true")"
+if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
+  echo "[bench $HOST] ABORT — $HOST is already running a game (shared bench):" >&2
+  echo "$BUSY" | sed 's/^/    /' >&2
+  echo "[bench $HOST] wait for it to finish, or re-run with FORCE=1 if it is stale." >&2
+  exit 2
+fi
+
 COMMIT="${COMMIT:-$(git -C "$REPO_ROOT" rev-parse --short HEAD)}"
 COMMIT_SUBJECT=$(git -C "$REPO_ROOT" log -1 --format=%s "$COMMIT" 2>/dev/null | tr ',' ';' | head -c 80)
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)

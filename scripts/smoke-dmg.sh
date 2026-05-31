@@ -34,6 +34,18 @@ case "$HOST" in
   *) echo "unknown machine: $HOST" >&2; exit 2 ;;
 esac
 
+# The bench fleet is SHARED — multiple Claude agents (this Q2 port + the
+# QuakeSpasm Q1 sister project) drive the same Macs. Launching a second
+# fullscreen game on a box already running one wedges both. Bail if anything
+# Quake-ish is live; FORCE=1 overrides a stale process.
+BUSY="$(ssh "$HOST" "ps -axo comm,pid 2>/dev/null | grep -iE 'quake2|quakespasm|q2ded|/quake' | grep -v grep || true")"
+if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
+  echo "[smoke $HOST] ABORT — $HOST is already running a game (shared bench):" >&2
+  echo "$BUSY" | sed 's/^/    /' >&2
+  echo "[smoke $HOST] wait for it to finish, or re-run with FORCE=1 if it is stale." >&2
+  exit 2
+fi
+
 echo "[smoke $HOST] launching installed Quake2.app with PRODUCTION config (as a human would), demo=$DEMO"
 # NB: production launch — no -noarchautoexec, no vid/res override. +set timedemo
 # is an early command; +demomap is a late command (runs after the bundle config

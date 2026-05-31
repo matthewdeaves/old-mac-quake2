@@ -154,15 +154,18 @@ R_InitShellTexture(void)
  * additive (GL_SRC_ALPHA, GL_ONE) blend adds light only on the veins.
  *
  * ---- How to tweak the look (regenerate by rebuilding; no assets) ----
- * This is the "K" preset chosen 2026-05-31: a subtle, soft net.
+ * "K" net topology, tuned 2026-05-31 against a live G5 in-game shot: at the
+ * first gain (0.55) the net outshone the water-warp texture underneath, so
+ * the overlay is dialled right back to a faint shimmer that layers WITH the
+ * water rather than washing it out.
  *   CAUSTIC_WAVES  — the (a,b) frequency pairs summed. More pairs / higher
  *                    numbers => finer, busier, more irregular net. Keep them
  *                    INTEGERS so the tile stays seamless. Mixed signs (e.g.
  *                    (2,-1)) tilt ridges different ways = more organic.
  *   CAUSTIC_POWER  — vein sharpness. Higher (2-3) => thin hard cords;
- *                    lower (1.3-1.6) => soft, broad shimmer. K uses 1.5.
- *   CAUSTIC_GAIN   — overall brightness 0..1. K uses 0.55 (understated).
- *                    Raise toward 1.0 for a stronger effect.
+ *                    lower (1.3-1.6) => soft, broad shimmer. Shipped: 1.5.
+ *   CAUSTIC_GAIN   — overall brightness 0..1. Shipped: 0.15 (faint, set by
+ *                    the G5 test). Raise toward 0.3-0.5 for a stronger effect.
  * Scroll speed and the blue-ish tint live in R_EmitWaterPolys (r_warp.c):
  *   cscroll rate, the per-tile texcoord scale (currently 1/64), and the
  *   qglColor4f(0.55,0.7,0.8,1) tint. The on-water look = texture * that
@@ -171,7 +174,7 @@ R_InitShellTexture(void)
  */
 #define CAUSTIC_TEX_SIZE 64
 #define CAUSTIC_POWER 1.5f
-#define CAUSTIC_GAIN  0.55f
+#define CAUSTIC_GAIN  0.15f
 void
 R_InitCausticTexture(void)
 {

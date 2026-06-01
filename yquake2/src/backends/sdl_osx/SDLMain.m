@@ -44,6 +44,10 @@ static int    gArgc;
 static char  **gArgv;
 static BOOL   gFinderLaunch;
 static BOOL   gCalledAppMainline = FALSE;
+/* YES once SDL_main (the engine event loop) has actually been entered. While
+   the Option-gated settings window is showing, SDL_main hasn't started, so the
+   menu Quit must really exit rather than push an SDL_QUIT nobody consumes. */
+static BOOL   gSDLMainStarted = NO;
 
 static NSString *getApplicationName(void)
 {
@@ -75,6 +79,11 @@ static NSString *getApplicationName(void)
 /* Invoked from the Quit menu item */
 - (void)terminate:(id)sender
 {
+    /* If the engine isn't running yet (the Option-gated settings window is
+       up), there's no SDL event loop to consume an SDL_QUIT -- really quit. */
+    if (!gSDLMainStarted)
+        exit(0);
+
     /* Post a SDL_QUIT event */
     SDL_Event event;
     event.type = SDL_QUIT;
@@ -431,6 +440,7 @@ static void CustomApplicationMain (int argc, char **argv)
         return; /* the settings controller calls SDL_main on Launch */
     }
 
+    gSDLMainStarted = YES;
     status = SDL_main (gArgc, gArgv);
 	
     /* We're done, thank you for playing */
@@ -920,6 +930,7 @@ static BOOL Q2_ShouldShowLauncher(void)
     argv[n] = NULL;
 
     [window close];
+    gSDLMainStarted = YES;
     status = SDL_main(n, argv);
     exit(status);
 }

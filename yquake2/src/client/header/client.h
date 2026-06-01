@@ -430,6 +430,11 @@ void CL_Init (void);
 void CL_FixUpGender(void);
 void CL_Disconnect (void);
 void CL_Disconnect_f (void);
+
+/* sysreport (cl_sysreport.c) */
+void CL_SysReport_f (void);
+qboolean CL_SysReport_Active (void);
+void CL_SysReport_DemoFinished (float fps);
 void CL_GetChallengePacket (void);
 void CL_PingServers_f (void);
 void CL_Snd_Restart_f (void);

@@ -558,6 +558,7 @@ CLIENT_OBJS_ := \
 	src/client/cl_particles.o \
 	src/client/cl_prediction.o \
 	src/client/cl_screen.o \
+	src/client/cl_sysreport.o \
 	src/client/cl_tempentities.o \
 	src/client/cl_view.o \
 	src/client/menu/menu.o \

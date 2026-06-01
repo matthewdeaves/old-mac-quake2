@@ -1369,6 +1369,15 @@ R_Init(void *hinstance, void *hWnd)
 	gl_config.extensions_string = (char *)qglGetString(GL_EXTENSIONS);
 	ri.Con_Printf(PRINT_ALL, "GL_EXTENSIONS: %s\n", gl_config.extensions_string);
 
+	/* publish the driver strings as cvars so the client-side `sysreport`
+	   command (which has no GL context of its own) can record them. */
+	ri.Cvar_Get("gl_vendor", "", 0);
+	ri.Cvar_Set("gl_vendor", gl_config.vendor_string ? (char *)gl_config.vendor_string : "");
+	ri.Cvar_Get("gl_renderer", "", 0);
+	ri.Cvar_Set("gl_renderer", gl_config.renderer_string ? (char *)gl_config.renderer_string : "");
+	ri.Cvar_Get("gl_version", "", 0);
+	ri.Cvar_Set("gl_version", gl_config.version_string ? (char *)gl_config.version_string : "");
+
 	Q_strlcpy(renderer_buffer, gl_config.renderer_string, sizeof(renderer_buffer));
 	Q_strlwr(renderer_buffer);
 

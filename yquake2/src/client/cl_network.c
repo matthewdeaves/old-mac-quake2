@@ -311,6 +311,11 @@ CL_Disconnect(void)
 			Com_Printf("%i frames, %3.1f seconds: %3.1f fps\n",
 					cl.timedemo_frames, time / 1000.0,
 					cl.timedemo_frames * 1000.0 / time);
+
+			/* sysreport drives the timedemo grid from here -- each demo's
+			   end arrives as this disconnect. */
+			if (CL_SysReport_Active())
+				CL_SysReport_DemoFinished(cl.timedemo_frames * 1000.0 / time);
 		}
 	}
 

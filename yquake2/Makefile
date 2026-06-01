@@ -198,7 +198,9 @@ endif
 ifeq ($(OSTYPE), Windows)
 SDLLDFLAGS := -lSDL
 else ifeq ($(OSTYPE), Darwin)
-SDLLDFLAGS := -framework SDL -framework OpenGL -framework Cocoa
+# Carbon: the Option-key launcher gate uses GetCurrentKeyModifiers()
+# (HIToolbox, 64-bit-safe on all targets incl. Lion x86_64).
+SDLLDFLAGS := -framework SDL -framework OpenGL -framework Cocoa -framework Carbon
 else
 SDLLDFLAGS := $(shell sdl-config --libs)
 endif
@@ -558,6 +560,7 @@ CLIENT_OBJS_ := \
 	src/client/cl_particles.o \
 	src/client/cl_prediction.o \
 	src/client/cl_screen.o \
+	src/client/cl_sysreport.o \
 	src/client/cl_tempentities.o \
 	src/client/cl_view.o \
 	src/client/menu/menu.o \

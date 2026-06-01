@@ -563,6 +563,7 @@ CL_InitLocal(void)
 	Cmd_AddCommand("disconnect", CL_Disconnect_f);
 	Cmd_AddCommand("record", CL_Record_f);
 	Cmd_AddCommand("stop", CL_Stop_f);
+	Cmd_AddCommand("sysreport", CL_SysReport_f); /* spec + benchmark collector */
 
 	Cmd_AddCommand("quit", CL_Quit_f);
 

@@ -177,6 +177,8 @@ SCR_CenterPrint(char *str)
 	scr_centertime_off = scr_centertime->value;
 	scr_centertime_start = cl.time;
 
+	CL_WatchLink_CenterPrint(str); /* mirror story/objective text to companion */
+
 	/* count the number of lines for centering */
 	scr_center_lines = 1;
 	s = str;

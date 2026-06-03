@@ -550,6 +550,8 @@ CL_InitLocal(void)
 
 	cl_vwep = Cvar_Get("cl_vwep", "1", CVAR_ARCHIVE);
 
+	CL_WatchLink_Init(); /* companion-app UDP feed (off unless watch_host set) */
+
 	/* register our commands */
 	Cmd_AddCommand("cmd", CL_ForwardToServer_f);
 	Cmd_AddCommand("pause", CL_Pause_f);
@@ -812,6 +814,7 @@ CL_Frame(int msec)
 		CM_LoadMap(cl.configstrings[CS_MODELS + 1], true, &map_checksum);
 		CL_RegisterSounds();
 		CL_PrepRefresh();
+		CL_WatchLink_Meta(); /* send level name + item table to companion */
 	}
 
 	/* update the screen */
@@ -843,6 +846,8 @@ CL_Frame(int msec)
 	SCR_RunConsole();
 
 	cls.framecount++;
+
+	CL_WatchLink_Frame(); /* push live player state to the companion app */
 
 	if (log_stats->value)
 	{

@@ -563,6 +563,7 @@ CLIENT_OBJS_ := \
 	src/client/cl_sysreport.o \
 	src/client/cl_tempentities.o \
 	src/client/cl_view.o \
+	src/client/cl_watchlink.o \
 	src/client/menu/menu.o \
 	src/client/menu/qmenu.o \
 	src/client/menu/videomenu.o \

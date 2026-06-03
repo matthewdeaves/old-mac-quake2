@@ -435,6 +435,14 @@ void CL_Disconnect_f (void);
 void CL_SysReport_f (void);
 qboolean CL_SysReport_Active (void);
 void CL_SysReport_DemoFinished (float fps);
+
+/* watchlink (cl_watchlink.c) -- UDP feed of live player state to a companion */
+void CL_WatchLink_Init (void);
+void CL_WatchLink_Frame (void);
+void CL_WatchLink_Meta (void);
+void CL_WatchLink_CenterPrint (const char *str);
+void CL_WatchLink_Event (const char *kind, const char *detail);
+
 void CL_GetChallengePacket (void);
 void CL_PingServers_f (void);
 void CL_Snd_Restart_f (void);

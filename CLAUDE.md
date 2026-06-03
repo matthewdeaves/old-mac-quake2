@@ -27,6 +27,7 @@ into a topic doc and leave a pointer here.
 | `docs/BENCH.md` | running benchmarks or smoke tests — what a smoke test MUST be, the two launch modes, timedemo specifics, fps floors |
 | `docs/STATUS.md` | you need project history / the changelog (per-round narrative) |
 | `docs/ICONS.md` | regenerating the app icon (`make-icon.py`) |
+| `docs/WATCHLINK.md` | the `watch_host` UDP player-state feed (Apple Watch companion) — cvars, wire format, `scripts/watchlink-listen.py` |
 | `docs/imac-g5-leopard-port-notes.md` | anything on the iMac G5 / Leopard / R300 |
 | `docs/HD_PACK.md` | the hi-res texture pack / `stb_image` retexturing |
 | `DECALS_PLAN.md`, `NEXT_ROUND_PLAN.md` | decals design / upcoming work |

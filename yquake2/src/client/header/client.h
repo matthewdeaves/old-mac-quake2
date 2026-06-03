@@ -442,6 +442,8 @@ void CL_WatchLink_Frame (void);
 void CL_WatchLink_Meta (void);
 void CL_WatchLink_CenterPrint (const char *str);
 void CL_WatchLink_Event (const char *kind, const char *detail);
+void CL_WatchLink_Sound (const char *cfgname);
+void CL_WatchLink_Layout (const char *layout);
 
 void CL_GetChallengePacket (void);
 void CL_PingServers_f (void);

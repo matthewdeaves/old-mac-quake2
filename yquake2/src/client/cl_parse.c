@@ -1228,6 +1228,13 @@ CL_ParseStartSoundPacket(void)
 		return;
 	}
 
+	/* Mirror the LOCAL player's vocal / pickup / powerup sounds to the watch
+	   companion so it can play the real effect. */
+	if (ent == cl.playernum + 1)
+	{
+		CL_WatchLink_Sound(cl.configstrings[CS_SOUNDS + sound_num]);
+	}
+
 	S_StartSound(pos, ent, channel, cl.sound_precache[sound_num],
 			volume, attenuation, ofs);
 }
@@ -1383,7 +1390,18 @@ CL_ParseServerMessage(void)
 
 			case svc_layout:
 				s = MSG_ReadString(&net_message);
-				Q_strlcpy(cl.layout, s, sizeof(cl.layout));
+				/* A "watchlink "-tagged layout is the game silently mirroring the
+				   F1 help computer for the companion: forward it but DON'T store
+				   it into cl.layout, so the help overlay never draws on screen. */
+				if (!strncmp(s, "watchlink ", 10))
+				{
+					CL_WatchLink_Layout(s + 10);
+				}
+				else
+				{
+					Q_strlcpy(cl.layout, s, sizeof(cl.layout));
+					CL_WatchLink_Layout(cl.layout); /* real F1: draw + mirror */
+				}
 				break;
 
 			case svc_playerinfo:

@@ -323,16 +323,12 @@ DeathmatchScoreboardMessage(edict_t *ent, edict_t *killer)
 	gi.WriteString(string);
 }
 
-void
-HelpComputerMessage(edict_t *ent)
+/* Build the F1 "help computer" layout string into the caller's buffer. Shared
+   by the on-screen message and the silent watchlink push below. */
+static void
+HelpComputerString(char *string, int size)
 {
-	char string[1024];
 	char *sk;
-
-	if (!ent)
-	{
-		return;
-	}
 
 	if (skill->value == 0)
 	{
@@ -351,8 +347,7 @@ HelpComputerMessage(edict_t *ent)
 		sk = "hard+";
 	}
 
-	/* send the layout */
-	Com_sprintf(string, sizeof(string),
+	Com_sprintf(string, size,
 			"xv 32 yv 8 picn help " /* background */
 			"xv 202 yv 12 string2 \"%s\" " /* skill */
 			"xv 0 yv 24 cstring2 \"%s\" " /* level name */
@@ -367,9 +362,45 @@ HelpComputerMessage(edict_t *ent)
 			level.killed_monsters, level.total_monsters,
 			level.found_goals, level.total_goals,
 			level.found_secrets, level.total_secrets);
+}
 
+void
+HelpComputerMessage(edict_t *ent)
+{
+	char string[1024];
+
+	if (!ent)
+	{
+		return;
+	}
+
+	HelpComputerString(string, sizeof(string));
 	gi.WriteByte(svc_layout);
 	gi.WriteString(string);
+}
+
+/*
+ * Silently push the help-computer text to the watchlink companion so the player
+ * sees objectives / kills / goals / secrets on the wrist (or phone) WITHOUT ever
+ * opening the in-game F1 computer. We tag it with a "watchlink " prefix: the
+ * client patch forwards it to the companion but does NOT store it into cl.layout,
+ * so the help overlay never appears on the player's screen. Caller unicasts.
+ */
+void
+WatchLink_ObjectivesMessage(edict_t *ent)
+{
+	char string[1024];
+	char tagged[1056];
+
+	if (!ent)
+	{
+		return;
+	}
+
+	HelpComputerString(string, sizeof(string));
+	Com_sprintf(tagged, sizeof(tagged), "watchlink %s", string);
+	gi.WriteByte(svc_layout);
+	gi.WriteString(tagged);
 }
 
 void

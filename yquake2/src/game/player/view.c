@@ -1381,6 +1381,25 @@ ClientEndServerFrame(edict_t *ent)
 			HelpComputerMessage(ent);
 			gi.unicast(ent, false);
 		}
+		/* Otherwise silently mirror the help-computer text to the watchlink
+		   companion so the player sees objectives / kills / goals / secrets on
+		   the wrist WITHOUT opening the in-game F1 computer. SP/coop only; gated
+		   on the watch feature being armed so a normal game pays nothing. */
+		else if (!deathmatch->value && !ent->client->showscores)
+		{
+			static cvar_t *wl_host;
+
+			if (!wl_host)
+			{
+				wl_host = gi.cvar("watch_host", "", 0);
+			}
+
+			if (wl_host && wl_host->string[0])
+			{
+				WatchLink_ObjectivesMessage(ent);
+				gi.unicast(ent, false);
+			}
+		}
 	}
 
 	/* if the inventory is up, update it */

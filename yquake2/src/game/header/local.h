@@ -752,6 +752,7 @@ void G_CheckChaseStats(edict_t *ent);
 void ValidateSelectedItem(edict_t *ent);
 void DeathmatchScoreboardMessage(edict_t *client, edict_t *killer);
 void HelpComputerMessage(edict_t *client);
+void WatchLink_ObjectivesMessage(edict_t *client);
 void InventoryMessage(edict_t *client);
 
 /* g_pweapon.c */

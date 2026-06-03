@@ -20,6 +20,10 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # and `make -j` in the same dir — running in parallel races on .o files and
 # stamps the binary with the *other* target's CPU subtype (documented in
 # CLAUDE.md "Don't run g3 and g4 builds in parallel").
+#
+# Needs flock(1): native on the Ubuntu workstation; on the macOS workstation
+# install it with `brew install flock` (discoteq formula — supports the same
+# `flock -w # fd` interface). Without it this errors "command not found".
 LOCK_DIR="$REPO_ROOT/build"
 mkdir -p "$LOCK_DIR"
 exec 9>"$LOCK_DIR/.build.lock"

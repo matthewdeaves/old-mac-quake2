@@ -1,9 +1,18 @@
 # watchlink — live player-state UDP feed
 
 `src/client/cl_watchlink.c` pushes the marine's live in-game state out over UDP
-as newline-delimited JSON, so an external companion (the planned Apple Watch
-"tactical computer", or just `nc -ul` / `scripts/watchlink-listen.py`) can render
+as newline-delimited JSON, so an external companion (the Apple Watch "tactical
+computer", or just `nc -ul` / `scripts/watchlink-listen.py`) can render
 health / armor / ammo / inventory / objectives on a second screen.
+
+The companion iPhone-relay + watchOS app lives in its own repo:
+**[quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch)**.
+
+<p align="center">
+  <img src="watch/standby.png" width="24%" alt="STANDBY" />
+  <img src="watch/hud-portrait.png" width="24%" alt="Live HUD" />
+  <img src="watch/death.png" width="24%" alt="Flatline" />
+</p>
 
 **Off by default.** The whole feature is gated on the `watch_host` cvar: empty ⇒
 no socket touched, no per-frame work, no packets. The default fleet build,
@@ -61,5 +70,6 @@ python3 scripts/watchlink-listen.py 27999      # in one terminal
 # then in-game:  set watch_host "127.0.0.1"
 ```
 
-The companion iPhone-relay + watchOS app design lives in the separate watch-app
-repo / `quake2-watch-app-plan.md`.
+The companion iPhone-relay + watchOS app lives in the separate
+[quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch)
+repo (see its `PLAN.md`).

@@ -110,6 +110,32 @@ If you want the Phase A "raw fps" build back, every visual cvar is runtime-toggl
 
 `gl_bloom` (fixed-function light bloom) is wired but **disabled** — too slow on PPC and visually incorrect on the GL1 path; see [`MISTAKES.md`](MISTAKES.md).
 
+## Tactical Computer — live Apple Watch companion
+
+A cvar-gated UDP feed (`src/client/cl_watchlink.c`) streams the marine's live
+state — health, armor, ammo, weapon, inventory, mission objectives, damage and
+pickups — as newline-delimited JSON. A companion iPhone app picks it up on the
+LAN and relays it to an Apple Watch, turning the wrist into Quake II's in-fiction
+**help computer**: an amber-phosphor terminal with damage haptics and event
+sounds. The watchOS / iOS app lives in its own repo —
+**[quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch)**.
+
+<p align="center">
+  <img src="docs/watch/standby.png" width="22%" alt="STANDBY — scanning the LAN for the game" />
+  <img src="docs/watch/hud-portrait.png" width="22%" alt="Live HUD — vitals, gauges, mission" />
+  <img src="docs/watch/death.png" width="22%" alt="Flatline — cracked glass + kill marker" />
+</p>
+<p align="center">
+  <img src="docs/watch/hud-landscape.png" width="50%" alt="Landscape HUD" />
+</p>
+<p align="center"><sub>iPhone relay app: STANDBY · live HUD · flatline · landscape — fed live from the PPC fleet</sub></p>
+
+**Off by default** — the whole feature is gated on the `watch_host` cvar (empty ⇒
+no socket, no per-frame work, no packets), so the fleet build and benchmarks are
+unaffected. The JSON wire format is endianness-proof on the big-endian PPC fleet
+and debuggable with `nc -ul 27999` or [`scripts/watchlink-listen.py`](scripts/watchlink-listen.py).
+Full protocol and integration points: [`docs/WATCHLINK.md`](docs/WATCHLINK.md).
+
 ## How the binary picks its config
 
 <p align="center">
@@ -192,3 +218,4 @@ MacOSX/          fat SDL.framework (ppc + i386 + x86_64), Quake2.icns
 | `CLAUDE.md` | Durable tribal knowledge |
 | `MISTAKES.md` | Append-only log of approaches that failed |
 | `NEXT_ROUND_PLAN.md` | Forward-looking engine work (KMQuake2 decals / stencil shadows / bloom, AltiVec SIMD, MSAA, gamma) |
+| `docs/WATCHLINK.md` | The live player-state UDP feed driving the [Apple Watch companion](https://github.com/matthewdeaves/quake2-tactical-watch) |

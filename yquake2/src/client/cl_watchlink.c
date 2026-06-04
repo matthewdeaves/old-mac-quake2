@@ -101,6 +101,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -176,9 +177,38 @@ WatchLink_SetSin(const char *hostport)
 	memset(&watch_sin, 0, sizeof(watch_sin));
 	watch_sin.sin_family = AF_INET;
 	watch_sin.sin_port = htons((unsigned short)port);
+
+	/* Numeric IPv4 fast-path: a typed watch_host, or a 10.5+ discovery that
+	   already converted the service to an address. */
 	if (inet_pton(AF_INET, buf, &watch_sin.sin_addr) == 1)
 	{
 		watch_sin_valid = true;
+		return;
+	}
+
+	/* Hostname path -- REQUIRED on 10.3/10.4. DNSServiceGetAddrInfo is 10.5+,
+	   so on Panther/Tiger the Bonjour fallback hands us the service's ".local"
+	   hosttarget (e.g. "iPhone.local."), not an IP. inet_pton rejects that, so
+	   watch_sin stayed invalid and every send fell through to the dead
+	   single-player client socket -- the companion got NOTHING on the G3/G4
+	   while the G5 (10.5, numeric path) worked. Resolve the name to IPv4 here,
+	   exactly as the Q1 sister port already does. .local mDNS names resolve
+	   locally and this only runs on (re)connect, so the blocking call is fine. */
+	{
+		struct addrinfo hints, *res = NULL;
+
+		memset(&hints, 0, sizeof(hints));
+		hints.ai_family = AF_INET;
+		hints.ai_socktype = SOCK_DGRAM;
+		if (getaddrinfo(buf, NULL, &hints, &res) == 0 && res != NULL)
+		{
+			watch_sin.sin_addr = ((struct sockaddr_in *)res->ai_addr)->sin_addr;
+			watch_sin_valid = true;
+		}
+		if (res)
+		{
+			freeaddrinfo(res);
+		}
 	}
 }
 #endif

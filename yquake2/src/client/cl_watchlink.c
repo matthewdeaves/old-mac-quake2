@@ -487,6 +487,17 @@ WatchLink_Sync(void)
 static qboolean
 WatchLink_Ready(void)
 {
+	/* A timedemo benchmark is running: stay COMPLETELY inert so the feed never
+	   perturbs the FPS measurement. The fleet cfg sets watch_host "auto", so a
+	   benchmark on a fleet box would otherwise stream vitals/inventory/damage
+	   every frame. Bailing before WatchLink_Sync() also stops Bonjour discovery
+	   pumping during the run. Covers `timedemo` and the `sysreport` grid (which
+	   sets the same cvar). Returns to normal the instant the benchmark ends. */
+	if (cl_timedemo && cl_timedemo->value)
+	{
+		return false;
+	}
+
 	WatchLink_Sync();
 
 	if (!watch_host || !watch_host->string[0])
@@ -947,6 +958,11 @@ CL_WatchLink_Meta(void)
 	if (cl.attractloop)
 	{
 		return; /* menu attract-loop demo, not a human session */
+	}
+
+	if (cl_timedemo && cl_timedemo->value)
+	{
+		return; /* benchmark in progress -- don't re-arm discovery or send meta */
 	}
 
 	WatchLink_Reconnect();      /* re-arm discovery + reset per-session edges */

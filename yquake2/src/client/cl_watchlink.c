@@ -118,6 +118,8 @@ static int watch_last_send;      /* cls.realtime of last vitals heartbeat */
 static int watch_last_flashes;   /* STAT_FLASHES from the previous frame */
 static char watch_last_vitals[1024]; /* last vitals payload sent (change-detect) */
 static qboolean watch_meta_pending; /* meta table queued; send once adr resolves */
+static char watch_last_inv[1100];    /* last inventory payload sent (change-detect) */
+static int watch_last_inv_send;      /* cls.realtime of last inventory send (rate cap) */
 
 #ifdef WATCHLINK_OWNSOCK
 static int watch_sock = -1;          /* our own outbound UDP socket */
@@ -605,6 +607,8 @@ CL_WatchLink_Init(void)
 	watch_last_send = 0;
 	watch_last_flashes = 0;
 	watch_last_vitals[0] = '\0';
+	watch_last_inv[0] = '\0';
+	watch_last_inv_send = 0;
 
 	/* Force a one-time reconcile on the first frame so an archived
 	   watch_host (incl. "auto") is honoured without needing a console edit. */
@@ -830,6 +834,8 @@ WatchLink_Reconnect(void)
 	watch_last_flashes = 0;
 	watch_last_send = 0;
 	watch_last_vitals[0] = '\0';
+	watch_last_inv[0] = '\0';      /* force a fresh inventory push this session */
+	watch_last_inv_send = 0;
 #ifdef WATCHLINK_OWNSOCK
 	watch_sent_count = 0; /* re-announce the stream target once per session */
 #endif
@@ -945,6 +951,76 @@ CL_WatchLink_Meta(void)
 }
 
 /*
+ * Emit the marine's full carried inventory (item name + count) so the companion
+ * can render the in-fiction "pack" -- every powerup, key, ammo type and weapon
+ * the player is holding, exactly as the F1/TAB inventory screen sees it
+ * (cl.inventory[] indexed into the CS_ITEMS name table). The watch surfaces the
+ * powerups/keys prominently; ammo/weapon counts fill out the rest.
+ *
+ * Self-rate-limited: a cheap time gate first (so we don't rebuild the ~1 KB line
+ * every frame), then change-detect so a static pack costs nothing. Forced out
+ * fresh on (re)connect / map load via WatchLink_Reconnect clearing the cache.
+ */
+static void
+WatchLink_SendInventory(void)
+{
+	char line[1100];
+	char name[80];
+	int i, n, off;
+
+	if (!watch_events->value)
+	{
+		return;
+	}
+
+	/* Cap to ~2 Hz. Cheap gate BEFORE building the line so a firefight's
+	   per-shot ammo ticks can't rebuild + diff a kilobyte 60x/second. */
+	if (cls.realtime - watch_last_inv_send < 500)
+	{
+		return;
+	}
+
+	Q_strlcpy(line, "{\"t\":\"event\",\"kind\":\"inventory\",\"items\":[",
+			sizeof(line));
+	off = (int)strlen(line);
+
+	n = 0;
+	for (i = 0; i < MAX_ITEMS; i++)
+	{
+		if (cl.inventory[i] <= 0)
+		{
+			continue;
+		}
+		WatchLink_ConfigName(name, sizeof(name), CS_ITEMS + i);
+		if (!name[0])
+		{
+			continue;
+		}
+		/* worst case appended: ,{"n":"<name>","c":NNNNN} + closing "]}\n\0" */
+		if (off + (int)strlen(name) + 32 >= (int)sizeof(line))
+		{
+			break;
+		}
+		Com_sprintf(line + off, sizeof(line) - off,
+				n ? ",{\"n\":\"%s\",\"c\":%d}" : "{\"n\":\"%s\",\"c\":%d}",
+				name, cl.inventory[i]);
+		off += (int)strlen(line + off);
+		n++;
+	}
+	Q_strlcat(line, "]}\n", sizeof(line));
+
+	/* Stamp the send time even when unchanged so we wait another 500ms before
+	   the next rebuild; only actually transmit when the pack changed. */
+	watch_last_inv_send = cls.realtime;
+	if (strcmp(line, watch_last_inv) == 0)
+	{
+		return;
+	}
+	Q_strlcpy(watch_last_inv, line, sizeof(watch_last_inv));
+	WatchLink_Send(line);
+}
+
+/*
  * Per-frame heartbeat. Called from the tail of CL_Frame. Throttled to
  * watch_rate Hz; also raises a "damage" event on the STAT_FLASHES rising
  * edge so the watch can buzz the wrist the instant the marine is hit.
@@ -998,6 +1074,10 @@ CL_WatchLink_Frame(void)
 
 	watch_last_flashes = flashes;
 
+	/* Push the carried inventory (self-rate-limited) regardless of the vitals
+	   throttle below, so the marine's pack stays current even when standing still. */
+	WatchLink_SendInventory();
+
 	/* throttle the vitals heartbeat; floor at 1ms so a large watch_rate
 	   can't truncate the interval to 0 and emit on every single frame. */
 	interval = (watch_rate->value > 0) ? (int)(1000.0f / watch_rate->value) : 100;
@@ -1022,7 +1102,7 @@ CL_WatchLink_Frame(void)
 				? (CS_IMAGES + st[STAT_TIMER_ICON]) : 0);
 
 	Com_sprintf(line, sizeof(line),
-			"{\"t\":\"vitals\","
+			"{\"t\":\"vitals\",\"game\":\"q2\","
 			"\"hp\":%d,\"armor\":%d,\"ammo\":%d,"
 			"\"sel\":\"%s\","
 			"\"frags\":%d,\"flashes\":%d,\"layouts\":%d,\"spec\":%d,"

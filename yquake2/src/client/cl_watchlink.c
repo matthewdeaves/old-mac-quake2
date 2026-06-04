@@ -120,6 +120,7 @@ static char watch_last_vitals[1024]; /* last vitals payload sent (change-detect)
 static qboolean watch_meta_pending; /* meta table queued; send once adr resolves */
 static char watch_last_inv[1100];    /* last inventory payload sent (change-detect) */
 static int watch_last_inv_send;      /* cls.realtime of last inventory send (rate cap) */
+static char watch_last_cp[1024];     /* last centerprint forwarded (dedup re-fires) */
 
 #ifdef WATCHLINK_OWNSOCK
 static int watch_sock = -1;          /* our own outbound UDP socket */
@@ -609,6 +610,7 @@ CL_WatchLink_Init(void)
 	watch_last_vitals[0] = '\0';
 	watch_last_inv[0] = '\0';
 	watch_last_inv_send = 0;
+	watch_last_cp[0] = '\0';
 
 	/* Force a one-time reconcile on the first frame so an archived
 	   watch_host (incl. "auto") is honoured without needing a console edit. */
@@ -654,6 +656,14 @@ CL_WatchLink_CenterPrint(const char *str)
 	{
 		return;
 	}
+
+	/* Drop consecutive duplicate centerprints (a re-firing trigger you're
+	   standing in) so the companion's comms log isn't spammed. Reset per map. */
+	if (!strcmp(str, watch_last_cp))
+	{
+		return;
+	}
+	Q_strlcpy(watch_last_cp, str, sizeof(watch_last_cp));
 
 	WatchLink_EscapeJson(esc, sizeof(esc), str);
 	Com_sprintf(detail, sizeof(detail), ",\"msg\":\"%s\"", esc);
@@ -834,6 +844,7 @@ WatchLink_Reconnect(void)
 	watch_last_flashes = 0;
 	watch_last_send = 0;
 	watch_last_vitals[0] = '\0';
+	watch_last_cp[0] = '\0';       /* re-allow this map's centerprints */
 	watch_last_inv[0] = '\0';      /* force a fresh inventory push this session */
 	watch_last_inv_send = 0;
 #ifdef WATCHLINK_OWNSOCK

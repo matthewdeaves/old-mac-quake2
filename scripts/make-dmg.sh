@@ -64,17 +64,18 @@ if [ ! -f "$BUILD_DIR/quake2" ]; then
   echo "[make-dmg] build/q2-fat missing — building it"
   scripts/build-fat.sh
 fi
-# Sanity: must be the 4-slice fat, not a stray single-arch binary. We
-# assert the architecture COUNT (3→4 once the g5 slice lands) plus the two
-# endpoint subtypes whose `file` names are stable across versions
-# (ppc_750, x86_64). The authoritative per-slice ppc970 check is lipo -info
-# in build-fat.sh; GNU `file`'s name for cpusubtype 100 is less reliable.
-if ! file "$BUILD_DIR/quake2" | grep -q '4 architectures' || \
-   ! file "$BUILD_DIR/quake2" | grep -q 'ppc_750'         || \
-   ! file "$BUILD_DIR/quake2" | grep -q 'x86_64'; then
-  echo "[make-dmg] $BUILD_DIR/quake2 is not the 4-arch fat binary (need ppc750+ppc7400+ppc970+x86_64) — run scripts/build-fat.sh" >&2
-  exit 1
-fi
+# Sanity: must be the 4-slice fat, not a stray single-arch binary. Use lipo
+# (reads the Mach header directly) rather than file(1): file's ppc subtype
+# names vary by host/toolchain — on an Apple-silicon workstation it renders
+# the ppc750 slice as "ppc_650", so the old `file | grep ppc_750` check
+# spuriously failed on a good 4-arch fat. lipo -archs is authoritative.
+ARCHS=$(lipo -archs "$BUILD_DIR/quake2" 2>/dev/null || echo)
+for a in ppc750 ppc7400 ppc970 x86_64; do
+  case " $ARCHS " in
+    *" $a "*) ;;
+    *) echo "[make-dmg] $BUILD_DIR/quake2 is not the 4-arch fat binary (missing $a; got: ${ARCHS:-none}) — run scripts/build-fat.sh" >&2; exit 1;;
+  esac
+done
 
 # ---- stage the disk-image contents (same layout as deploy.sh) ------------
 STAGE=$(mktemp -d -t q2-dmg.XXXXXX)

@@ -253,6 +253,20 @@ roadmap see `PPC_PLAN.md`; for things that went wrong see `MISTAKES.md`.
   - imac-g5: 46.8 fps demo1+demo2 @ 1440×900 (unchanged)
   Tagged v2.5.0.
 
+- 2026-06-06 (v2.5.1): **sawtooth (GeForce2 MX) gets stencil shadows too — the
+  whole PowerPC fleet now has them.** sawtooth was the last hold-out: its config
+  comment claimed the GF2 MX was too CPU-bound on dlight rebuild to afford the
+  stencil path. A/B benched on the actual hardware (500 MHz 7400, GF2 MX 32 MB):
+  74→60 fps demo1 (~19% cost), 68 fps demo2 — both comfortably above the 40 fps
+  G4 floor, and the shadow renders crisp (verified by screenshot: enemy gunner
+  with a clean dark drop-shadow). The old "below floor" concern was stale (pre-
+  AltiVec, and from the 60 fps-floor era). Enabled `gl_stencilshadow 1`. Every
+  G3→G5 + Intel machine now renders the same crisp projected stencil shadows.
+  (sawtooth's PRAM battery is dead — clock reads 1970 — harmless to the game.)
+  Also added sawtooth + quicksilver to `~/.ssh/config` (both DHCP onto the
+  gigabit switch fine once link negotiates; sawtooth self-assigns until then).
+  Config-only round on the v2.5.0 engine. Tagged v2.5.1.
+
 ## Foundations (one-time facts)
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C

@@ -121,6 +121,8 @@ Current: **v2.5.0** (per-weapon blast marks on walls — rockets/grenades/plasma
 BFG/railgun all leave distinct decals on the surface they actually hit, not just
 the floor; four new procedural TGAs; crisp stencil shadows enabled on the full
 G4 fleet after re-bench showed the old 60% cost cliff is gone post-AltiVec;
-deploy fix preserving player models through rsync). Full per-round history is in
+deploy fix preserving player models through rsync). v2.5.1 added sawtooth
+(GF2 MX) to the stencil-shadow set — A/B benched ~19% cost, above floor — so
+the whole PPC fleet now has crisp shadows. Full per-round history is in
 **`docs/STATUS.md`**. Next: bloom redo (dedicated render-target, sub-res budget);
-AltiVec `R_BuildLightMap`; GL1 gamma correction; sawtooth stencil bench.
+AltiVec `R_BuildLightMap`; GL1 gamma correction.

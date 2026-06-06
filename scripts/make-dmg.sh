@@ -145,11 +145,18 @@ INSTALL
        ref_gl.so
        q2ded
        baseq2/        (contains game.so)
-3. Add your Quake II data — copy your retail pak files into baseq2/:
-       ~/Desktop/quake2/baseq2/pak0.pak              (main game)
+3. Add your Quake II data — copy your retail pak files and player models:
+       ~/Desktop/quake2/baseq2/pak0.pak              (required — main game data)
        ~/Desktop/quake2/baseq2/pak1.pak  pak2.pak    (3.20 point release)
-       ~/Desktop/quake2/baseq2/players/  video/      (skins, cinematics)
-   Retail Quake II is on Steam and GOG.
+       ~/Desktop/quake2/baseq2/players/              (REQUIRED for player models
+                                                      and skins — copy the whole
+                                                      players/ folder from your
+                                                      retail install. Without it
+                                                      multiplayer models will be
+                                                      missing or invisible.)
+       ~/Desktop/quake2/baseq2/video/                (cinematics — optional)
+   Retail Quake II is on Steam and GOG. The players/ folder is inside your
+   retail baseq2/ directory alongside the pak files.
 4. Double-click Quake2.app.
 
 The final layout:

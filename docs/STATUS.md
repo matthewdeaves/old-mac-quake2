@@ -203,6 +203,56 @@ roadmap see `PPC_PLAN.md`; for things that went wrong see `MISTAKES.md`.
   Intel mini, quicksilver, G4-mini all play "Outer Base" clean. See MISTAKES.md.
   Tagged v2.2.5.
 
+- 2026-06-06 (v2.5.0): **Per-weapon blast marks on walls + crisp stencil
+  shadows on the full G4 fleet.**
+
+  *Weapon blast decals:* Rocket, grenade, plasma, BFG, and railgun impacts
+  previously left no mark on vertical surfaces — the explosion temp-entity
+  packets carry no surface normal, so the old code hardcoded a straight-up
+  projection that found nothing on walls. Fixed via `CL_TraceExplosionSurface`:
+  six cardinal-axis CM_BoxTrace calls from the blast origin find the nearest
+  solid surface (wall, floor, or ceiling), and the decal is projected there.
+  Four new procedural TGA textures authored in `scripts/gen-decals.py`
+  (PIL/CoreImage): `burn` (128×128, big charred blast for rockets), `plasma`
+  (blue-white), `bfg` (128×128, green energy char with tendrils), `rail`
+  (tight punch-hole). Grenades reuse the existing `scorch` at a tuned radius.
+  Railgun uses the beam direction instead of a trace. All 8 decal types (old
+  + new) ship in the bundle hd-pak and are reported at load (`Decals: burn=OK
+  plasma=OK bfg=OK rail=OK` alongside the four originals). Validated on G4,
+  G5, and quicksilver — all weapon impacts leave the correct mark on the wall.
+
+  *Stencil shadows — the G4 story:* alias-model shadows on the non-stencil
+  machines (mini-g4, quicksilver, sawtooth) were a dark, blotchy mess — the
+  per-triangle projected shadow overlaps itself at α=0.5 and compounds into
+  jagged dark patches. The previous workaround (blob shadow) was deployed but
+  the GL_MODULATE × (0,0,0,0.5) vertex colour collapses to transparent black
+  on the Tiger ATI driver — so there was literally no shadow. Fixed the blob
+  by switching to GL_REPLACE with the 50%-alpha pre-baked into `shadow.tga`.
+  More importantly: the original 60% fps cliff that drove the stencil-off
+  decision (`103→40 fps, demo2 1024, mini-g4`) was measured before the AltiVec
+  optimisations. Re-benched the full G4 fleet with `gl_stencilshadow 1`:
+  - mini-g4 (R9200, 1.25 GHz): 127→108 fps (~15% cost, well above floor) ✓
+  - quicksilver (R9000 Pro, 733 MHz): 65→65 fps (zero measurable cost) ✓
+  Both machines now carry crisp projected stencil shadows identical to the G5
+  and mini-intel. The sawtooth (GF2 MX) retains blob shadow — different GPU
+  family, needs its own bench.
+
+  *deploy.sh player-model fix:* the rsync `--delete` sweep was silently
+  wiping `baseq2/players/` on every deploy (the four player model dirs:
+  crakhor/cyborg/female/male). Added `--exclude='baseq2/players/'` to the
+  main rsync and player-model deployment in the game-data step. Canonical
+  source is mini-g4's `/Games/Quake 2/baseq2/players/`; cached in
+  `.game-data/baseq2/players/` alongside the pak files.
+
+  *watchlink:* Bonjour `.local` hostname resolution now works on 10.3/10.4
+  (G3/G4 fix); `watch_host auto` shipped in every machine config.
+
+  Bench summary (1024×768 unless noted):
+  - mini-g4: 108 fps demo1, 108 fps demo2 (stencil shadows ON)
+  - quicksilver: 65 fps demo1+demo2 (stencil shadows ON)
+  - imac-g5: 46.8 fps demo1+demo2 @ 1440×900 (unchanged)
+  Tagged v2.5.0.
+
 ## Foundations (one-time facts)
 - yquake2 cloned at QUAKE2_5_11 tag (commit `033550cd`, 2013-05-20).
 - Reference repos cloned for Phase B (yquake2 latest) and Phase C

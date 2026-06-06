@@ -639,6 +639,69 @@ CL_ParseNuke(void)
 
 static byte splash_color[] = {0x00, 0xe0, 0xb0, 0x50, 0xd0, 0xe0, 0xe8};
 
+/*
+ * Explosion temp-entity packets carry no surface normal (unlike bullets,
+ * which send MSG_ReadDir), so a wall blast had nowhere to project its
+ * scorch. Recover a normal by tracing outward from the blast origin along
+ * the 6 cardinal axes and keeping the nearest solid surface within radius.
+ * Returns that surface's impact point + normal, or false for a true
+ * airburst with no surface in range (no decal then).
+ */
+static qboolean
+CL_TraceExplosionSurface(const vec3_t origin, float radius,
+		vec3_t out_pos, vec3_t out_normal)
+{
+	static vec3_t dirs[6] = {
+		{1, 0, 0}, {-1, 0, 0},
+		{0, 1, 0}, {0, -1, 0},
+		{0, 0, 1}, {0, 0, -1}
+	};
+	int      i;
+	float    best = 1.0f;
+	qboolean found = false;
+	vec3_t   start, end;
+
+	VectorCopy(origin, start);
+
+	for (i = 0; i < 6; i++)
+	{
+		trace_t tr;
+
+		VectorMA(start, radius, dirs[i], end);
+		tr = CM_BoxTrace(start, end, vec3_origin, vec3_origin, 0, MASK_SOLID);
+
+		/* startsolid/allsolid → origin is buried in a brush; a real hit
+		 * has 0 < fraction < 1 with a usable plane normal. Keep nearest. */
+		if (tr.allsolid || tr.startsolid)
+		{
+			continue;
+		}
+
+		if (tr.fraction < best)
+		{
+			best = tr.fraction;
+			VectorCopy(tr.endpos, out_pos);
+			VectorCopy(tr.plane.normal, out_normal);
+			found = true;
+		}
+	}
+
+	return found;
+}
+
+/* Spawn a scorch/burn decal for an explosion that arrived without a
+ * surface normal. Traces for the nearest wall/floor/ceiling first. */
+static void
+CL_ExplosionDecal(const vec3_t origin, float radius, int type)
+{
+	vec3_t hit, normal;
+
+	if (re.R_AddDecal && CL_TraceExplosionSurface(origin, radius, hit, normal))
+	{
+		re.R_AddDecal(hit, normal, radius, type);
+	}
+}
+
 void
 CL_ParseTEnt(void)
 {
@@ -847,6 +910,17 @@ CL_ParseTEnt(void)
 			MSG_ReadPos(&net_message, pos);
 			MSG_ReadPos(&net_message, pos2);
 			CL_RailTrail(pos, pos2);
+			/* Punch mark where the slug hit. The trail runs start(pos)->
+			 * end(pos2), so the surface normal is back along the beam.
+			 * If pos2 ended in open air the clipper finds no surface and
+			 * the decal is silently dropped. */
+			if (re.R_AddDecal)
+			{
+				vec3_t rdir;
+				VectorSubtract(pos, pos2, rdir);
+				VectorNormalize(rdir);
+				re.R_AddDecal(pos2, rdir, 7.0f, DECAL_RAIL);
+			}
 			S_StartSound(pos2, 0, 0, cl_sfx_railg, 1, ATTN_NORM, 0);
 			break;
 
@@ -854,14 +928,9 @@ CL_ParseTEnt(void)
 		case TE_GRENADE_EXPLOSION:
 		case TE_GRENADE_EXPLOSION_WATER:
 			MSG_ReadPos(&net_message, pos);
-			/* Scorch on the floor — explosion events lack a normal in
-			 * the packet, so assume up. Wrong for wall explosions but
-			 * the explosion sprite covers it visually. */
-			if (re.R_AddDecal)
-			{
-				vec3_t up_normal = {0.0f, 0.0f, 1.0f};
-				re.R_AddDecal(pos, up_normal, 24.0f, DECAL_SCORCH);
-			}
+			/* Grenade scorch — trace for the real wall/floor/ceiling the
+			 * blast is nearest to (the packet carries no normal). */
+			CL_ExplosionDecal(pos, 22.0f, DECAL_SCORCH);
 			ex = CL_AllocExplosion();
 			VectorCopy(pos, ex->ent.origin);
 			ex->type = ex_poly;
@@ -891,6 +960,7 @@ CL_ParseTEnt(void)
 
 		case TE_PLASMA_EXPLOSION:
 			MSG_ReadPos(&net_message, pos);
+			CL_ExplosionDecal(pos, 16.0f, DECAL_PLASMA);
 			ex = CL_AllocExplosion();
 			VectorCopy(pos, ex->ent.origin);
 			ex->type = ex_poly;
@@ -919,15 +989,12 @@ CL_ParseTEnt(void)
 		case TE_ROCKET_EXPLOSION:
 		case TE_ROCKET_EXPLOSION_WATER:
 			MSG_ReadPos(&net_message, pos);
-			/* Scorch on the floor — see TE_EXPLOSION2 above. Bigger
-			 * radius for rocket impacts. */
-			if (re.R_AddDecal)
-			{
-				vec3_t up_normal = {0.0f, 0.0f, 1.0f};
-				re.R_AddDecal(pos, up_normal,
-						(type == TE_EXPLOSION1_BIG) ? 36.0f : 28.0f,
-						DECAL_SCORCH);
-			}
+			/* Big rocket burn — trace for the real surface (wall blasts
+			 * used to project straight down and leave nothing). The
+			 * biggest, darkest mark of the weapon set. */
+			CL_ExplosionDecal(pos,
+					(type == TE_EXPLOSION1_BIG) ? 48.0f : 40.0f,
+					DECAL_BURN);
 			ex = CL_AllocExplosion();
 			VectorCopy(pos, ex->ent.origin);
 			ex->type = ex_poly;
@@ -975,6 +1042,7 @@ CL_ParseTEnt(void)
 
 		case TE_BFG_EXPLOSION:
 			MSG_ReadPos(&net_message, pos);
+			CL_ExplosionDecal(pos, 40.0f, DECAL_BFG);
 			ex = CL_AllocExplosion();
 			VectorCopy(pos, ex->ent.origin);
 			ex->type = ex_poly;
@@ -992,6 +1060,7 @@ CL_ParseTEnt(void)
 
 		case TE_BFG_BIGEXPLOSION:
 			MSG_ReadPos(&net_message, pos);
+			CL_ExplosionDecal(pos, 40.0f, DECAL_BFG);
 			CL_BFGExplosionParticles(pos);
 			break;
 

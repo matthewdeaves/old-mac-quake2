@@ -71,7 +71,7 @@ static cplane_t        cm_markPlanes[MAX_FRAGMENT_PLANES];
 
 /* Preloaded decal textures, one per DECAL_* type. Loaded by
  * R_LoadDecalTextures at R_BeginRegistration time. */
-static image_t *r_decal_textures[4];
+static image_t *r_decal_textures[DECAL_TYPE_COUNT];
 
 cvar_t *gl_decals;
 cvar_t *gl_decal_max;
@@ -389,12 +389,16 @@ R_LoadDecalTextures(void)
 	r_decal_textures[DECAL_BLOOD]      = R_FindImage("decals/blood.tga",      it_sprite);
 	r_decal_textures[DECAL_SCORCH]     = R_FindImage("decals/scorch.tga",     it_sprite);
 	r_decal_textures[DECAL_GREENBLOOD] = R_FindImage("decals/greenblood.tga", it_sprite);
+	r_decal_textures[DECAL_BURN]       = R_FindImage("decals/burn.tga",       it_sprite);
+	r_decal_textures[DECAL_PLASMA]     = R_FindImage("decals/plasma.tga",     it_sprite);
+	r_decal_textures[DECAL_BFG]        = R_FindImage("decals/bfg.tga",        it_sprite);
+	r_decal_textures[DECAL_RAIL]       = R_FindImage("decals/rail.tga",       it_sprite);
 
 	/* Clamp wrap so the alpha-zero edges of the texture stay alpha-zero
 	 * even if texcoords drift slightly outside [0,1] due to numerical
 	 * imprecision in the clipper. Default GL_REPEAT would wrap the
 	 * opaque dark center of the texture into the visible boundary. */
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < DECAL_TYPE_COUNT; i++)
 	{
 		if (r_decal_textures[i])
 		{
@@ -404,11 +408,17 @@ R_LoadDecalTextures(void)
 		}
 	}
 
-	ri.Con_Printf(PRINT_ALL, "Decals: bullet=%s blood=%s scorch=%s greenblood=%s\n",
+	ri.Con_Printf(PRINT_ALL,
+			"Decals: bullet=%s blood=%s scorch=%s greenblood=%s "
+			"burn=%s plasma=%s bfg=%s rail=%s\n",
 			r_decal_textures[DECAL_BULLET]     ? "OK" : "MISSING",
 			r_decal_textures[DECAL_BLOOD]      ? "OK" : "MISSING",
 			r_decal_textures[DECAL_SCORCH]     ? "OK" : "MISSING",
-			r_decal_textures[DECAL_GREENBLOOD] ? "OK" : "MISSING");
+			r_decal_textures[DECAL_GREENBLOOD] ? "OK" : "MISSING",
+			r_decal_textures[DECAL_BURN]       ? "OK" : "MISSING",
+			r_decal_textures[DECAL_PLASMA]     ? "OK" : "MISSING",
+			r_decal_textures[DECAL_BFG]        ? "OK" : "MISSING",
+			r_decal_textures[DECAL_RAIL]       ? "OK" : "MISSING");
 }
 
 void
@@ -473,7 +483,7 @@ R_AddDecal(const vec3_t origin, const vec3_t normal,
 		return;
 	}
 
-	if (!r_worldmodel || type < 0 || type > 3)
+	if (!r_worldmodel || type < 0 || type >= DECAL_TYPE_COUNT)
 	{
 		return;
 	}

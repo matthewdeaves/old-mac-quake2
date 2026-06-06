@@ -1016,6 +1016,7 @@ R_BeginRegistration(char *model)
 	 * they're it_sprite and the registration sequence may roll. */
 	R_ClearDecals();
 	R_LoadDecalTextures();
+	R_LoadShadowImage();
 }
 
 struct model_s *

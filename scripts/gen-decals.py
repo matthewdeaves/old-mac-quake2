@@ -165,6 +165,151 @@ def scorch_mark():
     return img.filter(ImageFilter.GaussianBlur(radius=1.0))
 
 
+def burn_mark():
+    """Big rocket burn — 128px. Dark charred core, irregular sooty edge,
+    faint radial blast streaks radiating out. The 'big old explosion
+    mark' — deliberately the biggest/darkest of the set."""
+    random.seed(0xb09b)
+    S = 128
+    H = S // 2
+    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    px = img.load()
+    streaks = [random.uniform(0, 2 * math.pi) for _ in range(11)]
+    core, edge = 26, 60
+    for y in range(S):
+        for x in range(S):
+            dx = x - H + 0.5
+            dy = y - H + 0.5
+            r = math.sqrt(dx * dx + dy * dy)
+            ang = math.atan2(dy, dx)
+            wobble = (1.0 + 0.18 * math.sin(ang * 5)
+                      + 0.12 * math.sin(ang * 9 + 0.7)
+                      + 0.07 * math.sin(ang * 17))
+            r_eff = r / wobble
+            if r_eff < core:
+                a, lum = 245, 8
+            elif r_eff < edge:
+                t = (r_eff - core) / float(edge - core)
+                a = int(245 * (1.0 - t))
+                lum = 8 + int(22 * t)
+            else:
+                a, lum = 0, 0
+            # radial soot streaks
+            if r_eff < edge * 1.25 and r > core * 0.5:
+                for sa in streaks:
+                    d = abs(((ang - sa + math.pi) % (2 * math.pi)) - math.pi)
+                    if d < 0.06:
+                        a = max(a, int(120 * (1.0 - r_eff / (edge * 1.25))))
+                        lum = 14
+                        break
+            px[x, y] = (lum, lum, lum, max(0, min(255, a)))
+    return img.filter(ImageFilter.GaussianBlur(radius=1.2))
+
+
+def plasma_mark():
+    """Plasma scorch — hot blue-white core fading through a dark scorch
+    ring. 64px."""
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(SIZE):
+        for x in range(SIZE):
+            dx = x - HALF + 0.5
+            dy = y - HALF + 0.5
+            r = math.sqrt(dx * dx + dy * dy)
+            if r < 6:
+                px[x, y] = (180, 210, 255, 235)        # hot core
+            elif r < 14:
+                t = (r - 6) / 8.0
+                cr = int(180 * (1 - t) + 30 * t)
+                cg = int(210 * (1 - t) + 30 * t)
+                cb = int(255 * (1 - t) + 45 * t)
+                px[x, y] = (cr, cg, cb, int(235 * (1 - 0.3 * t)))
+            elif r < 26:
+                t = (r - 14) / 12.0
+                px[x, y] = (30, 30, 45, max(0, int(160 * (1.0 - t))))
+            else:
+                px[x, y] = (0, 0, 0, 0)
+    return img.filter(ImageFilter.GaussianBlur(radius=0.8))
+
+
+def bfg_mark():
+    """BFG energy char — sickly green with radial tendrils. 128px."""
+    random.seed(0xbf61)
+    S = 128
+    H = S // 2
+    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    px = img.load()
+    tendrils = [random.uniform(0, 2 * math.pi) for _ in range(9)]
+    for y in range(S):
+        for x in range(S):
+            dx = x - H + 0.5
+            dy = y - H + 0.5
+            r = math.sqrt(dx * dx + dy * dy)
+            ang = math.atan2(dy, dx)
+            wob = 1.0 + 0.15 * math.sin(ang * 6) + 0.10 * math.sin(ang * 13 + 0.4)
+            r_eff = r / wob
+            if r_eff < 22:
+                a, cr, cg, cb = 230, 60, 160, 40
+            elif r_eff < 56:
+                t = (r_eff - 22) / 34.0
+                a = int(230 * (1 - t))
+                cr = int(60 * (1 - t) + 20 * t)
+                cg = int(160 * (1 - t) + 50 * t)
+                cb = int(40 * (1 - t) + 20 * t)
+            else:
+                a, cr, cg, cb = 0, 0, 0, 0
+            if r_eff < 64 and a < 200 and r > 10:
+                for ta in tendrils:
+                    d = abs(((ang - ta + math.pi) % (2 * math.pi)) - math.pi)
+                    if d < 0.05:
+                        a = max(a, int(150 * (1.0 - r_eff / 64.0)))
+                        cr, cg, cb = 90, 200, 60
+                        break
+            px[x, y] = (cr, cg, cb, max(0, min(255, a)))
+    return img.filter(ImageFilter.GaussianBlur(radius=1.2))
+
+
+def rail_mark():
+    """Railgun slug — tight punch-through hole with a thin scorch ring.
+    64px (small)."""
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    px = img.load()
+    for y in range(SIZE):
+        for x in range(SIZE):
+            dx = x - HALF + 0.5
+            dy = y - HALF + 0.5
+            r = math.sqrt(dx * dx + dy * dy)
+            if r < 4:
+                px[x, y] = (10, 10, 12, 245)           # punch hole
+            elif r < 7:
+                t = (r - 4) / 3.0
+                px[x, y] = (20, 20, 24, int(245 * (1 - t) + 60 * t))
+            elif r < 13:
+                t = (r - 7) / 6.0                       # thin scorch ring
+                px[x, y] = (25, 22, 20, max(0, int(150 * (1.0 - abs(t - 0.3) / 0.7))))
+            else:
+                px[x, y] = (0, 0, 0, 0)
+    return img.filter(ImageFilter.GaussianBlur(radius=0.6))
+
+
+def shadow_blob():
+    """Soft round drop-shadow for the non-stencil alias-shadow path
+    (r_mesh.c R_DrawBlobShadow). Black RGB; smooth radial alpha falloff.
+    The engine modulates this by a 0.5 vertex color, so peak alpha is full
+    here and the gradient sets the softness."""
+    img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+    px = img.load()
+    R = HALF - 1
+    for y in range(SIZE):
+        for x in range(SIZE):
+            dx = x - HALF + 0.5
+            dy = y - HALF + 0.5
+            r = math.sqrt(dx * dx + dy * dy) / R       # 0..1
+            a = 0 if r >= 1.0 else int(255 * (1.0 - r) ** 1.6)
+            px[x, y] = (0, 0, 0, max(0, min(255, a)))
+    return img.filter(ImageFilter.GaussianBlur(radius=1.0))
+
+
 def save_tga(img, name):
     """Save as TGA — yquake2 loads TGA via files/tga.c. Use uncompressed
     32-bit RGBA, top-down (bit 5 of image descriptor set), which is the
@@ -179,4 +324,9 @@ save_tga(bullet_hole(), "bullet")
 save_tga(blood_splat(), "blood")
 save_tga(green_blood_splat(), "greenblood")
 save_tga(scorch_mark(), "scorch")
+save_tga(burn_mark(), "burn")
+save_tga(plasma_mark(), "plasma")
+save_tga(bfg_mark(), "bfg")
+save_tga(rail_mark(), "rail")
+save_tga(shadow_blob(), "shadow")
 print("done.")

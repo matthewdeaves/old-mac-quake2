@@ -60,6 +60,11 @@
 #define	DECAL_BLOOD			1
 #define	DECAL_SCORCH		2
 #define	DECAL_GREENBLOOD	3
+#define	DECAL_BURN			4	/* rocket — big charred burn */
+#define	DECAL_PLASMA		5	/* plasma — hot blue-white scorch */
+#define	DECAL_BFG			6	/* BFG — green energy char */
+#define	DECAL_RAIL			7	/* railgun — punch hole + scorch ring */
+#define	DECAL_TYPE_COUNT	8
 
 typedef struct entity_s {
 	struct model_s		*model; /* opaque type outside refresh */

@@ -519,6 +519,7 @@ void R_ClearDecals(void);
 void R_LoadDecalTextures(void);
 void R_DrawDecals(void);
 void R_RegisterDecalCvars(void);
+void R_LoadShadowImage(void);
 
 /*
  * GL config stuff

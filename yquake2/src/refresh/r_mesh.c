@@ -60,6 +60,25 @@ float *shadedots = r_avertexnormal_dots[0];
 extern vec3_t lightspot;
 extern qboolean have_stencil;
 
+/* Soft round drop-shadow texture (decals/shadow.tga) used by the
+ * non-stencil blob-shadow path. Loaded at registration by
+ * R_LoadShadowImage(); NULL means fall back to the projected shadow. */
+image_t *r_shadow_texture = NULL;
+
+void
+R_LoadShadowImage(void)
+{
+	r_shadow_texture = R_FindImage("decals/shadow.tga", it_sprite);
+
+	if (r_shadow_texture)
+	{
+		/* Clamp so the transparent rim never wraps the opaque center. */
+		R_Bind(r_shadow_texture->texnum);
+		qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	}
+}
+
 void
 R_LerpVerts(int nverts, dtrivertx_t *v, dtrivertx_t *ov,
 		dtrivertx_t *verts, float *lerp, float move[3],
@@ -437,6 +456,45 @@ R_DrawAliasShadow(dmdl_t *paliashdr, int posenum)
 	lheight = currententity->origin[2] - lightspot[2];
 	order = (int *)((byte *)paliashdr + paliashdr->ofs_glcmds);
 	height = -lheight + 0.1f;
+
+	/* Non-stencil path: the per-triangle projected shadow overlaps itself
+	 * and compounds at alpha 0.5 into dark blotches (the R9200/Tiger fleet
+	 * can't afford the stencil mask that prevents this — 60% fps cost).
+	 * Draw a single soft blob quad instead: clean, uniform, one draw. */
+	if (!(have_stencil && gl_stencilshadow->value) && r_shadow_texture)
+	{
+		daliasframe_t *frame;
+		float radius;
+
+		frame = (daliasframe_t *)((byte *)paliashdr + paliashdr->ofs_frames
+				+ posenum * paliashdr->framesize);
+
+		/* Footprint radius from the frame's model-space bbox (byte verts
+		 * span 0..255, scaled by frame->scale). Half the wider of X/Y. */
+		radius = 0.5f * 255.0f * (frame->scale[0] > frame->scale[1]
+				? frame->scale[0] : frame->scale[1]);
+		if (radius < 4.0f)  { radius = 4.0f; }
+		if (radius > 64.0f) { radius = 64.0f; }
+
+		/* Caller left texturing disabled + vertex color (0,0,0,0.5).
+		 * MODULATE keeps the blob black and at half strength; the
+		 * texture's alpha gradient supplies the soft edge. */
+		qglEnable(GL_TEXTURE_2D);
+		R_Bind(r_shadow_texture->texnum);
+		R_TexEnv(GL_MODULATE);
+		qglDepthMask(GL_FALSE);
+
+		qglBegin(GL_QUADS);
+		qglTexCoord2f(0.0f, 0.0f); qglVertex3f(-radius, -radius, height);
+		qglTexCoord2f(1.0f, 0.0f); qglVertex3f( radius, -radius, height);
+		qglTexCoord2f(1.0f, 1.0f); qglVertex3f( radius,  radius, height);
+		qglTexCoord2f(0.0f, 1.0f); qglVertex3f(-radius,  radius, height);
+		qglEnd();
+
+		qglDepthMask(GL_TRUE);
+		R_TexEnv(GL_REPLACE);
+		return;
+	}
 
 	/* stencilbuffer shadows */
 	if (have_stencil && gl_stencilshadow->value)

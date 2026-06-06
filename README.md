@@ -40,7 +40,7 @@ Grab the latest `.dmg` from the [Releases](../../releases) page — one disk ima
 
 1. **Download** `Quake2-OldMac-*.dmg` and mount it.
 2. **Copy** `Quake2.app`, `ref_gl.so`, `q2ded`, and the `baseq2/` folder into one directory (e.g. `~/Desktop/quake2/`).
-3. **Add your retail data** — drop your own `pak0.pak`, `pak1.pak`, `pak2.pak` (plus `players/` and `video/`) into `baseq2/`. Retail Quake II is on Steam and GOG; the shareware `pak0.pak` also works.
+3. **Add your retail data** — drop your own `pak0.pak`, `pak1.pak`, `pak2.pak` into `baseq2/`. **Also copy the whole `players/` folder** from your retail `baseq2/` — it holds the player models and skins (male/female/cyborg/crakhor); without it multiplayer models render missing or invisible. (`video/` cinematics are optional.) Retail Quake II is on Steam and GOG; the shareware `pak0.pak` also works.
 4. **Double-click** `Quake2.app`. The app auto-detects the machine and applies a hand-tuned per-model config, then opens **fullscreen** — at the panel's **native resolution** on iMac-class machines (a same-mode display capture, no resolution switch) and at a per-model tuned resolution on the tower/mini boxes. *(On the iMac G5, native same-mode capture is the only safe fullscreen — its ATI Radeon 9600 Leopard driver hard-hangs on a resolution mode switch; the engine enforces the capture on that hardware regardless of settings.)*
 
 No installer, no admin, no system files touched. On modern macOS, clear Gatekeeper with `xattr -dr com.apple.quarantine Quake2.app` (not needed on Panther/Tiger/Lion).
@@ -54,15 +54,17 @@ Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`
 | **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA + glows + lit glass + caustics + farsee |
 | **mini-intel** | 219.15 | 98.85 | 60 | picmip 0, trilinear, AF 8x, fog, waterwarp, group-draw, decals 64, 2× MSAA, **glows + lit glass + caustics + farsee + zfix** |
 | **imac-g5** | 46.80 † | 46.80 † | 50 † | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 64, **stencil shadows + glows + lit glass + caustics + 2× MSAA + zfix**; native 1440×900 only |
-| **mini-g4** | 96.05 \** | 56.95 \** | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **glows + lit glass + caustics + zfix** |
-| **sawtooth** | 72.90 | 65.45 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, decals 16 |
-| **quicksilver** | 69.30 | 65.30 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **glows + lit glass + caustics + zfix** \* |
+| **mini-g4** | 96.05 \** | 56.95 \** | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **stencil shadows + glows + lit glass + caustics + zfix** |
+| **sawtooth** | 72.90 | 65.45 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, decals 16, **stencil shadows** |
+| **quicksilver** | 69.30 | 65.30 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **stencil shadows + glows + lit glass + caustics + zfix** \* |
 | **yosemite** | 46.40 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, decals 8, **zfix** |
 
 † imac-g5 ships **native 1440×900 same-mode fullscreen only** — the ATI R300 / Leopard driver hard-hangs the OS on a non-native fullscreen mode switch, so it can't drop resolution. The figure is the full production render (stencil shadows + glows + lit glass + caustics + **2× MSAA**, demo1; demo2 is 45.8). The 2.0 GHz 970 is CPU-bound by the visual stack at ~47 fps regardless of resolution (640/1024 windowed both measure 46.8). This is a deliberate visuals-over-framerate choice — dropping 2× MSAA → ~100 fps. Below the 60 fps fleet target by design (the G5's user floor is "≈50, visuals first").
 
 \* quicksilver's LCD vsync caps both resolutions near 71 fps — visual features have not pushed fps below the cap, meaning there's spare GPU headroom we could spend on further effects.
 \** mini-g4 1024/640 here are **thermal** — the machine was sitting in direct sun during this grid; cool-machine numbers are ~99/126. The 56.95/96.05 figures are the worst observed, not steady-state. See MISTAKES.md.
+
+**Fleet-wide stencil shadows (v2.5.1).** The whole PowerPC fleet now renders crisp projected stencil shadows, not the old blob fallback. The long-held belief that the Tiger ATI / GeForce2 MX drivers couldn't afford them came from a pre-AltiVec bench (a 60% cliff on the R9200); re-benched on real hardware in June 2026 the cost is small and every G4 stays above its feature floor (40 fps for feature work, visuals-over-framerate per machine): mini-g4 (R9200) ~15% (127→108 demo1), quicksilver (R9000 Pro) ~0% (65→65), sawtooth (GeForce2 MX) ~19% (74→60 demo1, 68 demo2). The grid above is an older snapshot — see [`benchmarks/results.csv`](benchmarks/results.csv) for live numbers.
 
 ### First build vs current — fps traded for visual fidelity, by design
 
@@ -99,14 +101,14 @@ If you want the Phase A "raw fps" build back, every visual cvar is runtime-toggl
 | Group-draw batching (`qglDrawElements`) | `gl_groupdraw` | yquake2-latest `gl1_buffer.c` | -0.75 fps |
 | stb_image-based JPEG decode | — | vendored `stb_image.h` | drops libjpeg dep |
 | CFBundle HD-pak search path | — | `Q2_GetBundleHDPakPath` | one-time at FS init |
-| **World decals** — bullet / blood / Strogg green blood / scorch marks via BSP fragment clipping; per-machine `gl_decal_max` cap 8 (G3) → 128 (modern); textures procedurally generated, shipped in-tree at `yquake2/baseq2-extra/decals/` | `gl_decals` `gl_decal_max` | KMQuake2 `r_fragment.c` (ported renderer-side) | ~0 (gl_dynamic 0, no overdraw on empty world) |
+| **World decals** — bullet / blood / Strogg green blood / scorch via BSP fragment clipping, plus **per-weapon blast marks**: rocket (big charred burn), grenade (scorch), plasma (blue-white), BFG (green), railgun (punch hole). Explosion impacts trace the nearest surface (walls/floor/ceiling), since the temp-entity packet carries no normal. Per-machine `gl_decal_max` cap 8 (G3) → 128 (modern); textures procedurally generated, shipped in-tree at `yquake2/baseq2-extra/decals/` | `gl_decals` `gl_decal_max` | KMQuake2 `r_fragment.c` (ported renderer-side) | ~0 (gl_dynamic 0, no overdraw on empty world) |
 | **MSAA** — `SDL_GL_MULTISAMPLE` wired through SDL backend; per-machine cap 0 (PPC fixed-func) → 8x (Polaris) | `gl_msaa_samples` | own port | n/a (off on R128) |
 | **Energy-shell glow** — sphere-map sheen on quad/invuln/etc. shells instead of flat colour | `gl_glows` | KMQuake2 (re-impl) | ~0 (shells only) |
 | **Lightmapped glass/grates** — translucent surfaces lit by the room instead of rendering "floating" | `gl_trans_lighting` | KMQuake2 (re-impl) | ~0 on demo |
 | **Water caustics** — animated additive caustic shimmer on water surfaces | `gl_caustics` | KMQuake2 (re-impl) | −1–3% (water in view) |
 | **Compiled vertex arrays** on the group-draw path; coplanar z-fix; extended draw distance | `gl_zfix` `gl_farsee` | own / yq2 | neutral |
 | **Native-res desktop fullscreen** — same-mode display capture (auto-fits any panel, no mode switch); hardwired on the iMac G5 where a mode switch hard-hangs the ATI R300 / Leopard driver | `vid_desktopfullscreen` | QS port (re-impl) | neutral |
-| **Drop/stencil shadows** on the G5 (real projected shadow volumes — the R9200's 60% driver cliff is absent on the 9600/Leopard) | `gl_stencilshadow` | yq2 | ~0 on G5 |
+| **Drop/stencil shadows** — real projected shadow volumes, now on the **entire fleet** (all three G4s + G5 + Intel). A pre-AltiVec bench had flagged a 60% cost on the Tiger ATI driver; re-benched June 2026 it's ~0–19% per machine. Non-stencil machines fall back to a soft blob shadow | `gl_shadows` `gl_stencilshadow` | yq2 + own blob path | ~0 on G5, ≤19% on G4 |
 
 `gl_bloom` (fixed-function light bloom) is wired but **disabled** — too slow on PPC and visually incorrect on the GL1 path; see [`MISTAKES.md`](MISTAKES.md).
 
@@ -180,12 +182,13 @@ Drop `Quake2.app` and a `baseq2/` directory next to each other — anywhere: `~/
       MacOS/SDL.framework/           (fat: ppc + i386 + x86_64)
       Resources/Quake2.icns
       Resources/autoexec-<arch>.cfg × 4     (per-arch baseline, picked by slice)
-      Resources/autoexec-<machine>.cfg × 6  (per-machine overlay, picked by sysctl)
+      Resources/autoexec-<machine>.cfg × 7  (per-machine overlay, picked by sysctl)
       Resources/hd-pak/decals/       (bundled world-decal textures)
   ref_gl.so
   baseq2/
     game.so
     pak0.pak  pak1.pak  pak2.pak   ← supply your own
+    players/                        ← supply your own (player models/skins)
 ```
 
 The repo does **not** distribute `.pak` files — bring your own from Steam / GOG / retail CD. Release builds with the fat .app are on the [Releases](../../releases) page.

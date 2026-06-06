@@ -294,9 +294,10 @@ def rail_mark():
 
 def shadow_blob():
     """Soft round drop-shadow for the non-stencil alias-shadow path
-    (r_mesh.c R_DrawBlobShadow). Black RGB; smooth radial alpha falloff.
-    The engine modulates this by a 0.5 vertex color, so peak alpha is full
-    here and the gradient sets the softness."""
+    (r_mesh.c blob shadow). Black RGB; smooth radial alpha falloff.
+    Alpha is pre-baked at 50% max (128) so the engine uses GL_REPLACE
+    and avoids any vertex-colour multiply (the Tiger ATI R9200 driver
+    collapses GL_MODULATE(0,0,0,0.5 × tex) to fully transparent)."""
     img = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
     px = img.load()
     R = HALF - 1
@@ -305,8 +306,8 @@ def shadow_blob():
             dx = x - HALF + 0.5
             dy = y - HALF + 0.5
             r = math.sqrt(dx * dx + dy * dy) / R       # 0..1
-            a = 0 if r >= 1.0 else int(255 * (1.0 - r) ** 1.6)
-            px[x, y] = (0, 0, 0, max(0, min(255, a)))
+            a = 0 if r >= 1.0 else int(128 * (1.0 - r) ** 1.6)
+            px[x, y] = (0, 0, 0, max(0, min(128, a)))
     return img.filter(ImageFilter.GaussianBlur(radius=1.0))
 
 

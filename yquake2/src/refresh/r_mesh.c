@@ -476,12 +476,16 @@ R_DrawAliasShadow(dmdl_t *paliashdr, int posenum)
 		if (radius < 4.0f)  { radius = 4.0f; }
 		if (radius > 64.0f) { radius = 64.0f; }
 
-		/* Caller left texturing disabled + vertex color (0,0,0,0.5).
-		 * MODULATE keeps the blob black and at half strength; the
-		 * texture's alpha gradient supplies the soft edge. */
+		/* Draw one textured quad. Use GL_REPLACE so the texture colour
+		 * and alpha are used directly — GL_MODULATE on this driver
+		 * multiplies vertex (0,0,0,0.5) through the texture sample,
+		 * collapsing the whole result to transparent black. The shadow
+		 * texture is pre-baked RGBA (0,0,0,alpha@50%) so no vertex
+		 * colour is needed. */
+		qglColor4f(1.0f, 1.0f, 1.0f, 1.0f);  /* REPLACE ignores vert colour, but reset cleanly */
 		qglEnable(GL_TEXTURE_2D);
 		R_Bind(r_shadow_texture->texnum);
-		R_TexEnv(GL_MODULATE);
+		R_TexEnv(GL_REPLACE);
 		qglDepthMask(GL_FALSE);
 
 		qglBegin(GL_QUADS);
@@ -492,7 +496,7 @@ R_DrawAliasShadow(dmdl_t *paliashdr, int posenum)
 		qglEnd();
 
 		qglDepthMask(GL_TRUE);
-		R_TexEnv(GL_REPLACE);
+		/* TexEnv stays GL_REPLACE — that was the state on entry. */
 		return;
 	}
 

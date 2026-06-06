@@ -170,7 +170,10 @@ echo "[deploy] ship to $HOST:~/Desktop/quake2/"
 # flat `quake2` + `SDL.framework/` behind otherwise). Excluding baseq2/
 # from the delete sweep so existing pak symlinks aren't nuked between
 # the rsync and the symlink step below.
-rsync -av --partial --checksum --delete --exclude='baseq2/pak*.pak' $RSYNC_EXTRA \
+rsync -av --partial --checksum --delete \
+  --exclude='baseq2/pak*.pak' \
+  --exclude='baseq2/players/' \
+  $RSYNC_EXTRA \
   -e 'ssh -o ServerAliveInterval=15' \
   "$STAGE/" "$HOST:Desktop/quake2/" | tail -8
 
@@ -195,7 +198,7 @@ ssh "$HOST" 'rm -f ~/Desktop/quake2/baseq2/autoexec.cfg 2>/dev/null' || true
 #   3. nothing — error out with a hint
 echo "[deploy] resolve game data on $HOST (self-contained copies, not symlinks)"
 if [ -f "$REPO_ROOT/.game-data/baseq2/pak0.pak" ]; then
-  echo "[deploy] copying paks from workstation .game-data/ → $HOST:~/Desktop/quake2/baseq2/"
+  echo "[deploy] copying paks + player models from workstation .game-data/ → $HOST:~/Desktop/quake2/baseq2/"
   # First clear any stale symlinks from a previous symlink-mode deploy
   # so rsync writes real files (rsync follows symlinks for source but
   # writes regular files for destination by default, so this is belt-
@@ -207,6 +210,14 @@ if [ -f "$REPO_ROOT/.game-data/baseq2/pak0.pak" ]; then
     "$REPO_ROOT/.game-data/baseq2/pak1.pak" \
     "$REPO_ROOT/.game-data/baseq2/pak2.pak" \
     "$HOST:Desktop/quake2/baseq2/" | tail -5
+  # Player models: needed as loose files — not just paks — for player
+  # skin selection. Protected from --delete above; shipped explicitly here.
+  if [ -d "$REPO_ROOT/.game-data/baseq2/players" ]; then
+    rsync -a --partial --checksum $RSYNC_EXTRA \
+      -e 'ssh -o ServerAliveInterval=15' \
+      "$REPO_ROOT/.game-data/baseq2/players/" \
+      "$HOST:Desktop/quake2/baseq2/players/" | tail -3
+  fi
 elif [ "$(ssh "$HOST" "[ -f '$GAME_DATA_DIR/pak0.pak' ] && echo yes || echo no")" = "yes" ]; then
   # Workstation cache empty but host has paks elsewhere — copy in
   # place via ssh+cp so we don't pull 200 MB across the network just
@@ -218,6 +229,15 @@ elif [ "$(ssh "$HOST" "[ -f '$GAME_DATA_DIR/pak0.pak' ] && echo yes || echo no")
       cp -f \"\$HOME/$GAME_DATA_DIR/\$p.pak\" \"\$p.pak\"
     done
     ls -la | grep pak"
+  # Also copy players from the original install on this host if present.
+  ssh "$HOST" "
+    SRC=\"\$HOME/$GAME_DATA_DIR/players\"
+    DST=\"\$HOME/Desktop/quake2/baseq2/players\"
+    if [ -d \"\$SRC\" ]; then
+      mkdir -p \"\$DST\"
+      cp -rf \"\$SRC/\" \"\$DST/\"
+      echo '[deploy] player models copied from local source install'
+    fi"
 else
   echo "deploy.sh: no game data on $HOST and none in .game-data/ — populate one" >&2
   echo "  hint: rsync -av 'quicksilver:Desktop/Quake 2/baseq2/pak*.pak' .game-data/baseq2/" >&2

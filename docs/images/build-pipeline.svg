@@ -21,8 +21,8 @@
   <rect width="1320" height="1020" fill="#faf6ef"/>
 
   <!-- Title -->
-  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Build pipeline — four slices, one fat binary</text>
-  <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/build-fat.sh</tspan> on Ubuntu — runs four flock-serialised sub-builds on the Lion mini, then lipos them into one Mach-O universal</text>
+  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Build pipeline: four slices, one fat binary</text>
+  <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/build-fat.sh</tspan> on Ubuntu: runs four flock-serialised sub-builds on the Lion mini, then lipos them into one Mach-O universal</text>
 
   <!-- Vertical guide rail with stage numbers down the left -->
   <g transform="translate(50, 130)">
@@ -78,7 +78,7 @@
     <path d="M 833 380 L 833 414" marker-end="url(#bp-ar)"/>
     <path d="M 1129 380 L 1129 414" marker-end="url(#bp-ar)"/>
   </g>
-  <text x="68" y="372" font-size="11" font-style="italic" fill="#666">four sub-builds, one at a time (flock-guarded — concurrent makes race on .o files)</text>
+  <text x="68" y="372" font-size="11" font-style="italic" fill="#666">four sub-builds, one at a time (flock-guarded: concurrent makes race on .o files)</text>
 
   <!-- ============================================================ -->
   <!-- Stage 3 :: three sub-builds                                     -->
@@ -210,7 +210,7 @@
       <rect x="0" y="0" width="660" height="84" rx="10" fill="#eaf6ee" stroke="#a3cfb3" stroke-width="1.4" filter="url(#bp-shadow)"/>
       <text x="22" y="32" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#1a1a1a">build/q2-fat</text>
       <text x="22" y="54" font-size="12" fill="#444">Mach-O universal · 4 slices: ppc750 + ppc7400 + ppc970 + x86_64 · ~5 KB padding overhead vs sum-of-slices</text>
-      <text x="22" y="74" font-size="11.5" fill="#0f8a5f" font-weight="600"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">deploy.sh &lt;machine&gt;</tspan> ships the same Quake2.app to every host — dyld picks the right slice automatically</text>
+      <text x="22" y="74" font-size="11.5" fill="#0f8a5f" font-weight="600"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">deploy.sh &lt;machine&gt;</tspan> ships the same Quake2.app to every host: dyld picks the right slice automatically</text>
     </g>
   </g>
 

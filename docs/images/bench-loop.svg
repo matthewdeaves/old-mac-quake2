@@ -21,7 +21,7 @@
   <rect width="1320" height="1240" fill="#faf6ef"/>
 
   <!-- Title -->
-  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Bench loop — Ubuntu drives, target executes, qconsole.log returns</text>
+  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Bench loop: Ubuntu drives, target executes, qconsole.log returns</text>
   <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/bench.sh &lt;target&gt; &lt;demo&gt; &lt;WxH&gt;</tspan> · one cell = three independent timedemos · median(run2, run3) drops the cold-cache run 1</text>
 
   <!-- =========================================================== -->
@@ -75,7 +75,7 @@
 
     <!-- command label above the arrow -->
     <text x="660" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">ssh</tspan>  killall -TERM quake2; sleep 2; killall -KILL quake2</text>
-    <text x="660" y="18" text-anchor="middle" font-size="11" fill="#888" font-style="italic">pre-run cleanup — reap any stale process from a prior cell</text>
+    <text x="660" y="18" text-anchor="middle" font-size="11" fill="#888" font-style="italic">pre-run cleanup: reap any stale process from a prior cell</text>
   </g>
 
   <!-- callout: Why TERM-then-KILL -->
@@ -97,7 +97,7 @@
 
     <text x="660" y="-30" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">ssh</tspan>  cd ~/Desktop/quake2; rm -f qconsole.log;</text>
     <text x="660" y="-14" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#1a1a1a">./Quake2.app/Contents/MacOS/quake2 -nolauncher -noarchautoexec +set logfile 2 +set s_initsound 0 +set vid_fullscreen 1 +set gl_mode -1 +set gl_customwidth W +set gl_customheight H +set timedemo 1 +demomap demoN.dm2 &amp;</text>
-    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">launch quake2 in the background — ssh returns immediately · <tspan font-family="ui-monospace, Menlo, Consolas, monospace">-noarchautoexec</tspan> suppresses the per-machine cfg overlay for deterministic measurement</text>
+    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">launch quake2 in the background: ssh returns immediately · <tspan font-family="ui-monospace, Menlo, Consolas, monospace">-noarchautoexec</tspan> suppresses the per-machine cfg overlay for deterministic measurement</text>
   </g>
 
   <!-- target reaction box: Quake running -->
@@ -130,7 +130,7 @@
     <rect x="0" y="0" width="160" height="58" rx="6" fill="#fff8e6" stroke="#dcc28a" stroke-width="1"/>
     <text x="10" y="18" font-size="11" font-weight="700" fill="#9c5d00">⏱ integer sleep only</text>
     <text x="10" y="34" font-size="10" fill="#5a4515">Panther /bin/sleep can't parse</text>
-    <text x="10" y="46" font-size="10" fill="#5a4515">0.2 — would busy-spin to TIMEOUT</text>
+    <text x="10" y="46" font-size="10" fill="#5a4515">0.2: would busy-spin to TIMEOUT</text>
   </g>
 
   <!-- =========================================================== -->
@@ -144,7 +144,7 @@
     <line x1="1030" y1="0" x2="280" y2="0" stroke="#3b6dd5" stroke-width="2" marker-end="url(#bl-blue)"/>
 
     <text x="660" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a">"3148 frames 28.92 seconds 108.86 fps"</text>
-    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">timedemo result line appears in qconsole.log — Ubuntu's grep matches</text>
+    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">timedemo result line appears in qconsole.log: Ubuntu's grep matches</text>
   </g>
 
   <!-- callout: raw write -->
@@ -152,7 +152,7 @@
     <rect x="0" y="0" width="200" height="58" rx="6" fill="#eff7f1" stroke="#a3cfb3" stroke-width="1"/>
     <text x="10" y="18" font-size="11" font-weight="700" fill="#0f6a4a">✓ raw write(), no buffering</text>
     <text x="10" y="34" font-size="10" fill="#2d4d3c">qconsole.log uses bare write()</text>
-    <text x="10" y="46" font-size="10" fill="#2d4d3c">— polling actually catches it</text>
+    <text x="10" y="46" font-size="10" fill="#2d4d3c">polling actually catches it</text>
   </g>
 
   <!-- =========================================================== -->
@@ -221,12 +221,12 @@
   <!-- AFTER LOOP :: median + CSV row visualisation                  -->
   <!-- =========================================================== -->
   <g transform="translate(60, 950)">
-    <text x="0" y="-2" font-size="14" font-weight="700" fill="#1a1a1a">After 3 runs — median lands in the rolling CSV</text>
+    <text x="0" y="-2" font-size="14" font-weight="700" fill="#1a1a1a">After 3 runs: median lands in the rolling CSV</text>
 
     <!-- CSV row visualisation -->
     <g transform="translate(0, 24)">
       <rect x="0" y="0" width="1200" height="78" rx="10" fill="#ffffff" stroke="#cbc4ad" stroke-width="1.2" filter="url(#bl-shadow)"/>
-      <text x="20" y="22" font-size="12" font-weight="700" fill="#1a1a1a">benchmarks/results.csv  (one row, appended atomically — &lt; PIPE_BUF so concurrent legs never interleave)</text>
+      <text x="20" y="22" font-size="12" font-weight="700" fill="#1a1a1a">benchmarks/results.csv  (one row, appended atomically: &lt; PIPE_BUF so concurrent legs never interleave)</text>
 
       <!-- header row -->
       <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5">
@@ -255,7 +255,7 @@
         </g>
       </g>
     </g>
-    <text x="0" y="124" font-size="11" fill="#888" font-style="italic">median = mean(run2, run3) — drops the cold-cache run 1, which is treated as a warm-up</text>
+    <text x="0" y="124" font-size="11" fill="#888" font-style="italic">median = mean(run2, run3): drops the cold-cache run 1, which is treated as a warm-up</text>
   </g>
 
   <!-- =========================================================== -->
@@ -263,9 +263,9 @@
   <!-- =========================================================== -->
   <g transform="translate(60, 1110)">
     <rect x="0" y="0" width="1200" height="78" rx="10" fill="#fbf1e6" stroke="#ecd9bd" stroke-width="1"/>
-    <text x="20" y="26" font-size="13" font-weight="700" fill="#1a1a1a">parallel-bench.sh — same loop, fanned out across all seven Macs at once</text>
+    <text x="20" y="26" font-size="13" font-weight="700" fill="#1a1a1a">parallel-bench.sh: same loop, fanned out across all seven Macs at once</text>
     <text x="20" y="48" font-size="11.5" fill="#444">Seven concurrent ssh sessions, seven concurrent timedemos. Row appends (&gt;&gt;) are atomic for writes &lt; 4 KB on Linux/macOS,</text>
-    <text x="20" y="64" font-size="11.5" fill="#444">so rows from different machines never interleave. Wall time ≈ slowest leg (yosemite G3) — full matrix sweep done in the time one G3 leg takes.</text>
+    <text x="20" y="64" font-size="11.5" fill="#444">so rows from different machines never interleave. Wall time ≈ slowest leg (yosemite G3): full matrix sweep done in the time one G3 leg takes.</text>
   </g>
 
   <!-- footer -->

@@ -263,8 +263,8 @@
   <!-- =========================================================== -->
   <g transform="translate(60, 1110)">
     <rect x="0" y="0" width="1200" height="78" rx="10" fill="#fbf1e6" stroke="#ecd9bd" stroke-width="1"/>
-    <text x="20" y="26" font-size="13" font-weight="700" fill="#1a1a1a">parallel-bench.sh — same loop, fanned out across all six Macs at once</text>
-    <text x="20" y="48" font-size="11.5" fill="#444">Six concurrent ssh sessions, six concurrent timedemos. Row appends (&gt;&gt;) are atomic for writes &lt; 4 KB on Linux/macOS,</text>
+    <text x="20" y="26" font-size="13" font-weight="700" fill="#1a1a1a">parallel-bench.sh — same loop, fanned out across all seven Macs at once</text>
+    <text x="20" y="48" font-size="11.5" fill="#444">Seven concurrent ssh sessions, seven concurrent timedemos. Row appends (&gt;&gt;) are atomic for writes &lt; 4 KB on Linux/macOS,</text>
     <text x="20" y="64" font-size="11.5" fill="#444">so rows from different machines never interleave. Wall time ≈ slowest leg (yosemite G3) — full matrix sweep done in the time one G3 leg takes.</text>
   </g>
 

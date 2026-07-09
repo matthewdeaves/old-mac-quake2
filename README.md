@@ -59,7 +59,9 @@ median of runs 2 & 3:
 
 The iMac G5 runs native 1440×900 only (its Leopard driver hangs on a mode
 switch) at ~47 fps — a deliberate visuals-over-framerate choice on that machine.
-Every other machine clears its floor (≥ 60 fps G4/Lion, ≥ 20 fps G3). † mini-g4
+Every other machine clears its floor (≥ 60 fps G4/Lion, ≥ 20 fps G3); on the G3
+the lower number is a deliberate trade, richer visuals over a bigger count, and
+it stays playable. † mini-g4
 figures are cool-machine; heat-soaked it drops to ~96/57. Live numbers in
 [`benchmarks/results.csv`](benchmarks/results.csv).
 

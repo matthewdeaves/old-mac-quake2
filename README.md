@@ -1,224 +1,118 @@
-# Old-Mac Quake II — six retro Macs, one fat binary
+# Quake II — old-Mac port
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](yquake2/LICENSE)
-[![Platform: PPC + Intel macOS](https://img.shields.io/badge/Platform-PPC%20%7C%20Intel%20macOS-lightgrey.svg)](#the-fleet)
-[![macOS: 10.3.9 → 15.7](https://img.shields.io/badge/macOS-10.3.9%20%E2%86%92%2015.7-success.svg)](#the-fleet)
+[![Platform: PPC + Intel macOS](https://img.shields.io/badge/Platform-PPC%20%7C%20Intel%20macOS-lightgrey.svg)](#tested-machines)
+[![macOS: 10.3.9 → 15.7](https://img.shields.io/badge/macOS-10.3.9%20%E2%86%92%2015.7-success.svg)](#tested-machines)
 [![Engine: yquake2 5.11](https://img.shields.io/badge/Engine-yquake2%205.11-red.svg)](https://github.com/yquake2/yquake2)
 
 <p align="center">
-  <img src="docs/icon-source/quake2-icon-256.png" width="200" alt="Quake II icon" />
+  <img src="docs/icon-source/quake2-icon-256.png" width="180" alt="Quake II icon" />
 </p>
 
-yquake2 5.11 port tuned to a fleet of retro Macs spanning 1999–2019. One source tree, one fat universal binary (PPC G3 + PPC G4 AltiVec + PPC G5 + Intel x86_64) inside a single self-contained `Quake2.app` bundle. Two config layers ship inside the .app: a per-arch baseline picked by the running fat slice, and a per-machine overlay dispatched by `sysctl hw.model` at boot — so it runs well on *any* G3/G4/G5/Intel Mac, best on the known ones.
+A Quake II port (yquake2 5.11) built as one fat PowerPC + Intel binary inside a
+single `Quake2.app`, tested on a range of old Macs — G3, G4, G5 and Intel, from a
+1999 Power Mac to a 2019 iMac. The app carries two config layers: a per-arch
+baseline picked by the running slice, and a per-machine overlay picked at boot by
+`sysctl hw.model`.
 
-> **Sister projects on the same fleet:** [`old-mac-quakespasm`](https://github.com/matthewdeaves/old-mac-quakespasm) (Quake 1) and [`old-mac-quake3`](https://github.com/matthewdeaves/old-mac-quake3) (Quake III Arena — early WIP, pinned to the last SDL 1.2 commit of ioquake3 so it runs on Panther/Tiger). Both share this project's build infrastructure, fat universal binary approach, and bench rack.
+> **About this project.** A personal project — I love Quake and I collect and
+> tinker with old Macs. My part is the setup and testing: the build, deploy and
+> benchmark scripts, and the per-machine settings. The engine and config changes
+> were made mostly **with AI (Claude), which I directed and checked against real
+> benchmarks on the machines**. The visual features are ported from KMQuake2 and
+> yquake2, not written from scratch.
 
 <p align="center">
-  <img src="docs/screenshots/yosemite.png" width="19%" alt="yosemite (G3 Panther) — BFG ball flying through corridor" />
-  <img src="docs/screenshots/sawtooth.png" width="19%" alt="sawtooth (G4 Tiger / GF2 MX) — BFG explosion combat" />
-  <img src="docs/screenshots/quicksilver.png" width="19%" alt="quicksilver (G4 Tiger / R9000) — Strogg combat" />
-  <img src="docs/screenshots/mini-g4.png" width="19%" alt="mini-g4 (G4 Tiger / R9200) — gold door, classic Q2" />
-  <img src="docs/screenshots/mini-intel.png" width="19%" alt="mini-intel (Lion / GMA 950) — corridor combat" />
+  <img src="docs/screenshots/yosemite.png" width="19%" alt="yosemite (G3 Panther)" />
+  <img src="docs/screenshots/sawtooth.png" width="19%" alt="sawtooth (G4 Tiger / GF2 MX)" />
+  <img src="docs/screenshots/quicksilver.png" width="19%" alt="quicksilver (G4 Tiger / R9000)" />
+  <img src="docs/screenshots/mini-g4.png" width="19%" alt="mini-g4 (G4 Tiger / R9200)" />
+  <img src="docs/screenshots/mini-intel.png" width="19%" alt="mini-intel (Lion / GMA 950)" />
 </p>
-<p align="center"><sub>Same binary, same demo, five GPU generations · 1999 → 2007 · ATI Rage 128, NVIDIA GF2 MX, ATI Radeon 9000 / 9200, Intel GMA 950</sub></p>
+<p align="center"><sub>Same binary, same demo, five GPU generations · 1999 → 2007</sub></p>
 
-## The fleet
+## Tested machines
 
-| Machine | CPU | GPU | OS | Slice | GPU era |
-|---|---|---|---|---|---|
-| **yosemite** PowerMac1,1 1999 | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.3.9 Panther | `ppc_750` | fixed-function |
-| **sawtooth** PowerMac3,1 1999 | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger | `ppc_7400` | fixed-function |
-| **quicksilver** PowerMac3,5 2001 | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger | `ppc_7400` | early shader ATI |
-| **mini-g4** PowerMac10,1 2005 | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger | `ppc_7400` | early shader ATI |
-| **imac-g5** PowerMac8,2 2004 (17" ALS) | 2.0 GHz PPC 970FX | ATI Radeon 9600 (RV351) 128 MB | 10.5.8 Leopard, native 1440×900 | `ppc970` | DX9 ATI |
-| **mini-intel** Macmini2,1 2007 | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion | `x86_64` | Intel integrated |
-| **imac-2019** iMac19,1 2019 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` | modern AMD discrete |
+| Machine | CPU | GPU | OS | Slice |
+|---|---|---|---|---|
+| **yosemite** PowerMac1,1 1999 | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.3.9 Panther | `ppc_750` |
+| **sawtooth** PowerMac3,1 1999 | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger | `ppc_7400` |
+| **quicksilver** PowerMac3,5 2001 | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger | `ppc_7400` |
+| **mini-g4** PowerMac10,1 2005 | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger | `ppc_7400` |
+| **imac-g5** PowerMac8,2 2004 | 2.0 GHz PPC 970FX | ATI Radeon 9600 128 MB | 10.5.8 Leopard (native 1440×900) | `ppc970` |
+| **mini-intel** Macmini2,1 2007 | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion | `x86_64` |
+| **imac-2019** iMac19,1 2019 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` |
 
-## Download & install
+## Framerate
 
-Grab the latest `.dmg` from the [Releases](../../releases) page — one disk image runs on **Mac OS X 10.3.9 Panther, 10.4 Tiger, 10.5 Leopard, 10.7 Lion, and modern macOS** (PowerPC G3/G4/G5 and 64-bit Intel). To install Quake II on a vintage Mac:
+`timedemo demo1`, with the per-machine settings each Mac actually ships with,
+median of runs 2 & 3:
 
-1. **Download** `Quake2-OldMac-*.dmg` and mount it.
-2. **Copy** `Quake2.app`, `ref_gl.so`, `q2ded`, and the `baseq2/` folder into one directory (e.g. `~/Desktop/quake2/`).
-3. **Add your retail data** — drop your own `pak0.pak`, `pak1.pak`, `pak2.pak` into `baseq2/`. **Also copy the whole `players/` folder** from your retail `baseq2/` — it holds the player models and skins (male/female/cyborg/crakhor); without it multiplayer models render missing or invisible. (`video/` cinematics are optional.) Retail Quake II is on Steam and GOG; the shareware `pak0.pak` also works.
-4. **Double-click** `Quake2.app`. The app auto-detects the machine and applies a hand-tuned per-model config, then opens **fullscreen** — at the panel's **native resolution** on iMac-class machines (a same-mode display capture, no resolution switch) and at a per-model tuned resolution on the tower/mini boxes. *(On the iMac G5, native same-mode capture is the only safe fullscreen — its ATI Radeon 9600 Leopard driver hard-hangs on a resolution mode switch; the engine enforces the capture on that hardware regardless of settings.)*
+| Machine | 640×480 | 1024×768 |
+|---|---:|---:|
+| iMac 27" (2019 / Radeon Pro 580X) | 712 | 726 |
+| Mac mini Intel (Lion / GMA 950) | 219 | 99 |
+| Mac mini G4 (Radeon 9200) † | 126 | 99 |
+| Sawtooth (G4 / GeForce2 MX) | 73 | 65 |
+| Quicksilver (G4 / Radeon 9000) | 69 | 65 |
+| Yosemite (G3 / Rage 128) | 46 | 25 |
 
-No installer, no admin, no system files touched. On modern macOS, clear Gatekeeper with `xattr -dr com.apple.quarantine Quake2.app` (not needed on Panther/Tiger/Lion).
+The iMac G5 runs native 1440×900 only (its Leopard driver hangs on a mode
+switch) at ~47 fps — a deliberate visuals-over-framerate choice on that machine.
+Every other machine clears its floor (≥ 60 fps G4/Lion, ≥ 20 fps G3). † mini-g4
+figures are cool-machine; heat-soaked it drops to ~96/57. Live numbers in
+[`benchmarks/results.csv`](benchmarks/results.csv).
 
-## Current build — `timedemo demo1.dm2` (median)
+## Features
 
-Live data: [`benchmarks/results.csv`](benchmarks/results.csv) · screenshots: [`docs/screenshots/`](docs/screenshots/) · per-machine cfgs: [`scripts/bundle/`](scripts/bundle/).
+- **One fat binary** (PPC G3 + G4 AltiVec + G5 + Intel x86_64) in a
+  self-contained `Quake2.app`; runs on Mac OS X 10.3.9 Panther through modern
+  macOS.
+- **Two config layers baked into the `.app`** — a per-arch baseline picked by
+  the running slice, and a per-machine overlay dispatched at boot by
+  `sysctl hw.model` (applied before video init so the renderer comes up in its
+  final mode). Every visual knob is a runtime cvar.
+- **GL1 renderer cherry-picks + KMQuake2 visual features** — cvar-driven fog,
+  underwater warp, group-draw batching, MSAA, energy-shell glow, lightmapped
+  glass/grates, water caustics, extended draw distance.
+- **World decals + per-weapon blast marks** — rocket, grenade, plasma, BFG and
+  railgun each leave a distinct mark on the surface they actually hit (ported
+  from KMQuake2's fragment clipper; `gl_decals`).
+- **Stencil shadows on every PowerPC machine**, with a soft blob fallback where
+  the GPU can't afford them.
+- **Native-res desktop fullscreen** — same-mode display capture; hardwired on
+  the iMac G5 where a mode switch hangs the Leopard driver.
+- Optional **Apple Watch "tactical computer" companion** (`watchlink`) — streams
+  live health / armor / ammo / inventory / objectives to an iPhone + Watch over
+  Bonjour; off by default. Companion app:
+  [quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch).
 
-| Machine | 640×480 | 1024×768 | Floor | Visual stack |
-|---|---:|---:|---:|---|
-| **imac-2019** | 711.75 | 726.40 | 60 | everything maxed (GPU never bound) + 8× MSAA + glows + lit glass + caustics + farsee |
-| **mini-intel** | 219.15 | 98.85 | 60 | picmip 0, trilinear, AF 8x, fog, waterwarp, group-draw, decals 64, 2× MSAA, **glows + lit glass + caustics + farsee + zfix** |
-| **imac-g5** | 46.80 † | 46.80 † | 50 † | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 64, **stencil shadows + glows + lit glass + caustics + 2× MSAA + zfix**; native 1440×900 only |
-| **mini-g4** | 96.05 \** | 56.95 \** | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **stencil shadows + glows + lit glass + caustics + zfix** |
-| **sawtooth** | 72.90 | 65.45 | 60 | picmip 0, trilinear, AF 2x, `gl_flashblend 1` halos, fog, waterwarp, decals 16, **stencil shadows** |
-| **quicksilver** | 69.30 | 65.30 | 60 | picmip 0, trilinear, AF 16x, dlights, OBB 4, retex, fog, waterwarp, group-draw, decals 32, 2× MSAA, **stencil shadows + glows + lit glass + caustics + zfix** \* |
-| **yosemite** | 46.40 | 25.20 | 20 | picmip 0, trilinear, alias shadows, AF 2x, GL_FOG, waterwarp, decals 8, **zfix** |
+## Get the latest release
 
-† imac-g5 ships **native 1440×900 same-mode fullscreen only** — the ATI R300 / Leopard driver hard-hangs the OS on a non-native fullscreen mode switch, so it can't drop resolution. The figure is the full production render (stencil shadows + glows + lit glass + caustics + **2× MSAA**, demo1; demo2 is 45.8). The 2.0 GHz 970 is CPU-bound by the visual stack at ~47 fps regardless of resolution (640/1024 windowed both measure 46.8). This is a deliberate visuals-over-framerate choice — dropping 2× MSAA → ~100 fps. Below the 60 fps fleet target by design (the G5's user floor is "≈50, visuals first").
+Download the latest disk image from
+[**Releases**](https://github.com/matthewdeaves/old-mac-quake2/releases/latest)
+(`Quake2-OldMac-<version>.dmg`) — one image runs on Mac OS X 10.3.9 Panther,
+Tiger, Leopard, Lion and modern macOS.
 
-\* quicksilver's LCD vsync caps both resolutions near 71 fps — visual features have not pushed fps below the cap, meaning there's spare GPU headroom we could spend on further effects.
-\** mini-g4 1024/640 here are **thermal** — the machine was sitting in direct sun during this grid; cool-machine numbers are ~99/126. The 56.95/96.05 figures are the worst observed, not steady-state. See MISTAKES.md.
+1. Mount the `.dmg` and copy `Quake2.app`, `ref_gl.so`, `q2ded` and the `baseq2/`
+   folder into one directory (e.g. `~/Desktop/quake2/`).
+2. **Add your retail data** — drop your own `pak0.pak`, `pak1.pak`, `pak2.pak`
+   into `baseq2/`, and copy the whole `players/` folder from your retail
+   `baseq2/` (models/skins — without it multiplayer models render invisible).
+   Retail Quake II is on Steam and GOG; the shareware `pak0.pak` also works.
+3. Double-click `Quake2.app`. It auto-detects the machine, applies the tuned
+   config and opens fullscreen. On modern macOS, clear Gatekeeper with
+   `xattr -dr com.apple.quarantine Quake2.app` (not needed on Panther/Tiger/Lion).
 
-**Fleet-wide stencil shadows (v2.5.1).** The whole PowerPC fleet now renders crisp projected stencil shadows, not the old blob fallback. The long-held belief that the Tiger ATI / GeForce2 MX drivers couldn't afford them came from a pre-AltiVec bench (a 60% cliff on the R9200); re-benched on real hardware in June 2026 the cost is small and every G4 stays above its feature floor (40 fps for feature work, visuals-over-framerate per machine): mini-g4 (R9200) ~15% (127→108 demo1), quicksilver (R9000 Pro) ~0% (65→65), sawtooth (GeForce2 MX) ~19% (74→60 demo1, 68 demo2). The grid above is an older snapshot — see [`benchmarks/results.csv`](benchmarks/results.csv) for live numbers.
+## Sister projects
 
-### First build vs current — fps traded for visual fidelity, by design
+Same machines, same tooling, other id engines:
+[**old-mac-quakespasm**](https://github.com/matthewdeaves/old-mac-quakespasm)
+(Quake) and [**old-mac-quake3**](https://github.com/matthewdeaves/old-mac-quake3)
+(Quake III Arena).
 
-Phase A landed a near-stock yquake2 5.11 with minimal config. Today the same binary ships ~18 visual / perf cherry-picks (KMQuake2 decals + fog + waterwarp, energy-shell glow, lightmapped glass/grates, water caustics, batched group-draw, MSAA, point-sprite particles, stb_image retex, per-machine HD-pak, multitex isolation, vsync default fix, AltiVec model interp, extended draw distance).
+## Credits & licence
 
-**The design constraint here is the playability floor, not the max fps number.** Every visual upgrade we ship costs a small slice of frame time, and on the older GPUs that adds up. The trade we're making — explicitly — is: every machine has to stay above its floor (20 fps on G3, 60 fps on G4/Intel), and within that envelope we spend the headroom on visuals. The negative deltas on yosemite, sawtooth, and quicksilver are not regressions; they are the bill for decals, fog, MSAA, alias shadows, trilinear, AF, gl_minlight, and friends.
-
-| Machine | Phase A 640 | Now 640 | Δ | Phase A 1024 | Now 1024 | Δ | Floor |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| imac-2019 | 709.20 | 711.75 | +0% | 701.60 | 726.40 | +4% | 60 ✓ |
-| mini-intel | 59.40 | **219.15** | **+269%** | 80.80 | 98.85 | +22% | 60 ✓ |
-| mini-g4 | 126.90 | 96.05 \** | −24% | 99.15 | 56.95 \** | −43% | 60 ✓ |
-| sawtooth | 95.00 | 72.90 | −23% | 82.90 | 65.45 | −21% | 60 ✓ |
-| quicksilver | 72.40 | 69.30 | −4% | 68.50 | 65.30 | −5% | 60 ✓ |
-| yosemite | 65.15 | 46.40 | **−29%** | 31.60 | 25.20 | **−20%** | 20 ✓ |
-
-How to read the rows:
-
-- **yosemite −29% / −20%** — the deliberate visual-cost case. A 1999 ATI Rage 128 is fillrate-bound, every per-pixel effect (fog, alias shadows, trilinear, AF, decals) takes a real bite. 25.20 fps at 1024 still clears the 20 fps floor — the game is playable, with a far richer visual stack than the Phase A baseline. If pure fps were the goal we'd strip these features back out, but that wasn't the goal.
-- **sawtooth / quicksilver −21% to −23%** — same trade on the early G4 GPUs (GeForce2 MX and Radeon 9000 Pro). Both still clear 60 fps.
-- **mini-g4 −43% at 1024** is partly the visual cost and partly thermal degradation after hours of continuous benching; cool-machine numbers sit around 97 fps. Documented in [`MISTAKES.md`](MISTAKES.md).
-- **mini-intel +275% at 640** is the vsync default fix — Apple's Quartz layer was leaving SDL's swap interval ON when the cvar was off, capping us at 60. Explicit `SDL_GL_SetAttribute(SDL_GL_SWAP_CONTROL, 0)` released the cap. A real bug fix, not a visual win.
-- **imac-2019 ≈ flat** — modern Polaris discrete GPU never hits a fillrate limit on GL1 fixed-function content; visual features cost nothing.
-
-If you want the Phase A "raw fps" build back, every visual cvar is runtime-toggleable per machine via `scripts/bundle/autoexec-<machine>.cfg` — set `gl_decals 0`, `gl_fog 0`, `gl_msaa_samples 0`, drop AF/trilinear, and yosemite goes back to ~30 fps at 1024.
-
-### Phase B/C features shipped (cherry-picked from yquake2-latest + KMQuake2)
-
-| Feature | cvar | Source | Cost on R128 |
-|---|---|---|---|
-| Cvar-driven linear/exp fog | `gl_fog` + range/color | KMQuake2 `r_fog.c` | -0.6 fps |
-| Underwater frustum sine-warp | `gl_waterwarp` | yquake2-latest | only underwater |
-| Lightmap subrect dynamic upload | `gl_lightmap_subrect` | QS port | no-op if `gl_dynamic 0` |
-| Group-draw batching (`qglDrawElements`) | `gl_groupdraw` | yquake2-latest `gl1_buffer.c` | -0.75 fps |
-| stb_image-based JPEG decode | — | vendored `stb_image.h` | drops libjpeg dep |
-| CFBundle HD-pak search path | — | `Q2_GetBundleHDPakPath` | one-time at FS init |
-| **World decals** — bullet / blood / Strogg green blood / scorch via BSP fragment clipping, plus **per-weapon blast marks**: rocket (big charred burn), grenade (scorch), plasma (blue-white), BFG (green), railgun (punch hole). Explosion impacts trace the nearest surface (walls/floor/ceiling), since the temp-entity packet carries no normal. Per-machine `gl_decal_max` cap 8 (G3) → 128 (modern); textures procedurally generated, shipped in-tree at `yquake2/baseq2-extra/decals/` | `gl_decals` `gl_decal_max` | KMQuake2 `r_fragment.c` (ported renderer-side) | ~0 (gl_dynamic 0, no overdraw on empty world) |
-| **MSAA** — `SDL_GL_MULTISAMPLE` wired through SDL backend; per-machine cap 0 (PPC fixed-func) → 8x (Polaris) | `gl_msaa_samples` | own port | n/a (off on R128) |
-| **Energy-shell glow** — sphere-map sheen on quad/invuln/etc. shells instead of flat colour | `gl_glows` | KMQuake2 (re-impl) | ~0 (shells only) |
-| **Lightmapped glass/grates** — translucent surfaces lit by the room instead of rendering "floating" | `gl_trans_lighting` | KMQuake2 (re-impl) | ~0 on demo |
-| **Water caustics** — animated additive caustic shimmer on water surfaces | `gl_caustics` | KMQuake2 (re-impl) | −1–3% (water in view) |
-| **Compiled vertex arrays** on the group-draw path; coplanar z-fix; extended draw distance | `gl_zfix` `gl_farsee` | own / yq2 | neutral |
-| **Native-res desktop fullscreen** — same-mode display capture (auto-fits any panel, no mode switch); hardwired on the iMac G5 where a mode switch hard-hangs the ATI R300 / Leopard driver | `vid_desktopfullscreen` | QS port (re-impl) | neutral |
-| **Drop/stencil shadows** — real projected shadow volumes, now on the **entire fleet** (all three G4s + G5 + Intel). A pre-AltiVec bench had flagged a 60% cost on the Tiger ATI driver; re-benched June 2026 it's ~0–19% per machine. Non-stencil machines fall back to a soft blob shadow | `gl_shadows` `gl_stencilshadow` | yq2 + own blob path | ~0 on G5, ≤19% on G4 |
-
-`gl_bloom` (fixed-function light bloom) is wired but **disabled** — too slow on PPC and visually incorrect on the GL1 path; see [`MISTAKES.md`](MISTAKES.md).
-
-## Tactical Computer — live Apple Watch companion
-
-A cvar-gated UDP feed (`src/client/cl_watchlink.c`) streams the marine's live
-state — health, armor, ammo, weapon, inventory, mission objectives, damage and
-pickups — as newline-delimited JSON. A companion iPhone app picks it up on the
-LAN and relays it to an Apple Watch, turning the wrist into Quake II's in-fiction
-**help computer**: an amber-phosphor terminal with damage haptics and event
-sounds. The watchOS / iOS app lives in its own repo —
-**[quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch)**.
-
-<p align="center">
-  <img src="docs/watch/standby.png" width="22%" alt="STANDBY — scanning the LAN for the game" />
-  <img src="docs/watch/hud-portrait.png" width="22%" alt="Live HUD — vitals, gauges, mission" />
-  <img src="docs/watch/death.png" width="22%" alt="Flatline — cracked glass + kill marker" />
-</p>
-<p align="center">
-  <img src="docs/watch/hud-landscape.png" width="50%" alt="Landscape HUD" />
-</p>
-<p align="center"><sub>iPhone relay app: STANDBY · live HUD · flatline · landscape — fed live from the PPC fleet</sub></p>
-
-**Off by default** — the whole feature is gated on the `watch_host` cvar (empty ⇒
-no socket, no per-frame work, no packets), so the fleet build and benchmarks are
-unaffected. The JSON wire format is endianness-proof on the big-endian PPC fleet
-and debuggable with `nc -ul 27999` or [`scripts/watchlink-listen.py`](scripts/watchlink-listen.py).
-Full protocol and integration points: [`docs/WATCHLINK.md`](docs/WATCHLINK.md).
-
-## How the binary picks its config
-
-<p align="center">
-  <img src="docs/images/architecture.svg" width="92%" alt="Architecture: Ubuntu orchestrator drives mini-intel cross-builds; deploy.sh ships one Quake2.app to all seven bench machines; sysctl hw.model dispatches the per-machine autoexec at boot" />
-</p>
-
-All six per-machine cfgs ship inside `Quake2.app/Contents/Resources/`. The engine ([`yquake2/src/common/misc.c`](yquake2/src/common/misc.c) → `Q2_ExecConfigFromBundle`, called from `Qcommon_Init` after `CL_Init`) reads the one matching the host via `sysctlbyname("hw.model", ...)`. Layered after `default.cfg` → `yq2.cfg` → `config.cfg` so its cvars win.
-
-## How it's built
-
-<p align="center">
-  <img src="docs/images/build-pipeline.svg" width="92%" alt="Build pipeline: edit on Ubuntu, rsync to mini-intel, four flock-serialised sub-builds (g3 + g4 + g5 + lion), lipo into one Mach-O universal in build/q2-fat" />
-</p>
-
-Cross-builds on mini-intel (last machine with working `gcc-4.0` + `MacOSX10.3.9.sdk` + `MacOSX10.4u.sdk`). Three flock-serialised sub-builds glued with `lipo -create` into `build/q2-fat/quake2`.
-
-## How it's benched
-
-<p align="center">
-  <img src="docs/images/bench-loop.svg" width="92%" alt="Bench loop: ssh kills stale processes, launches quake2 with timedemo, polls qconsole.log for the result line, fetches the raw log, appends one row to results.csv tagged with the commit hash" />
-</p>
-
-```bash
-scripts/build-fat.sh                              # 4-arch universal binary
-scripts/deploy.sh <machine>                       # ship to one of the 6 hosts
-scripts/bench.sh <machine> demo1 1024x768 3       # 3 timedemo runs, append to CSV
-scripts/parallel-bench.sh                         # full matrix, all reachable legs concurrent
-```
-
-Each cell in `benchmarks/results.csv` is tagged with the commit hash that produced it.
-
-## Run it from any folder on the Mac
-
-Drop `Quake2.app` and a `baseq2/` directory next to each other — anywhere: `~/Applications/Games/`, `~/Desktop/Quake2/`, `/Volumes/Some Disk/Quake/`. The bundle's `SDLMain.m` chdir's to the .app's parent on Finder launch, so the engine finds `baseq2/` adjacent. No installer, no system locations, no admin.
-
-```
-<your dir>/
-  Quake2.app/
-    Contents/
-      Info.plist
-      MacOS/quake2                   (fat: ppc750 + ppc7400 + ppc970 + x86_64)
-      MacOS/SDL.framework/           (fat: ppc + i386 + x86_64)
-      Resources/Quake2.icns
-      Resources/autoexec-<arch>.cfg × 4     (per-arch baseline, picked by slice)
-      Resources/autoexec-<machine>.cfg × 7  (per-machine overlay, picked by sysctl)
-      Resources/hd-pak/decals/       (bundled world-decal textures)
-  ref_gl.so
-  baseq2/
-    game.so
-    pak0.pak  pak1.pak  pak2.pak   ← supply your own
-    players/                        ← supply your own (player models/skins)
-```
-
-The repo does **not** distribute `.pak` files — bring your own from Steam / GOG / retail CD. Release builds with the fat .app are on the [Releases](../../releases) page.
-
-## Repo layout
-
-```
-yquake2/         engine source (vendored at QUAKE2_5_11 tag, 033550cd)
-scripts/
-  build.sh           single-arch build via mini-intel
-  build-fat.sh       4-arch lipo merge → build/q2-fat/
-  deploy.sh          rsync fat .app to one machine
-  make-dmg.sh        stage + hdiutil a distributable .dmg (built on Panther for max compat)
-  bench.sh           one demo × resolution
-  parallel-bench.sh  whole grid in parallel
-  screenshot.sh      capture in-game PNGs from one host
-  bundle/            Info.plist + autoexec-<arch>/<machine>.cfg files (shipped inside .app)
-benchmarks/      results.csv + raw qconsole.log per run
-docs/
-  images/        SVG architecture diagrams (rendered above)
-  icon-source/   high-res icon masters (1254² source + 512/256 derivatives)
-  screenshots/   per-machine in-game PNGs (demo1 + demo2)
-  HD_PACK.md     bundle-vs-user HD texture pack install paths
-MacOSX/          fat SDL.framework (ppc + i386 + x86_64), Quake2.icns
-```
-
-| Doc | Role |
-|---|---|
-| `PPC_PLAN.md` | Multi-phase roadmap (A bring-up, B GL1 cherry-picks, C visual-feature ports) |
-| `CLAUDE.md` | Durable tribal knowledge |
-| `MISTAKES.md` | Append-only log of approaches that failed |
-| `NEXT_ROUND_PLAN.md` | Forward-looking engine work (KMQuake2 decals / stencil shadows / bloom, AltiVec SIMD, MSAA, gamma) |
-| `docs/WATCHLINK.md` | The live player-state UDP feed driving the [Apple Watch companion](https://github.com/matthewdeaves/quake2-tactical-watch) |
+Built on [yquake2](https://github.com/yquake2/yquake2) and id Software's Quake II
+engine. GPLv2 (see [`yquake2/LICENSE`](yquake2/LICENSE)). Game data (`baseq2`
+paks) is **not** included — bring your own from Steam / GOG / retail CD.

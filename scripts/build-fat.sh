@@ -29,6 +29,25 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# Pin ONE Intel build host for the whole fat build and claim it up front, so all
+# four sub-builds and the final lipo use the same mini and no sister project
+# (QuakeSpasm/Q3/Half-Life) takes the box between slices. An explicit BUILD_HOST
+# from the caller always wins.
+if [ -z "${BUILD_HOST:-}" ]; then
+  BUILD_HOST="$(BUILD_LOCK_WAIT="${BUILD_LOCK_WAIT:-900}" \
+    "$REPO_ROOT/scripts/pick-build-host.sh" --acquire "quake2 build-fat")" || {
+    echo "[build-fat] no free Intel build host; see scripts/pick-build-host.sh --status" >&2
+    exit 1
+  }
+  export BUILD_HOST
+  # Absolute path: the trap must still resolve if anything ever cd's away.
+  trap '"$REPO_ROOT/scripts/pick-build-host.sh" --release "$BUILD_HOST" >/dev/null 2>&1; true' EXIT
+  echo "[build-fat] claimed build host: $BUILD_HOST (held for all four slices + lipo)"
+else
+  export BUILD_HOST
+  echo "[build-fat] using caller-supplied build host: $BUILD_HOST"
+fi
+
 # Sequential, not parallel — build.sh's flock already serialises, but
 # even with the flock the sub-builds would only ever run one at a time.
 # Running them as separate scripts.sh g3/g4/lion calls keeps the output
@@ -56,7 +75,11 @@ done
 # mini-intel, fuse there, scp the fat artifacts back. (Keeps the
 # toolchain assumption uniform with build.sh and avoids needing
 # llvm-lipo locally on the Ubuntu workstation.)
-BUILD_HOST="${BUILD_HOST:-mini-intel}"
+# BUILD_HOST was pinned (and claimed) at the top of this script, so the lipo runs
+# on the SAME mini that built the slices. Assert rather than re-defaulting: a second
+# "${BUILD_HOST:-mini-intel}" here could silently fuse on a different box than the
+# one the slices were staged to.
+: "${BUILD_HOST:?internal error: build host should have been pinned above}"
 echo "[build-fat] lipo -create on $BUILD_HOST"
 ssh "$BUILD_HOST" 'mkdir -p /tmp/q2-fat-stage && rm -rf /tmp/q2-fat-stage/*'
 for arch in g3 g4 g5 lion; do

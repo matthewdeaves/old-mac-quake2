@@ -8,13 +8,34 @@
 #
 # usage: scripts/build.sh <g3|g4|g5|lion>
 # output: build/q2-<target>/{quake2, ref_gl.so, baseq2/game.so, q2ded}
-# env:    BUILD_HOST (ssh alias, default 'mini-intel')
+# env:    BUILD_HOST (ssh alias; default: auto-picked from the free Intel minis
+#         by scripts/pick-build-host.sh)
+#         BUILD_HOSTS / BUILD_LOCK_WAIT — see scripts/pick-build-host.sh
 
 set -euo pipefail
 
 TARGET="${1:?usage: $0 <g3|g4|g5|lion>}"
-BUILD_HOST="${BUILD_HOST:-mini-intel}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# The cross-build host is an Intel Mac mini — there are now TWO interchangeable
+# ones (mini-intel, mini-intel2: same Macmini2,1 / 10.7.5 / identical toolchain).
+# When the caller has not pinned one, ask pick-build-host.sh for a host that is
+# reachable and idle, and CLAIM it for the duration so nothing grabs it mid-build.
+# The claim is a lock ON the mini, so it is visible to the QuakeSpasm/Q3/Half-Life
+# sister projects too — the flock below only serialises builds from THIS checkout.
+# build-fat.sh pins BUILD_HOST for all four slices, so this only fires for a
+# standalone build.sh run.
+BUILD_HOST_CLAIMED=0
+if [ -z "${BUILD_HOST:-}" ]; then
+  BUILD_HOST="$(BUILD_LOCK_WAIT="${BUILD_LOCK_WAIT:-900}" \
+    "$REPO_ROOT/scripts/pick-build-host.sh" --acquire "quake2 build.sh $TARGET")" || {
+    echo "build.sh: no free Intel build host; see scripts/pick-build-host.sh --status" >&2
+    exit 1
+  }
+  BUILD_HOST_CLAIMED=1
+  echo "[build] claimed build host: $BUILD_HOST"
+fi
+trap '[ "$BUILD_HOST_CLAIMED" = 1 ] && "$REPO_ROOT/scripts/pick-build-host.sh" --release "$BUILD_HOST" >/dev/null 2>&1; true' EXIT
 
 # Serialize concurrent invocations. Both targets rsync to mini-intel:quake2/
 # and `make -j` in the same dir — running in parallel races on .o files and

@@ -76,10 +76,23 @@ GL1 improvements cherry-pick cleanly. (Full rationale in git history / PPC_PLAN.
 | **mini-intel** Macmini2,1 (2007) | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion |
 | **imac-2019** iMac19,1 (2019) | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia |
 
-SSH aliases + legacy crypto: same `~/.ssh/config` as QuakeSpasm. **mini-intel**
-is the cross-build host (gcc-4.0 + 10.3.9/10.4u/10.5 SDKs). **Reuse, don't
-duplicate** — SSH config, toolchain, vendored prereqs, host-bin tooling all live
-on the QuakeSpasm side (details in `docs/BUILD.md`).
+SSH aliases + legacy crypto: same `~/.ssh/config` as QuakeSpasm. There are
+**TWO interchangeable Intel cross-build minis** (gcc-4.0 + 10.3.9/10.4u/10.5
+SDKs): **mini-intel** (10.188.1.190) and **mini-intel2** (10.188.1.216) — same
+Macmini2,1 / 10.7.5 / identical toolchain, so either can build any slice.
+`build.sh` / `build-fat.sh` no longer hardcode a host: they call
+`scripts/pick-build-host.sh --acquire` to take one that is reachable and idle,
+and release it on exit. So Q2 and the QuakeSpasm/Q3/Half-Life sister projects
+can now build **at the same time on different minis**. `BUILD_HOST=<alias>`
+pins one; `scripts/pick-build-host.sh --status` shows both.
+
+**Why the claim lives on the mini, not in the repo:** a per-checkout `flock`
+cannot see a build another repo (or another Claude) started on the same box.
+The picker locks `/tmp/.retro-build-lock` ON the host and also counts running
+compiler processes as busy, so it detects builds started outside it entirely.
+
+**Reuse, don't duplicate** — SSH config, toolchain, vendored prereqs, host-bin
+tooling all live on the QuakeSpasm side (details in `docs/BUILD.md`).
 
 `yosemite` and `yosemite-tiger` are **one machine on one IP** with two OS
 partitions — only one is booted at a time. Switch with
@@ -106,10 +119,11 @@ Build targets (chip-family, not machine-identity):
    `bench.sh` refuses non-native fullscreen on `imac-g5`) — **never bypass them
    or trigger a remote non-native mode switch on the G5.** Detail:
    `docs/imac-g5-leopard-port-notes.md` + `MISTAKES.md`.
-2. **Don't run PPC builds (g3/g4/g5) in parallel.** They rsync to the same
-   mini-intel dir and race `.o` files → wrong CPU-subtype stamp → crash.
-   `build.sh` flocks; `build-fat.sh` runs g3→g4→g5→lion sequentially. Detail:
-   `docs/BUILD.md`.
+2. **Don't run PPC builds (g3/g4/g5) in parallel on the SAME mini.** They rsync
+   to the same `quake2/` dir there and race `.o` files → wrong CPU-subtype stamp
+   → crash. `build.sh` flocks; `build-fat.sh` runs g3→g4→g5→lion sequentially and
+   now pins ONE claimed host for the whole run. (Two builds on *different* minis
+   are fine — that is the point of the second box.) Detail: `docs/BUILD.md`.
 3. **A smoke test is a demo run that auto-exits** (`bench.sh … demo1 … 1` or
    `smoke-dmg.sh`) — NEVER `+map` (grabs the display forever) or engine-load-only.
    A clean demo does NOT clear a *gameplay* crash; also test "start a new game"

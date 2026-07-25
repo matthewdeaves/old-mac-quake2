@@ -149,7 +149,7 @@ esac
 # QuakeSpasm Q1 sister project) drive the same Macs. A second game on a box
 # already running one corrupts the measurement and can wedge a fullscreen box.
 # Bail if anything Quake-ish is live; FORCE=1 overrides a stale process.
-BUSY="$(ssh "$HOST" "ps -axo comm,pid 2>/dev/null | grep -iE 'quake2|quakespasm|q2ded|/quake' | grep -v grep || true")"
+BUSY="$(ssh "$HOST" "ps ax 2>/dev/null | grep -iE 'quake2|quakespasm|q2ded|/quake' | grep -v grep || true")"
 if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
   echo "[bench $HOST] ABORT — $HOST is already running a game (shared bench):" >&2
   echo "$BUSY" | sed 's/^/    /' >&2
@@ -204,6 +204,20 @@ NOTES_CSV=$(echo "$NOTES_RAW" | tr ',' ';' | head -c 200)
 # O_CREAT|O_EXCL), so two parallel bench.sh procs racing on a missing
 # CSV produce exactly one header row.
 ( set -C; echo "timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_fps,median_fps,notes" > "$CSV" ) 2>/dev/null || true
+
+# Orphan cleanup. The per-run teardown below already handles the normal path;
+# this only fires when the SCRIPT dies (Ctrl-C, a parent shell going away, a
+# killed background job) with the engine still up on the target. That orphan
+# keeps rendering fullscreen with nobody polling it, and the next thing to touch
+# the machine launches on top of it — power-button territory on the Rage 128 and
+# the R300. Same TERM-grace-KILL policy as the run loop; costs nothing on a
+# normal exit because there is no engine left to find.
+bench_cleanup () {
+  ssh -o ConnectTimeout=10 "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 3; fi
+    killall -KILL quake2 2>/dev/null
+    true" 2>/dev/null || true
+}
+trap bench_cleanup EXIT INT TERM
 
 declare -a FPS
 for i in $(seq 1 $RUNS); do

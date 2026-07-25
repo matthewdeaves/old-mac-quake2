@@ -41,7 +41,7 @@ esac
 # QuakeSpasm Q1 sister project) drive the same Macs. Launching a second
 # fullscreen game on a box already running one wedges both. Bail if anything
 # Quake-ish is live; FORCE=1 overrides a stale process.
-BUSY="$(ssh "$HOST" "ps -axo comm,pid 2>/dev/null | grep -iE 'quake2|quakespasm|q2ded|/quake' | grep -v grep || true")"
+BUSY="$(ssh "$HOST" "ps ax 2>/dev/null | grep -iE 'quake2|quakespasm|q2ded|/quake' | grep -v grep || true")"
 if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
   echo "[smoke $HOST] ABORT — $HOST is already running a game (shared bench):" >&2
   echo "$BUSY" | sed 's/^/    /' >&2

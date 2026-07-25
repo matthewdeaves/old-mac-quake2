@@ -68,6 +68,7 @@ GL1 improvements cherry-pick cleanly. (Full rationale in git history / PPC_PLAN.
 | Machine | CPU | GPU | OS |
 |---|---|---|---|
 | **yosemite** PowerMac1,1 (1999) | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.3.9 Panther |
+| **yosemite-tiger** — the SAME Mac, 2nd partition | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.4.11 Tiger |
 | **sawtooth** PowerMac3,1 (1999) | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger |
 | **quicksilver** PowerMac3,5 (2001) | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger |
 | **mini-g4** PowerMac10,1 (2005) | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger |
@@ -80,12 +81,21 @@ is the cross-build host (gcc-4.0 + 10.3.9/10.4u/10.5 SDKs). **Reuse, don't
 duplicate** — SSH config, toolchain, vendored prereqs, host-bin tooling all live
 on the QuakeSpasm side (details in `docs/BUILD.md`).
 
+`yosemite` and `yosemite-tiger` are **one machine on one IP** with two OS
+partitions — only one is booted at a time. Switch with
+`ssh yosemite 'sudo bless --mount "/Volumes/<vol>" --setBoot'` then reboot
+(`scripts/host-bin/qsreboot.sh` on the QuakeSpasm side, or plain
+`sudo /sbin/reboot </dev/null` — **not** `sudo -n`, which Tiger's and Panther's
+sudo 1.6.x reject outright). `parallel-bench.sh` refuses to run both legs.
+
 Build targets (chip-family, not machine-identity):
-- `q2-g3` → yosemite (PPC 750, 10.3.9 SDK)
-- `q2-g4` → sawtooth + quicksilver + mini-g4 (PPC 7400 baseline, 10.4u SDK)
+- `q2-g3` → yosemite (PPC 750, 10.3.9 SDK, min 10.3)
+- `q2-g4` → sawtooth + quicksilver + mini-g4 (PPC 7400 baseline, **10.3.9 SDK,
+  min 10.3** — see rule 6 below; needs `-faltivec` + an explicit `-isystem` for
+  gcc's own `altivec.h`)
 - `q2-g5` → imac-g5 (PPC 970FX, 10.5 SDK, `-mcpu=970 -maltivec`; stamps a
   distinct `ppc970` Mach-O subtype so dyld prefers it on a G5)
-- `q2-lion` → mini-intel + imac-2019 (x86_64, native Lion toolchain)
+- `q2-lion` → mini-intel + imac-2019 (x86_64, native Lion toolchain, **min 10.6**)
 
 ## Critical rules — read before you act
 
@@ -114,6 +124,58 @@ Build targets (chip-family, not machine-identity):
    renderer comes up in the final mode with no refresh-DLL reload — applying it
    later hard-crashed the Rage128/Panther G3. Cfgs use `set CVAR VALUE` and ship
    comment-stripped. Detail: `docs/CONFIG.md`.
+6. **Every PPC slice carries its exact cpusubtype — never a generic `ppc (ALL)`.**
+   dyld and the kernel grade fat members by CPU subtype *alone*; the OS floor
+   plays no part. A generic `ppc` member matches every PowerPC host, so a fat of
+   `[ppc ALL, ppc7400, ppc970]` mis-grades on a G3 under Tiger/Leopard and the
+   binary **refuses to exec** (proven on hardware in the sister Half-Life port;
+   Panther's laxer 2003 dyld accepts it, which is what makes this easy to ship
+   unnoticed). `-mcpu=` normally stamps the subtype, but **`-faltivec` silently
+   defeats it** — which is exactly what the min-10.3 g4 slice needs. `build.sh`
+   therefore asserts the subtype on all four artifacts after every PPC build and
+   re-stamps the Mach-O header when it drifted. **Never remove that block, and
+   never assume the compiler got it right.** `make-dmg.sh` re-checks with
+   `lipo -archs`. Note `file` prints subtype 9 as `ppc_650` on a modern host —
+   a naming quirk, not a bad stamp; trust `lipo`.
+
+## Hard rule — building and compiling: verify, never assume
+
+An exit code of 0 is not evidence that the thing you wanted got built. Every
+one of these has actually bitten this project or its sister ports:
+
+- **Never trust "done" or a zero exit.** Check the artifact itself: `lipo -archs`
+  / `lipo -info` for slices, `otool -L` for what it links, `otool -h` for the
+  header. If you claim a build has a property, show the command that proves it.
+- **Stale binaries are the trap.** A failed build leaves the PREVIOUS run's
+  output in place, and every downstream check then passes on a file nobody meant
+  to ship. `build.sh` now `rm -rf`s `build/q2-$TARGET` before fetching, and runs
+  `make clean` on the build host — keep both.
+- **Rebuild the whole fat when in doubt.** `build/q2-fat` must come from one
+  `build-fat.sh` run. If you rebuild a single slice afterwards, the per-target
+  dir and the fat's member are no longer the same file. Prove they agree:
+  `lipo -thin <arch> build/q2-fat/quake2 -output /tmp/m && md5sum /tmp/m build/q2-<t>/quake2`.
+- **The PPC builds are NOT byte-reproducible** (~138 bytes differ between two
+  builds of identical source — embedded build metadata). So an md5 mismatch
+  across two separate build runs proves nothing; only compare artifacts from
+  the SAME run.
+- **Bump the version for every build that leaves this machine**, so what got
+  deployed is identifiable from Finder's Get Info, not just the console.
+  `deploy.sh` and `make-dmg.sh` stamp `CFBundleShortVersionString` /
+  `CFBundleVersion` from `git describe` (the static plist's `5.11` is upstream's
+  engine version and never changes).
+- **Verify what actually landed on the target**, not what you sent — `deploy.sh`
+  md5s the deployed binary against source, and `make-dmg.sh` mounts the finished
+  image and hashes the binaries inside it.
+
+## Hard rule — releases
+
+Fact-check the docs before tagging, every time: README (including the per-CPU
+OS floors and the framerate table), the in-DMG `README.txt`, and the SVG
+diagrams — those name SDKs and `-mmacosx-version-min` values and go stale
+silently. State plainly which configurations are **built but untested** rather
+than implying they are supported. The GitHub release needs real notes describing
+what changed and what was measured, and the attached DMG must be the verified
+one.
 
 ## Status
 

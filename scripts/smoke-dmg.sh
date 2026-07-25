@@ -12,7 +12,8 @@
 # artifact. See MISTAKES.md + memory/smoke-test-method.md.
 #
 # usage: scripts/smoke-dmg.sh <machine> [demo]
-#   machine: yosemite | mini-g4 | imac-g5 | mini-intel | imac-2019
+#   machine: yosemite | yosemite-tiger | sawtooth | quicksilver | mini-g4 |
+#            imac-g5 | mini-intel | imac-2019
 #   demo:    demo1 (default) | demo2
 #
 # After this passes, the human starts a NEW GAME by hand — the timedemo proves
@@ -25,6 +26,8 @@ DEMO="${2:-demo1}"
 
 case "$HOST" in
   yosemite)    TIMEOUT=300; COOLDOWN=5 ;;
+  # Same PowerMac1,1 on its Tiger partition — same hardware, same budget.
+  yosemite-tiger) TIMEOUT=300; COOLDOWN=5 ;;
   sawtooth)    TIMEOUT=180; COOLDOWN=3 ;;
   quicksilver) TIMEOUT=120; COOLDOWN=2 ;;
   mini-g4)     TIMEOUT=120; COOLDOWN=2 ;;

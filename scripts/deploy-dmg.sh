@@ -8,7 +8,9 @@
 # wasn't). See MISTAKES.md.
 #
 # usage: scripts/deploy-dmg.sh <machine> [version]
-#   machine: yosemite | mini-g4 | imac-g5 | mini-intel | imac-2019 (ssh alias)
+#   machine: yosemite | yosemite-tiger | sawtooth | quicksilver | mini-g4 |
+#            imac-g5 | mini-intel | imac-2019 (ssh alias). yosemite-tiger is
+#            the same Mac as yosemite on its 10.4 partition.
 #   version: e.g. v2.2.4  (default: newest dist/Quake2-OldMac-*.dmg)
 #
 # Preserves the user's game data: baseq2/pak*.pak, players/, video/ are left

@@ -23,9 +23,33 @@ x86_64`; we override per target via `OSX_ARCH=` in `scripts/build.sh`.
 
 PPC build flag override pattern (matches QuakeSpasm):
 - G3:   `-isysroot /Developer/SDKs/MacOSX10.3.9.sdk -mmacosx-version-min=10.3.9 -arch ppc -mcpu=750 -O3`
-- G4:   `-isysroot /Developer/SDKs/MacOSX10.4u.sdk  -mmacosx-version-min=10.4   -arch ppc -mcpu=7400 -maltivec -mabi=altivec -O3 -mtune=7450`
+- G4:   `-isysroot /Developer/SDKs/MacOSX10.3.9.sdk -mmacosx-version-min=10.3   -arch ppc -mcpu=7400 -faltivec -maltivec -mabi=altivec -O3 -mtune=7450 -isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include`
 - G5:   `-isysroot /Developer/SDKs/MacOSX10.5.sdk   -mmacosx-version-min=10.5   -arch ppc -mcpu=970 -maltivec -mabi=altivec -O3 -DQ2_ARCH_PPC970`
-- Lion: `-arch x86_64 -mmacosx-version-min=10.7 -O3`
+- Lion: `-arch x86_64 -mmacosx-version-min=10.6 -O3`
+
+### Why the G4 slice is built at min-10.3 (issue #1, 2026-07-25)
+
+dyld grades fat members by **CPU subtype alone** — the OS floor plays no part —
+so a G4 booted on Panther is handed the `ppc7400` slice regardless of what it
+was built against, with no fallback to the min-10.3 `ppc750` one. Building the
+G4 slice at 10.3 is therefore the only thing that makes that machine work.
+AltiVec codegen is independent of the SDK, so the Tiger G4s lose nothing:
+same-commit A/B on 2026-07-25 measured quicksilver 57.10 → 57.35 fps and
+mini-g4 38.80 → 38.80 fps (demo1 @ 1024×768), i.e. no change. The Lion slice
+dropped to min-10.6 for the same reason on the Intel side (issue #5): a 64-bit
+Mac on Snow Leopard grades to the `x86_64` slice and has nowhere else to go.
+Neither of those two configurations exists in the fleet, so both are **built
+but untested** — say so in the README rather than claiming support.
+
+Two flags the 10.3.9 SDK forces on the G4 build that 10.4u did not need:
+- **`-faltivec`** — enables Apple's context-sensitive `vector` keyword, which
+  `r_mesh.c`'s AltiVec lerp path uses. Without it the build fails to parse
+  `vector float`. **It also silently defeats `-mcpu=7400`'s cpusubtype
+  stamping**, emitting a generic `ppc (ALL)` slice — see the subtype section
+  below and `MISTAKES.md` 2026-07-25.
+- **`-isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include`** —
+  `<altivec.h>` is a **compiler** header, not an SDK one, and `-isysroot`
+  hides it.
 
 The `-DQ2_ARCH_PPC970` flag is load-bearing: Apple gcc defines no
 `__ppc970__` macro for `-mcpu=970` (only `__VEC__`/`__ALTIVEC__`/`__ppc__`,
@@ -127,6 +151,43 @@ differing by `-mcpu`), so the wrong-subtype stamp is even easier to hit.
 `scripts/build-fat.sh` runs g3→g4→g5→lion strictly sequentially for the
 same reason. (`build.sh` also `make clean`s before each slice so a stale
 `.o` from a different `-mcpu` can't leak into the wrong slice.)
+
+## The cpusubtype stamp is asserted, never assumed
+
+`build.sh` checks the Mach-O cpusubtype of all four artifacts (`quake2`,
+`q2ded`, `ref_gl.so`, `baseq2/game.so`) after every PPC build and **re-stamps
+the header** if it isn't the expected `ppc750` / `ppc7400` / `ppc970`. This is
+not belt-and-braces; the g4 slice needs it on every single build, because
+`-faltivec` silently emits a generic `ppc (ALL)` subtype.
+
+Why a generic subtype is fatal rather than cosmetic: dyld and the kernel grade
+fat members by subtype alone, and `ppc ALL` matches *every* PowerPC host. A fat
+of `[ppc ALL, ppc7400, ppc970]` mis-grades on a G3 under Tiger or Leopard and
+the binary refuses to exec — proven on hardware in the sister Half-Life port,
+whose v1.0.0 could not launch on the G3 under Tiger for exactly this reason.
+Panther's laxer 2003 dyld accepts it, so the bug hides on the machine you would
+naturally test first.
+
+`make-dmg.sh` re-checks with `lipo -archs` before packaging. Note `file` prints
+subtype 9 as `ppc_650` on a modern host — a naming quirk of the tool, not a bad
+stamp. Trust `lipo`.
+
+## Stale artifacts, and what a clean build actually proves
+
+An exit code of 0 does not mean the thing you wanted got built:
+
+- `build.sh` `rm -rf`s `build/q2-$TARGET` **before** fetching. Without that, a
+  failed build leaves the previous run's binaries in place and every downstream
+  check — `lipo`, `file`, even the subtype assertion — passes on an artifact
+  nobody meant to ship.
+- `build/q2-fat` must come from one `build-fat.sh` run. If you rebuild a single
+  slice afterwards, the per-target dir and the fat's member are different files.
+  Prove they agree rather than assuming:
+  `lipo -thin ppc7400 build/q2-fat/quake2 -output /tmp/m && md5sum /tmp/m build/q2-g4/quake2`
+- The PPC builds are **not byte-reproducible** — roughly 138 bytes of embedded
+  build metadata differ between two builds of identical source. So an md5
+  mismatch across two separate runs proves nothing; only compare artifacts
+  produced by the same run.
 
 ## Deploy is fat-only (no per-target mode)
 

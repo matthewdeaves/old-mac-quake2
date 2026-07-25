@@ -31,7 +31,7 @@
 
 set -euo pipefail
 
-TARGET="${1:?usage: $0 <yosemite|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019>}"
+TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019>}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 case "$TARGET" in
@@ -42,6 +42,26 @@ case "$TARGET" in
     HOST=yosemite
     RSYNC_EXTRA="--protocol=29"
     GAME_DATA_DIR='Desktop/Quake 2/baseq2'   # we'll create this if missing
+    ;;
+  yosemite-tiger)
+    # The SAME PowerMac1,1 as `yosemite`, booted from its second partition
+    # (10.4.11 Tiger). One IP, one OS at a time — switch with `bless --mount
+    # /Volumes/<vol> --setBoot` and a reboot. It gets its own target rather
+    # than riding on `yosemite` so bench rows record the right OS, but it is
+    # NOT a second machine: never drive both at once.
+    #
+    # No --protocol=29 here. That shim exists for Panther's rsync 2.5.x;
+    # Tiger ships 2.6.3, which speaks protocol 29 natively. Note 2.6.3 is
+    # still too old for macOS 15's openrsync (which always sends --dirs,
+    # rsync 2.6.4+) — use the Homebrew rsync on the orchestrator, see
+    # CLAUDE.md.
+    #
+    # hw.model still reads PowerMac1,1, so the autoexec-yosemite overlay
+    # applies unchanged, and the ppc750 slice is min-10.3 so it loads
+    # forward onto Tiger.
+    HOST=yosemite-tiger
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Desktop/Quake 2/baseq2'
     ;;
   sawtooth)
     HOST=sawtooth
@@ -96,6 +116,22 @@ echo "[deploy] stage Quake2.app bundle"
 APP="$STAGE/Quake2.app"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$STAGE/baseq2"
 cp "$REPO_ROOT/scripts/bundle/Info.plist" "$APP/Contents/Info.plist"
+
+# Stamp the PORT release version into the bundle so a human can tell which
+# build is installed from Finder's Get Info, not just from the engine
+# console. The static plist carries upstream's engine version (5.11), which
+# never changes between our releases and so identifies nothing.
+Q2_PORT_VERSION="${Q2_PORT_VERSION:-$(git -C "$REPO_ROOT" describe --tags --always --dirty 2>/dev/null || echo unknown)}"
+/usr/libexec/PlistBuddy \
+  -c "Set :CFBundleShortVersionString 5.11-oldmac-$Q2_PORT_VERSION" \
+  -c "Add :CFBundleVersion string $Q2_PORT_VERSION" \
+  "$APP/Contents/Info.plist" >/dev/null 2>&1 || \
+/usr/libexec/PlistBuddy \
+  -c "Set :CFBundleShortVersionString 5.11-oldmac-$Q2_PORT_VERSION" \
+  -c "Set :CFBundleVersion $Q2_PORT_VERSION" \
+  "$APP/Contents/Info.plist" >/dev/null
+echo "[deploy] bundle version: 5.11-oldmac-$Q2_PORT_VERSION"
+
 cp "$REPO_ROOT/MacOSX/Quake2.icns"        "$APP/Contents/Resources/"
 cp "$BUILD_DIR/quake2"                    "$APP/Contents/MacOS/"
 cp -a "$REPO_ROOT/MacOSX/SDL.framework"   "$APP/Contents/MacOS/"
@@ -132,7 +168,7 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # a wide margin. (v2.2.0 shipped un-stripped and hit this; fixed v2.2.1.)
 for cfg in controls \
            ppc750 ppc7400 ppc970 x86_64 \
-           yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
+           yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \
     | grep -v '^[[:space:]]*$' \
@@ -238,9 +274,19 @@ elif [ "$(ssh "$HOST" "[ -f '$GAME_DATA_DIR/pak0.pak' ] && echo yes || echo no")
       cp -rf \"\$SRC/\" \"\$DST/\"
       echo '[deploy] player models copied from local source install'
     fi"
+elif [ "$(ssh "$HOST" '[ -f ~/Desktop/quake2/baseq2/pak0.pak ] && echo yes || echo no')" = "yes" ]; then
+  # The deploy dir already holds real paks from an earlier round. That IS
+  # the self-contained state this step exists to reach, so there is nothing
+  # to do — and nothing to warn about. Without this branch the script fell
+  # through to the error below and failed a perfectly good deploy whenever
+  # the workstation had no .game-data/ cache and the machine's ORIGINAL
+  # install directory ($GAME_DATA_DIR) had since been cleared out. The pak
+  # rsync above excludes pak*.pak from --delete precisely so this survives.
+  echo "[deploy] paks already present in $HOST:~/Desktop/quake2/baseq2/ — nothing to copy"
+  ssh "$HOST" 'ls -la ~/Desktop/quake2/baseq2/pak*.pak | sed "s|.*/||"' || true
 else
   echo "deploy.sh: no game data on $HOST and none in .game-data/ — populate one" >&2
-  echo "  hint: rsync -av 'quicksilver:Desktop/Quake 2/baseq2/pak*.pak' .game-data/baseq2/" >&2
+  echo "  hint: rsync -av 'quicksilver:Desktop/quake2/baseq2/pak*.pak' .game-data/baseq2/" >&2
   exit 1
 fi
 

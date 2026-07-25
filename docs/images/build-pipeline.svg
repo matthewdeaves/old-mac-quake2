@@ -22,7 +22,7 @@
 
   <!-- Title -->
   <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Build pipeline: four slices, one fat binary</text>
-  <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/build-fat.sh</tspan> on Ubuntu: runs four flock-serialised sub-builds on the Lion mini, then lipos them into one Mach-O universal</text>
+  <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/build-fat.sh</tspan> on the orchestration Mac: runs four flock-serialised sub-builds on the Lion mini, then lipos them into one Mach-O universal</text>
 
   <!-- Vertical guide rail with stage numbers down the left -->
   <g transform="translate(50, 130)">
@@ -39,8 +39,8 @@
     <g transform="translate(100, 0)">
       <rect x="0" y="0" width="1170" height="92" rx="10" fill="#ffffff" stroke="#e0d8c0" stroke-width="1" filter="url(#bp-shadow)"/>
       <rect x="0" y="0" width="6" height="92" rx="3" fill="#e95420"/>
-      <text x="22" y="28" font-size="15" font-weight="700" fill="#1a1a1a">Edit on Ubuntu</text>
-      <text x="22" y="48" font-size="12" fill="#777">All editing happens on Linux. Lion is never touched directly except as a build slave.</text>
+      <text x="22" y="28" font-size="15" font-weight="700" fill="#1a1a1a">Edit on the orchestration Mac</text>
+      <text x="22" y="48" font-size="12" fill="#777">All editing happens on the modern Mac. Lion is never touched directly except as a build slave.</text>
       <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#444">
         <text x="22" y="74">~/quake2/yquake2/src/*.{c,h,m}   ·   git, vim/Claude Code, scripts/</text>
       </g>
@@ -62,7 +62,7 @@
 
     <g transform="translate(100, 0)">
       <rect x="0" y="0" width="1170" height="78" rx="10" fill="#fff5e9" stroke="#e7c79c" stroke-width="1.2" filter="url(#bp-shadow)"/>
-      <text x="22" y="28" font-size="14" font-weight="700" fill="#1a1a1a">Sync sources Ubuntu → mini-intel</text>
+      <text x="22" y="28" font-size="14" font-weight="700" fill="#1a1a1a">Sync sources orchestrator → mini-intel</text>
       <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#444">
         <text x="22" y="56">rsync -av --partial --inplace --delete --exclude=.git --exclude='*.o' --exclude=build/ --exclude=benchmarks/ --exclude=prereqs/  ~/quake2/  mini-intel:quake2/</text>
       </g>
@@ -110,12 +110,12 @@
         <rect x="0" y="0" width="282" height="140" rx="10" fill="#ffffff" stroke="#d3cce4" stroke-width="1" filter="url(#bp-shadow)"/>
         <rect x="0" y="0" width="6" height="140" rx="3" fill="#8b5cf6"/>
         <text x="20" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh g4</text>
-        <text x="20" y="44" font-size="11" fill="#888">PowerPC 7400 + AltiVec · Tiger 10.4</text>
+        <text x="20" y="44" font-size="11" fill="#888">PowerPC 7400 + AltiVec · Panther 10.3.9</text>
         <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#333">
           <text x="20" y="68">CC = /usr/bin/gcc-4.0</text>
-          <text x="20" y="84">SDK = MacOSX10.4u.sdk</text>
-          <text x="20" y="100">CFLAGS = -mcpu=7400 -maltivec</text>
-          <text x="20" y="116">         -mabi=altivec -mtune=7450 -O3</text>
+          <text x="20" y="84">SDK = MacOSX10.3.9.sdk</text>
+          <text x="20" y="100">CFLAGS = -mcpu=7400 -faltivec -maltivec</text>
+          <text x="20" y="116">         -mabi=altivec -mtune=7450 -min=10.3</text>
         </g>
       </g>
       <!-- g5 -->
@@ -136,12 +136,12 @@
         <rect x="0" y="0" width="282" height="140" rx="10" fill="#ffffff" stroke="#bfe2d4" stroke-width="1" filter="url(#bp-shadow)"/>
         <rect x="0" y="0" width="6" height="140" rx="3" fill="#10b981"/>
         <text x="20" y="26" font-size="14" font-weight="700" fill="#1a1a1a">build.sh lion</text>
-        <text x="20" y="44" font-size="11" fill="#888">x86_64 · Lion 10.7 · native</text>
+        <text x="20" y="44" font-size="11" fill="#888">x86_64 · built on Lion · native</text>
         <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#333">
           <text x="20" y="68">CC = /usr/bin/clang  (Apple LLVM 2.9)</text>
           <text x="20" y="84">SDK = (default Lion toolchain)</text>
           <text x="20" y="100">CFLAGS = -arch x86_64 -O3</text>
-          <text x="20" y="116">         -mmacosx-version-min=10.7</text>
+          <text x="20" y="116">         -mmacosx-version-min=10.6</text>
         </g>
       </g>
     </g>
@@ -173,7 +173,7 @@
     <!-- merge down to lipo box -->
     <path d="M 660 690 L 660 728" marker-end="url(#bp-ar-green)"/>
   </g>
-  <text x="660" y="710" text-anchor="middle" font-size="10.5" font-style="italic" fill="#0f8a5f">four slices ready · lipo runs on Lion (Linux doesn't ship lipo)</text>
+  <text x="660" y="710" text-anchor="middle" font-size="10.5" font-style="italic" fill="#0f8a5f">four slices ready · lipo runs on Lion, where the old cctools live</text>
 
   <!-- ============================================================ -->
   <!-- Stage 4 :: lipo                                                 -->
@@ -197,7 +197,7 @@
   <g stroke="#3b6dd5" stroke-width="2" fill="none">
     <path d="M 660 822 L 660 856" marker-end="url(#bp-ar-blue)"/>
   </g>
-  <text x="676" y="846" font-size="11" font-style="italic" fill="#666">scp back to Ubuntu</text>
+  <text x="676" y="846" font-size="11" font-style="italic" fill="#666">scp back to the orchestrator</text>
 
   <!-- ============================================================ -->
   <!-- Stage 5 :: deliverable                                          -->

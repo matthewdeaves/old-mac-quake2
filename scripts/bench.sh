@@ -2,7 +2,9 @@
 # Run a Q2 timedemo benchmark on a target machine.
 # Assumes the bundle is already deployed (scripts/deploy.sh first).
 #
-# usage: scripts/bench.sh <yosemite|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019> <demo> <WxH> [runs]
+# usage: scripts/bench.sh <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019> <demo> <WxH> [runs]
+#   yosemite-tiger is the SAME Mac as yosemite on its 10.4 partition — one
+#   OS is booted at a time, so the two are never both live.
 #   demo:  demo1 | demo2 | demo3   (the .dm2 suffix is added automatically)
 #   WxH:   1024x768 | 640x480 | ...
 #   runs:  default 3
@@ -70,6 +72,21 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 W="${RES%x*}"; H="${RES#*x}"
 
+# Reject a malformed resolution instead of silently benching nonsense.
+# On 2026-06-06 nine runs were recorded with RES="1" — almost certainly
+# `bench.sh mini-g4 demo1 1` meant as "1 run". The parameter expansions above
+# then yielded W=1 H=1, so the engine rendered a 1x1 pixel frame and reported
+# 108-128 fps. Those numbers went into docs/STATUS.md and the machine configs
+# as evidence that stencil shadows cost only ~15% and sat "well above the
+# floor". The real figure at 1024x768 is 38.8 fps. A bench that measures the
+# wrong thing is worse than no bench: it gets quoted.
+case "$RES" in
+  [0-9]*x[0-9]*) ;;
+  *) echo "bench.sh: resolution must be WxH (e.g. 1024x768), got '$RES'" >&2
+     echo "  usage: $0 <target> <demo> <WxH> [runs]  — runs is the FOURTH arg" >&2
+     exit 2 ;;
+esac
+
 # ---- iMac G5 (ATI R300 / Leopard) headless-safety rail ---------------
 # The Radeon 9600 (R300) Leopard driver HARD-HANGS the whole OS on a
 # fullscreen video-mode SWITCH to a non-native resolution: grey screen,
@@ -115,6 +132,10 @@ fi
 # settle time on yosemite, 2s on the G4s, 1s elsewhere.
 case "$TARGET" in
   yosemite)    HOST=yosemite;    TIMEOUT=300; COOLDOWN=5 ;;
+  # Same PowerMac1,1 as `yosemite`, booted from its Tiger partition — same
+  # IP, one OS at a time. Same Rage 128 fragility, so the same 5s cooldown.
+  yosemite-tiger)
+               HOST=yosemite-tiger; TIMEOUT=300; COOLDOWN=5 ;;
   sawtooth)    HOST=sawtooth;    TIMEOUT=180; COOLDOWN=3 ;;
   quicksilver) HOST=quicksilver; TIMEOUT=120; COOLDOWN=2 ;;
   mini-g4)     HOST=mini-g4;     TIMEOUT=120; COOLDOWN=2 ;;
@@ -151,6 +172,7 @@ mkdir -p "$RAW_DIR"
 # hardware column won't lie.
 case "$TARGET" in
   yosemite)    META_CPU="PPC 750 @ 449MHz";    META_GPU="ATI Rage 128 16MB";          META_OS="10.3.9 Panther" ;;
+  yosemite-tiger) META_CPU="PPC 750 @ 449MHz"; META_GPU="ATI Rage 128 16MB";          META_OS="10.4.11 Tiger" ;;
   sawtooth)    META_CPU="PPC 7400 @ 500MHz";   META_GPU="NVIDIA GeForce2 MX 32MB";    META_OS="10.4.11 Tiger" ;;
   quicksilver) META_CPU="PPC 7450 @ 733MHz";   META_GPU="ATI Radeon 9000 Pro 64MB";   META_OS="10.4.11 Tiger" ;;
   mini-g4)     META_CPU="PPC 7447A @ 1.25GHz"; META_GPU="ATI Radeon 9200 32MB";       META_OS="10.4.11 Tiger" ;;

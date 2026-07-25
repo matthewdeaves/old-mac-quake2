@@ -36,16 +36,16 @@
 
   <!-- Title -->
   <text x="750" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Old-Mac Quake II: build and bench rack</text>
-  <text x="750" y="76" text-anchor="middle" font-size="14" fill="#666">One Ubuntu workstation orchestrates · the Lion mini cross-builds for PPC and benches itself · five PPC + two Intel Macs run timedemo</text>
+  <text x="750" y="76" text-anchor="middle" font-size="14" fill="#666">One modern Mac orchestrates · the Lion mini cross-builds for PPC and benches itself · five PPC + two Intel Macs run timedemo</text>
 
   <!-- ============================================================ -->
-  <!-- ZONE 1 :: Ubuntu workstation                                   -->
+  <!-- ZONE 1 :: orchestration Mac                                    -->
   <!-- ============================================================ -->
   <g transform="translate(530, 142)">
     <rect x="0" y="0" width="440" height="106" rx="10" fill="#ffffff" stroke="#e0d8c0" stroke-width="1" filter="url(#card-shadow)"/>
     <rect x="0" y="0" width="440" height="6" rx="3" fill="#e95420"/>
-    <text x="22" y="34" font-size="16" font-weight="700" fill="#1a1a1a">Ubuntu workstation</text>
-    <text x="22" y="54" font-size="12" fill="#777">x86_64 Linux · the only machine touched directly</text>
+    <text x="22" y="34" font-size="16" font-weight="700" fill="#1a1a1a">Orchestration Mac</text>
+    <text x="22" y="54" font-size="12" fill="#777">Apple silicon macOS · the only machine touched directly</text>
     <g font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="11" fill="#444">
       <text x="22" y="78">git · vim · scripts/build.sh · scripts/bench.sh</text>
       <text x="22" y="94">scripts/parallel-bench.sh · benchmarks/results.csv</text>
@@ -58,7 +58,7 @@
     </g>
   </g>
 
-  <!-- Down arrows: Ubuntu → mini-intel build host -->
+  <!-- Down arrows: orchestrator → mini-intel build host -->
   <g stroke="#e95420" stroke-width="2" fill="none">
     <path d="M 670 248 L 670 348" marker-end="url(#arr-orange)"/>
   </g>
@@ -96,11 +96,11 @@
       <rect x="335" y="0" width="318" height="124" rx="8" fill="#fbfbfb" stroke="#dcd4bd" stroke-width="1"/>
       <rect x="335" y="0" width="6" height="124" rx="3" fill="#8b5cf6"/>
       <text x="355" y="22" font-size="13" font-weight="700" fill="#1a1a1a">target: g4</text>
-      <text x="355" y="40" font-size="11" fill="#777">PowerPC 7400 · Tiger 10.4.11 · AltiVec</text>
+      <text x="355" y="40" font-size="11" fill="#777">PowerPC 7400 · Panther 10.3.9 · AltiVec</text>
       <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#333">
-        <text x="355" y="64">CC = gcc-4.0  +  MacOSX10.4u.sdk</text>
-        <text x="355" y="80">-mcpu=7400 -maltivec -mabi=altivec</text>
-        <text x="355" y="96">-mtune=7450 -O3 -arch ppc</text>
+        <text x="355" y="64">CC = gcc-4.0  +  MacOSX10.3.9.sdk</text>
+        <text x="355" y="80">-mcpu=7400 -faltivec -maltivec</text>
+        <text x="355" y="96">-mabi=altivec -mtune=7450 -min=10.3</text>
       </g>
       <text x="355" y="116" font-size="10.5" fill="#0f8a5f" font-weight="700">→ ppc7400 slice (one binary, three G4s)</text>
 
@@ -120,11 +120,11 @@
       <rect x="1005" y="0" width="318" height="124" rx="8" fill="#fbfbfb" stroke="#dcd4bd" stroke-width="1"/>
       <rect x="1005" y="0" width="6" height="124" rx="3" fill="#10b981"/>
       <text x="1025" y="22" font-size="13" font-weight="700" fill="#1a1a1a">target: lion</text>
-      <text x="1025" y="40" font-size="11" fill="#777">x86_64 Core 2 Duo · Lion 10.7 · native</text>
+      <text x="1025" y="40" font-size="11" fill="#777">x86_64 Core 2 Duo · built on Lion · native</text>
       <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#333">
         <text x="1025" y="64">CC = clang  (Apple LLVM 2.9-based)</text>
         <text x="1025" y="80">-arch x86_64 -O3</text>
-        <text x="1025" y="96">-mmacosx-version-min=10.7</text>
+        <text x="1025" y="96">-mmacosx-version-min=10.6</text>
       </g>
       <text x="1025" y="116" font-size="10.5" fill="#0f8a5f" font-weight="700">→ x86_64 slice</text>
     </g>
@@ -173,7 +173,7 @@
   <!-- ZONE 3 :: Bench rack: seven machines                          -->
   <!-- ============================================================ -->
   <g transform="translate(60, 678)">
-    <text x="0" y="0" font-size="13" fill="#666">Each runs <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#333">+timedemo demo&lt;n&gt;.dm2</tspan>; qconsole.log returns to Ubuntu, parsed into a CSV row tagged with the commit hash</text>
+    <text x="0" y="0" font-size="13" fill="#666">Each runs <tspan font-family="ui-monospace, Menlo, Consolas, monospace" fill="#333">+timedemo demo&lt;n&gt;.dm2</tspan>; qconsole.log returns to the orchestrator, parsed into a CSV row tagged with the commit hash</text>
 
     <!-- 7 machine cards · width 188, step 199 (x: 0 199 398 597 796 995 1194) -->
     <g transform="translate(-1, 24)">
@@ -186,7 +186,7 @@
         <g font-size="10.5" fill="#333">
           <text x="14" y="76">CPU: PPC 750 @ 449 MHz</text>
           <text x="14" y="94">GPU: ATI Rage 128 · 16 MB</text>
-          <text x="14" y="112">OS: 10.3.9 Panther</text>
+          <text x="14" y="112">OS: 10.3.9 + 10.4.11</text>
           <text x="14" y="130">Pipeline: fixed-function</text>
         </g>
         <line x1="14" y1="150" x2="174" y2="150" stroke="#e8e1cb" stroke-width="1"/>
@@ -334,7 +334,7 @@
     <line x1="0" y1="-14" x2="1380" y2="-14" stroke="#e0d8c0" stroke-width="1"/>
     <g font-size="11" fill="#555">
       <circle cx="6" cy="0" r="4" fill="#e95420"/>
-      <text x="16" y="3">Ubuntu: orchestrator</text>
+      <text x="16" y="3">Mac: orchestrator</text>
 
       <circle cx="185" cy="0" r="4" fill="#5fb1d8"/>
       <text x="195" y="3">G3 / Panther / Rage 128</text>

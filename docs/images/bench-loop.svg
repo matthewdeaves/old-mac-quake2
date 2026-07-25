@@ -21,17 +21,17 @@
   <rect width="1320" height="1240" fill="#faf6ef"/>
 
   <!-- Title -->
-  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Bench loop: Ubuntu drives, target executes, qconsole.log returns</text>
+  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Bench loop: the orchestrator drives, target executes, qconsole.log returns</text>
   <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/bench.sh &lt;target&gt; &lt;demo&gt; &lt;WxH&gt;</tspan> · one cell = three independent timedemos · median(run2, run3) drops the cold-cache run 1</text>
 
   <!-- =========================================================== -->
   <!-- ACTORS at top                                                 -->
   <!-- =========================================================== -->
-  <!-- Ubuntu actor -->
+  <!-- orchestrator actor -->
   <g transform="translate(120, 110)">
     <rect x="0" y="0" width="280" height="70" rx="10" fill="#ffffff" stroke="#e7c79c" stroke-width="1.4" filter="url(#bl-shadow)"/>
     <rect x="0" y="0" width="6" height="70" rx="3" fill="#e95420"/>
-    <text x="22" y="28" font-size="15" font-weight="700" fill="#1a1a1a">Ubuntu workstation</text>
+    <text x="22" y="28" font-size="15" font-weight="700" fill="#1a1a1a">Orchestration Mac</text>
     <text x="22" y="48" font-size="11.5" fill="#777">orchestrator · runs scripts/bench.sh</text>
     <text x="22" y="62" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="10.5" fill="#888">writes benchmarks/results.csv</text>
   </g>
@@ -66,11 +66,11 @@
   <!-- STEP 1 :: pre-cleanup                                         -->
   <!-- =========================================================== -->
   <g transform="translate(0, 220)">
-    <!-- numbered marker on Ubuntu side -->
+    <!-- numbered marker on orchestrator side -->
     <circle cx="260" cy="0" r="14" fill="#e95420" stroke="#fff" stroke-width="2.5"/>
     <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
 
-    <!-- arrow Ubuntu → Target -->
+    <!-- arrow orchestrator → Target -->
     <line x1="280" y1="0" x2="1036" y2="0" stroke="#e95420" stroke-width="2" marker-end="url(#bl-orange)"/>
 
     <!-- command label above the arrow -->
@@ -114,7 +114,7 @@
     <circle cx="260" cy="0" r="14" fill="#e95420" stroke="#fff" stroke-width="2.5"/>
     <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">3</text>
 
-    <!-- self-loop arrow on Ubuntu side -->
+    <!-- self-loop arrow on orchestrator side -->
     <path d="M 268 -8 C 320 -28 320 28 268 8" stroke="#e95420" stroke-width="1.8" fill="none" marker-end="url(#bl-orange)"/>
     <text x="328" y="-2" font-size="11" font-weight="700" fill="#e95420">poll every 1s</text>
 
@@ -122,7 +122,7 @@
     <line x1="365" y1="0" x2="1036" y2="0" stroke="#e95420" stroke-width="2" stroke-dasharray="6 3" marker-end="url(#bl-orange)"/>
 
     <text x="700" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">ssh</tspan>  grep -q 'frames.*seconds.*fps' qconsole.log</text>
-    <text x="700" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">Ubuntu polls the log file via ssh until the timedemo result line appears (or TIMEOUT)</text>
+    <text x="700" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">The orchestrator polls the log file via ssh until the timedemo result line appears (or TIMEOUT)</text>
   </g>
 
   <!-- callout: integer sleep -->
@@ -134,17 +134,17 @@
   </g>
 
   <!-- =========================================================== -->
-  <!-- STEP 4 :: match found, target → ubuntu                        -->
+  <!-- STEP 4 :: match found, target → orchestrator                   -->
   <!-- =========================================================== -->
   <g transform="translate(0, 580)">
     <circle cx="1050" cy="0" r="14" fill="#3b6dd5" stroke="#fff" stroke-width="2.5"/>
     <text x="1050" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">4</text>
 
-    <!-- arrow Target → Ubuntu (returning data) -->
+    <!-- arrow Target → orchestrator (returning data) -->
     <line x1="1030" y1="0" x2="280" y2="0" stroke="#3b6dd5" stroke-width="2" marker-end="url(#bl-blue)"/>
 
     <text x="660" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a">"3148 frames 28.92 seconds 108.86 fps"</text>
-    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">timedemo result line appears in qconsole.log: Ubuntu's grep matches</text>
+    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">timedemo result line appears in qconsole.log: the orchestrator's grep matches</text>
   </g>
 
   <!-- callout: raw write -->
@@ -184,7 +184,7 @@
     <line x1="1030" y1="0" x2="280" y2="0" stroke="#3b6dd5" stroke-width="2" marker-end="url(#bl-blue)"/>
 
     <text x="660" y="-16" text-anchor="middle" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="12" fill="#1a1a1a"><tspan font-weight="700">scp</tspan>  target:~/.yq2/baseq2/qconsole.log  →  benchmarks/raw/&lt;commit&gt;_&lt;target&gt;_&lt;demo&gt;_&lt;res&gt;_run&lt;n&gt;.log</text>
-    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">log file copies up to Ubuntu, tagged with the commit hash exported from parallel-bench.sh</text>
+    <text x="660" y="20" text-anchor="middle" font-size="11" fill="#888" font-style="italic">log file copies up to the orchestrator, tagged with the commit hash exported from parallel-bench.sh</text>
   </g>
 
   <!-- =========================================================== -->
@@ -194,9 +194,9 @@
     <circle cx="260" cy="0" r="14" fill="#0f8a5f" stroke="#fff" stroke-width="2.5"/>
     <text x="260" y="5" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">7</text>
 
-    <!-- self action on Ubuntu side -->
+    <!-- self action on orchestrator side -->
     <rect x="280" y="-30" width="700" height="58" rx="8" fill="#eff7f1" stroke="#a3cfb3" stroke-width="1.2"/>
-    <text x="296" y="-10" font-size="13" font-weight="700" fill="#1a1a1a">Parse → CSV row (Ubuntu only)</text>
+    <text x="296" y="-10" font-size="13" font-weight="700" fill="#1a1a1a">Parse → CSV row (orchestrator only)</text>
     <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#2d4d3c">
       <text x="296" y="8">FPS=$(grep 'frames.*seconds.*fps' qconsole.log | awk '{print $5}')</text>
       <text x="296" y="22">echo "$TS,$COMMIT,$TARGET,$DEMO,$RES,$run1,$run2,$run3,$MEDIAN" &gt;&gt; results.csv</text>
@@ -264,7 +264,7 @@
   <g transform="translate(60, 1110)">
     <rect x="0" y="0" width="1200" height="78" rx="10" fill="#fbf1e6" stroke="#ecd9bd" stroke-width="1"/>
     <text x="20" y="26" font-size="13" font-weight="700" fill="#1a1a1a">parallel-bench.sh: same loop, fanned out across all seven Macs at once</text>
-    <text x="20" y="48" font-size="11.5" fill="#444">Seven concurrent ssh sessions, seven concurrent timedemos. Row appends (&gt;&gt;) are atomic for writes &lt; 4 KB on Linux/macOS,</text>
+    <text x="20" y="48" font-size="11.5" fill="#444">Seven concurrent ssh sessions, seven concurrent timedemos. Row appends (&gt;&gt;) are atomic for writes &lt; 4 KB on macOS,</text>
     <text x="20" y="64" font-size="11.5" fill="#444">so rows from different machines never interleave. Wall time ≈ slowest leg (yosemite G3): full matrix sweep done in the time one G3 leg takes.</text>
   </g>
 

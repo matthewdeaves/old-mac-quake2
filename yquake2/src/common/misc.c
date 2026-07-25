@@ -419,9 +419,34 @@ Qcommon_Init(int argc, char **argv)
 			{ "PowerMac3,1",  "autoexec-sawtooth"    },
 			{ "PowerMac3,5",  "autoexec-quicksilver" },
 			{ "PowerMac10,1", "autoexec-mini-g4"     },
-			{ "PowerMac8,2",  "autoexec-imac-g5"     },
 			{ "Macmini2,1",   "autoexec-mini-intel"  },
 			{ "iMac19,1",     "autoexec-imac-2019"   },
+			/*
+			 * iMac G5 family (ppc970). 8,2 is the bench unit (17" ALS,
+			 * Radeon 9600); 8,1 is the 2004 original and 12,1 the 2005
+			 * iSight. All three need the overlay, not just the baseline:
+			 * the ppc970 baseline asks for 1024x768, which on an R300
+			 * iMac is a fullscreen MODE SWITCH — the one thing the
+			 * Leopard Radeon 9600 driver cannot survive. The overlay's
+			 * vid_desktopfullscreen turns that into a same-mode capture.
+			 * A G5 left unmapped is therefore a hard hang, so map the
+			 * whole family. (An NVIDIA-GPU G5 is not at risk but gets
+			 * native res here too, which is what it wants anyway.)
+			 */
+			{ "PowerMac8,1",  "autoexec-imac-g5"     },
+			{ "PowerMac8,2",  "autoexec-imac-g5"     },
+			{ "PowerMac12,1", "autoexec-imac-g5"     },
+			/*
+			 * iMac G4 "sunflower" family (ppc7400). 4,2 = 15" Flat Panel
+			 * 2002; 6,1 / 6,3 = the USB 2.0 15"/17"/20" models. Every one
+			 * of these GPUs is GL 1.x fixed-function and non-R300, so
+			 * there is no mode-switch hazard. UNTESTED — no iMac G4 in
+			 * the fleet; a wrong model id just falls back to the ppc7400
+			 * baseline, which is safe.
+			 */
+			{ "PowerMac4,2",  "autoexec-imac-g4"     },
+			{ "PowerMac6,1",  "autoexec-imac-g4"     },
+			{ "PowerMac6,3",  "autoexec-imac-g4"     },
 		};
 		char model[64];
 		size_t mlen = sizeof(model);

@@ -25,8 +25,34 @@ machines, sane generic on everything else"):
   into the ppc7400 branch.
 - **Layer 2 — per-machine overlay** (`autoexec-<machine>.cfg`): selected
   at RUNTIME via `sysctlbyname("hw.model", ...)`, layered AFTER the
-  baseline so it wins on the six known fleet boxes. Unknown models keep
-  just the Layer-1 baseline.
+  baseline so it wins on the known boxes. Unknown models keep just the
+  Layer-1 baseline.
+
+### The machine map, and where it deliberately differs from the sister ports
+
+The map in `misc.c` covers more models than the fleet contains, because an
+unmapped model is not always harmless:
+
+- **iMac G5 — `PowerMac8,1` / `PowerMac8,2` / `PowerMac12,1`.** All three map to
+  `autoexec-imac-g5`. This is a **safety** entry, not a tuning one: the `ppc970`
+  baseline asks for 1024×768, which on an R300 iMac is a fullscreen *mode
+  switch* — the one thing the Leopard Radeon 9600 driver cannot survive. The
+  overlay's `vid_desktopfullscreen` makes it a same-mode capture instead. Only
+  `8,2` is in the fleet; `8,1` (2004 original) and `12,1` (2005 iSight) are
+  mapped so they can't fall through to the hazardous default.
+- **iMac G4 — `PowerMac4,2` / `PowerMac6,1` / `PowerMac6,3`.** Map to
+  `autoexec-imac-g4`. **Untested — there is no iMac G4 here.** It takes the
+  sawtooth visual stack, which is the validated floor for the weakest member of
+  the family (700 MHz + GeForce2 MX); faster ones leave framerate on the table,
+  which is the right way round for a profile nobody has run.
+
+**Deliberate divergence from QuakeSpasm:** that port's `imac-g4` overlay takes
+the panel's native resolution via `vid_desktopfullscreen`. This one pins
+1024×768 instead. The 17"/20" sunflower panels are 1440×900 / 1680×1050, and a
+GeForce4 MX filling those with this visual stack would fall well short of the
+G4 floor, whereas 1024×768 is the resolution every other G4 overlay here is
+tuned and benched at. The mode switch that implies is safe on these GPUs — the
+hard-hang hazard is specific to the R300, and no iMac G4 shipped one.
 
 All layers append to `Cbuf` in order (controls → baseline → overlay), so
 each later layer's `set` lines override the earlier. See
@@ -65,9 +91,9 @@ combined config over the old fixed `cmd_text_buf` and caused a
 8 KB→64 KB in `cmdparser.c`; see MISTAKES.md).
 
 End-user install: drop `Quake2.app` + your own `baseq2/pak*.pak` next
-to each other. The .app travels with all four per-arch baselines + all
-six machines' per-machine overlays inside it — same .app runs on G3
-Panther, G4 Tiger, G5 Leopard, Intel Lion, and modern Sequoia.
+to each other. The .app travels with all four per-arch baselines + every
+per-machine overlay inside it — same .app runs on G3 Panther, G4 Tiger,
+G5 Leopard, Intel Lion, and modern Sequoia.
 
 ## Toggleable knobs (custom cvars this fork adds)
 

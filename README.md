@@ -43,6 +43,29 @@ baseline picked by the running slice, and a per-machine overlay picked at boot b
 | **mini-intel** Macmini2,1 2007 | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion | `x86_64` |
 | **imac-2019** iMac19,1 2019 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` |
 
+### Which OS each CPU needs
+
+The binary carries one slice per CPU family, each stamped with its exact CPU subtype:
+
+| CPU | Slice | OS needed | Tested on |
+|---|---|---|---|
+| G3 (750) | `ppc750` | 10.3.9 Panther or later | 10.3.9 |
+| G4 (7400 / 7450 / 7447A) | `ppc7400` | 10.3.9 Panther or later | 10.4.11 |
+| G5 (970) | `ppc970` | **10.5 Leopard — a G5 on 10.3 or 10.4 is not supported** | 10.5.8 |
+| Intel, 64-bit | `x86_64` | 10.6 Snow Leopard or later | 10.7.5 and 15.7 |
+
+`dyld` picks a slice by CPU alone; the OS plays no part in it. A Mac running an OS
+older than its slice needs gets that slice anyway rather than falling back to a lower
+one, and won't launch — which is why the G3 and G4 slices are both built at min 10.3
+even though no G4 here runs Panther. Two rows are honest about the gap between what is
+built and what is tested: **a G4 on Panther and an Intel Mac on Snow Leopard should both
+work but neither has been run on hardware** (no such machine in the fleet). The G5 is the
+exception — its slice genuinely needs 10.5, so that row is a real floor, not a gap in
+testing.
+
+32-bit-only Intel Macs (Core Duo / Core Solo, 2006) have no slice at all: there is no
+`i386` build, and no such machine here to make one on.
+
 ## Framerate
 
 `timedemo demo1`, with the per-machine settings each Mac actually ships with,
@@ -50,32 +73,43 @@ median of runs 2 & 3:
 
 | Machine | 640×480 | 1024×768 |
 |---|---:|---:|
-| iMac 27" (2019 / Radeon Pro 580X) | 712 | 726 |
-| Mac mini Intel (Lion / GMA 950) | 219 | 99 |
-| Mac mini G4 (Radeon 9200) † | 126 | 99 |
-| Sawtooth (G4 / GeForce2 MX) | 73 | 65 |
-| Quicksilver (G4 / Radeon 9000) | 69 | 65 |
-| Yosemite (G3 / Rage 128) | 46 | 25 |
+| Mac mini Intel (Lion / GMA 950) | 207.9 | 92.6 |
+| Sawtooth (G4 / GeForce2 MX) † | 72.9 | 65.5 |
+| Mac mini G4 (Radeon 9200) | 73.9 | 38.8 |
+| Quicksilver (G4 / Radeon 9000) | 67.0 | 57.6 |
+| Yosemite (G3 / Rage 128) † | 46.4 | 25.2 |
+| iMac 27" (2019 / Radeon Pro 580X) † | 698.8 | 732.6 |
 
 The iMac G5 runs native 1440×900 only (its Leopard driver hangs on a mode
-switch) at ~47 fps — a deliberate visuals-over-framerate choice on that machine.
-Every other machine clears its floor (≥ 60 fps G4/Lion, ≥ 20 fps G3); on the G3
-the lower number is a deliberate trade, richer visuals over a bigger count, and
-it stays playable. † mini-g4
-figures are cool-machine; heat-soaked it drops to ~96/57. Live numbers in
-[`benchmarks/results.csv`](benchmarks/results.csv).
+switch) at 46.8 fps — a deliberate visuals-over-framerate choice there.
+
+† Not benched for this release — sawtooth, the G3 and the 2019 iMac were all
+offline. Those three rows are carried forward from before the v2.5.1
+stencil-shadow rollout, so the two G4-era numbers in particular are likely
+optimistic; treat them as stale rather than current.
+
+**On the G4 numbers.** Earlier releases quoted ~99–108 fps at 1024×768 for the
+Mac mini G4. That figure was wrong: the benches behind it were accidentally run
+at a 1×1-pixel render (a `1` landed in the resolution argument where the run
+count was meant to go), so they measured CPU cost with essentially no fill work
+and got quoted as if they were real. Every number in the table above is a
+genuine full-resolution run on a freshly rebooted machine. The honest position
+is that the mini G4 sits just under the 40 fps target at 1024×768 with the full
+visual stack, and comfortably over it at 640×480. `scripts/bench.sh` now
+rejects a malformed resolution instead of quietly benching nonsense. Live
+numbers in [`benchmarks/results.csv`](benchmarks/results.csv).
 
 ## How it's built and benchmarked
 
-One Ubuntu box drives all seven Macs over SSH. The Lion mini does double duty:
+One modern Mac drives the whole fleet over SSH. The Lion mini does double duty:
 it cross-builds the four PowerPC/Intel slices and benches itself. These diagrams
 cover the setup, the build pipeline and the timedemo bench loop.
 
-![Build and bench rack: one Ubuntu box drives seven Macs via the Lion mini cross-build host](docs/images/architecture.svg)
+![Build and bench rack: one orchestration Mac drives the fleet via the Lion mini cross-build host](docs/images/architecture.svg)
 
 ![Build pipeline: four slices (ppc750, ppc7400, ppc970, x86_64) lipo'd into one fat binary](docs/images/build-pipeline.svg)
 
-![Bench loop: Ubuntu launches a timedemo over SSH, reads qconsole.log back, and the median lands in results.csv](docs/images/bench-loop.svg)
+![Bench loop: the orchestration Mac launches a timedemo over SSH, reads qconsole.log back, and the median lands in results.csv](docs/images/bench-loop.svg)
 
 ## Features
 

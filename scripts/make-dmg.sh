@@ -87,6 +87,22 @@ mkdir -p "$APP/Contents/MacOS" "$RESOURCES" "$IMG/baseq2"
 
 echo "[make-dmg] stage Quake2.app (same layout as deploy.sh)"
 cp    "$REPO_ROOT/scripts/bundle/Info.plist" "$APP/Contents/Info.plist"
+
+# Stamp the PORT release version into the bundle (same as deploy.sh) so the
+# installed build is identifiable from Finder's Get Info. The static plist's
+# 5.11 is upstream's engine version and never changes between our releases.
+# $VERSION here is the release label the DMG is named after, so the bundle
+# and the disk image can never disagree about which build this is.
+/usr/libexec/PlistBuddy \
+  -c "Set :CFBundleShortVersionString 5.11-oldmac-$VERSION" \
+  -c "Add :CFBundleVersion string $VERSION" \
+  "$APP/Contents/Info.plist" >/dev/null 2>&1 || \
+/usr/libexec/PlistBuddy \
+  -c "Set :CFBundleShortVersionString 5.11-oldmac-$VERSION" \
+  -c "Set :CFBundleVersion $VERSION" \
+  "$APP/Contents/Info.plist" >/dev/null
+echo "[make-dmg] bundle version: 5.11-oldmac-$VERSION"
+
 cp    "$REPO_ROOT/MacOSX/Quake2.icns"        "$RESOURCES/"
 cp -a "$REPO_ROOT/MacOSX/SDL.framework"      "$APP/Contents/MacOS/"
 cp    "$BUILD_DIR/quake2"                    "$APP/Contents/MacOS/"
@@ -104,7 +120,7 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # garbled config, R300 GPU wedge on the iMac G5). Same strip as deploy.sh.
 for cfg in controls \
            ppc750 ppc7400 ppc970 x86_64 \
-           yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
+           yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \
     | grep -v '^[[:space:]]*$' \
@@ -133,9 +149,23 @@ on retro Macs from 1999 to today. ONE universal binary (PowerPC G3 + PowerPC
 G4/AltiVec + PowerPC G5 + Intel x86_64); the right code slice and the right
 per-machine visual/perf config are picked automatically at launch.
 
-Supported: Mac OS X 10.3.9 Panther (G3) and up — Tiger (G4), Leopard (G5),
-Lion, through modern Intel macOS. (PowerPC G3/G4/G5 and 64-bit Intel only —
-pre-Lion 32-bit Intel Macs are not supported.)
+WHICH MAC OS EACH CPU NEEDS
+---------------------------
+dyld picks a slice by CPU alone — the OS floor plays no part in the choice, so
+a Mac running an OS older than its slice needs gets that slice anyway and won't
+launch. The real floors:
+
+   G3 (750)                 10.3.9 Panther or later
+   G4 (7400/7450/7447A)     10.3.9 Panther or later
+   G5 (970)                 10.5 Leopard  — a G5 on 10.3/10.4 is NOT supported
+   Intel, 64-bit            10.6 Snow Leopard or later
+
+Two of those are built but untested: no G4 on Panther and no Intel Mac on Snow
+Leopard exist in the test fleet. They should work; nobody has proven it.
+
+32-bit-only Intel Macs (Core Duo / Core Solo, 2006) have no slice at all and
+cannot run this build. Apple Silicon runs the x86_64 slice under Rosetta 2 —
+there is no native arm64 slice.
 
 INSTALL
 -------

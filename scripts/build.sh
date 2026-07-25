@@ -55,10 +55,24 @@ case "$TARGET" in
     OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=750 -O3 -F../MacOSX -Wl,-w"
     ;;
   g4)
+    # Built against the 10.3.9 SDK at min-10.3, NOT 10.4u/min-10.4 (issue #1).
+    # dyld grades slices by CPU subtype alone — the OS floor plays no part —
+    # so a G4 booted on Panther is handed this ppc7400 slice regardless, with
+    # no fallback to the min-10.3 ppc750 one. Building it at 10.3 is what makes
+    # that machine work; AltiVec codegen is independent of the SDK, so the
+    # Tiger G4s lose nothing (A/B benched, see docs/STATUS.md).
     CC=/usr/bin/gcc-4.0
-    SDK=/Developer/SDKs/MacOSX10.4u.sdk
-    VMIN=10.4
-    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=7400 -maltivec -mabi=altivec -mtune=7450 -O3 -F../MacOSX -Wl,-w"
+    SDK=/Developer/SDKs/MacOSX10.3.9.sdk
+    VMIN=10.3
+    # -faltivec: enables Apple's context-sensitive `vector` keyword, which
+    # r_mesh.c's AltiVec lerp path needs. Required against the 10.3.9 SDK and
+    # not against 10.4u. It has a nasty side effect — it silently defeats
+    # -mcpu=7400's cpusubtype stamping, leaving a generic `ppc (ALL)` slice
+    # that the Tiger/Leopard kernel mis-grades on a G3. The post-fetch
+    # assert-and-re-stamp block below is what catches that; do not remove it.
+    # -isystem <gcc-4.0 include>: r_mesh.c includes <altivec.h>, which is a
+    # COMPILER header, not an SDK one — -isysroot hides it.
+    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=7400 -faltivec -maltivec -mabi=altivec -mtune=7450 -O3 -isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include -F../MacOSX -Wl,-w"
     ;;
   g5)
     # iMac G5 (PowerMac8,2, single 970FX @ 2.0 GHz) on Leopard 10.5.8.
@@ -89,8 +103,16 @@ case "$TARGET" in
   lion)
     # Native x86_64 on Lion. Use clang for modern C support. No -isysroot
     # — let clang use its default (Lion's Xcode 4.6.x SDK).
+    #
+    # min-10.6, not 10.7 (issue #5). Same slice-grading argument as the G4
+    # above: a 64-bit Intel Mac left on Snow Leopard grades to this x86_64
+    # slice and has nowhere else to go, so the floor may as well be the
+    # oldest the toolchain can emit. Lowering the deployment target only
+    # weakens what the linker may assume about the host — the Lion SDK
+    # still supplies the headers — and this engine is plain C with no
+    # libc++ dependency, so there is nothing here that needs 10.7.
     CC=/usr/bin/clang
-    VMIN=10.7
+    VMIN=10.6
     OSX_ARCH="-arch x86_64 -mmacosx-version-min=$VMIN -O3 -Qunused-arguments -F../MacOSX"
     ;;
   *)
@@ -153,11 +175,64 @@ ssh "$BUILD_HOST" "cd $REMOTE_PATH && \
   if [ \$RC -ne 0 ]; then echo '--- tail of build log ---'; tail -50 /tmp/q2-build-$TARGET.log; exit \$RC; fi
   ls -la release/"
 
+# ---- stale-artifact guard --------------------------------------------
+# Wipe the local output dir BEFORE fetching. Without this, a build that
+# fails (or one whose remote `make` silently produced nothing) leaves the
+# PREVIOUS run's binaries sitting here, and every downstream check —
+# lipo, file, even the cpusubtype assertion below — happily passes on
+# yesterday's artifact. That is how a build with the wrong flags gets
+# lipo'd into a release: nothing lies, everything just describes a file
+# nobody meant to ship. The same reasoning applies on the remote side,
+# where build.sh already runs `make clean` before `make`.
+#
+# Cheap insurance: the fetch that follows is authoritative, so anything
+# left here afterwards came from THIS build.
+rm -rf "$REPO_ROOT/build/q2-$TARGET"
 mkdir -p "$REPO_ROOT/build/q2-$TARGET/baseq2"
 echo "[build] fetch → build/q2-$TARGET/"
 rsync -a -e 'ssh -o ServerAliveInterval=15' \
   "$BUILD_HOST:$REMOTE_PATH/yquake2/release/" \
   "$REPO_ROOT/build/q2-$TARGET/"
+
+# ---- cpusubtype assertion + re-stamp ---------------------------------
+# dyld and the kernel grade a fat binary's members by CPU SUBTYPE alone.
+# A generic `ppc (ALL)` member is graded as a match for every PowerPC host,
+# so a fat of [ppc ALL, ppc7400, ppc970] on a G3 under Tiger or Leopard
+# mis-grades and refuses to exec — proven on hardware in the sister
+# Half-Life port. Panther's laxer 2003 dyld accepts it, which is exactly
+# what makes the bug easy to ship without noticing.
+#
+# Normally -mcpu=750/7400/970 stamps the subtype for us. -faltivec (needed
+# by the g4 slice against the 10.3.9 SDK) silently defeats that and emits
+# ALL. So we do not trust the compiler: assert the subtype on every Mach-O
+# we just fetched and re-stamp the header where it drifted.
+#
+# The stamp is the 4-byte big-endian cpusubtype field at offset 8 of a thin
+# 32-bit big-endian Mach-O header. These are per-target THIN binaries at
+# this point (lipo happens later in build-fat.sh), so offset 8 is the real
+# header, not a fat-header entry.
+case "$TARGET" in
+  g3)   WANT_SUBTYPE=9;   WANT_NAME=ppc750  ;;
+  g4)   WANT_SUBTYPE=10;  WANT_NAME=ppc7400 ;;
+  g5)   WANT_SUBTYPE=100; WANT_NAME=ppc970  ;;
+  *)    WANT_SUBTYPE=""                     ;;   # x86_64 needs no coaxing
+esac
+if [ -n "$WANT_SUBTYPE" ]; then
+  for art in quake2 q2ded ref_gl.so baseq2/game.so; do
+    BIN="$REPO_ROOT/build/q2-$TARGET/$art"
+    [ -f "$BIN" ] || { echo "[build] missing artifact: $BIN" >&2; exit 1; }
+    GOT=$(lipo -info "$BIN" | sed 's/.*: //' | tr -d ' ')
+    if [ "$GOT" != "$WANT_NAME" ]; then
+      echo "[build] $art cpusubtype is '$GOT', re-stamping → $WANT_NAME ($WANT_SUBTYPE)"
+      printf "$(printf '\\%03o\\%03o\\%03o\\%03o' 0 0 0 "$WANT_SUBTYPE")" \
+        | dd of="$BIN" bs=1 seek=8 count=4 conv=notrunc 2>/dev/null
+      GOT=$(lipo -info "$BIN" | sed 's/.*: //' | tr -d ' ')
+      [ "$GOT" = "$WANT_NAME" ] || {
+        echo "[build] FAILED to stamp $WANT_NAME on $art (got '$GOT')" >&2; exit 1; }
+    fi
+    echo "[build] cpusubtype OK: $art = $GOT"
+  done
+fi
 
 echo "[build] artifacts:"
 file "$REPO_ROOT/build/q2-$TARGET"/* "$REPO_ROOT/build/q2-$TARGET/baseq2"/* 2>/dev/null | sed 's|'"$REPO_ROOT/"'||'

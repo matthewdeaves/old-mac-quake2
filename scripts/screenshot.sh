@@ -57,7 +57,7 @@ else
 fi
 
 case "$TARGET" in
-  yosemite|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019) HOST="$TARGET" ;;
+  yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019) HOST="$TARGET" ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac
 

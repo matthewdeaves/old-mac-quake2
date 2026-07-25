@@ -16,6 +16,45 @@ quirks.
 
 ---
 
+## 2026-07-25 — `-faltivec` silently un-stamped the ppc7400 cpusubtype, nearly shipping a slice no G3 could launch (CAUGHT before release)
+
+**What we tried.** Issue #1: rebuild the `ppc7400` slice against the 10.3.9 SDK
+at `min=10.3` so a G4 stuck on Panther can run it. The 10.3.9 SDK needs
+`-faltivec` (Apple's context-sensitive `vector` keyword) where 10.4u did not,
+plus an explicit `-isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include`
+because `r_mesh.c` includes `<altivec.h>`, which is a **compiler** header that
+`-isysroot` hides.
+
+**What went wrong.** It compiled first try and the AltiVec path was intact
+(12 vector instructions in `ref_gl.so`) — but `lipo -info` reported plain
+**`ppc`**, not `ppc7400`, on all four artifacts. `-faltivec` silently defeats
+`-mcpu=7400`'s Mach-O cpusubtype stamping. Nothing warned; nothing failed.
+
+**Why that matters.** dyld and the kernel grade fat members by CPU subtype
+*alone*. A generic `ppc (ALL)` member matches every PowerPC host, so a fat of
+`[ppc ALL, ppc7400, ppc970]` mis-grades on a G3 under Tiger or Leopard and the
+binary **refuses to exec**. Panther's laxer 2003 dyld accepts it — so this ships
+looking fine on the one machine most likely to be tested first. The sister
+Half-Life port proved the failure on hardware: its v1.0.0 could not launch on
+the G3 under Tiger for exactly this reason.
+
+**The fix.** `scripts/build.sh` no longer trusts the compiler. After fetching,
+it asserts the expected subtype on `quake2`, `q2ded`, `ref_gl.so` and
+`baseq2/game.so`, and re-stamps the 4-byte big-endian cpusubtype field at offset
+8 of the thin Mach-O header where it drifted. It re-reads with `lipo` afterwards
+and fails hard if the stamp didn't take.
+
+**What we learned.** A compiler flag added for one reason can quietly undo
+something unrelated three layers down, and the only defence is asserting the
+property you actually care about on the artifact itself. Also: the same round
+left `build/q2-g4` holding an old-flags build after the fat had been linked, so
+the per-target dir and the fat's member disagreed — `build.sh` now wipes the
+output dir before fetching. Related: the PPC builds are **not byte-reproducible**
+(~138 bytes of embedded build metadata differ between two builds of identical
+source), so md5-comparing artifacts from two different runs proves nothing.
+
+---
+
 ## 2026-05-31 — chased a phantom "G3 corrupt renderer"; real cause was MY stale DMG mounts breaking the deploy (FIXED + a real deploy-verify win)
 
 **The symptom:** while testing v2.2.6, the G3's installed `ref_gl.so` md5'd to

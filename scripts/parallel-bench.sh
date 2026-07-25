@@ -17,6 +17,12 @@
 #                ship in the retail pak0 — verified empirically.)
 #   --no-<host>  skip a specific machine
 #                (yosemite|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019)
+#   --yosemite-tiger
+#                bench the G3 on its 10.4 partition instead of its 10.3 one.
+#                Same Mac, same IP — selecting it deselects `yosemite`, and
+#                asking for both is a hard error. Whichever you pick must
+#                actually be the booted OS: `bless --mount /Volumes/<vol>
+#                --setBoot` then reboot to switch.
 #
 # Env-var overrides (take precedence):
 #   DEMOS="demo1"                       default: "demo1 demo2 demo3", or "demo1" with --quick
@@ -38,9 +44,12 @@ set -euo pipefail
 RESET=0
 QUICK=1
 declare -A SKIP
-for M in yosemite sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
+for M in yosemite yosemite-tiger sawtooth quicksilver mini-g4 imac-g5 mini-intel imac-2019; do
   SKIP[$M]=0
 done
+# yosemite-tiger is the same physical Mac as yosemite (one IP, one OS booted at
+# a time), so it is OFF by default and only runs when asked for explicitly.
+SKIP[yosemite-tiger]=1
 
 for arg in "$@"; do
   case "$arg" in
@@ -48,6 +57,10 @@ for arg in "$@"; do
     --quick)            QUICK=1 ;;
     --full)             QUICK=0 ;;
     --no-yosemite)      SKIP[yosemite]=1 ;;
+    # Bench the G3 on its Tiger partition instead of its Panther one. It is
+    # the same Mac on the same IP, so asking for one deselects the other.
+    --yosemite-tiger)   SKIP[yosemite-tiger]=0; SKIP[yosemite]=1 ;;
+    --no-yosemite-tiger) SKIP[yosemite-tiger]=1 ;;
     --no-sawtooth)      SKIP[sawtooth]=1 ;;
     --no-quicksilver)   SKIP[quicksilver]=1 ;;
     --no-mini-g4)       SKIP[mini-g4]=1 ;;
@@ -58,6 +71,17 @@ for arg in "$@"; do
     *) echo "unknown arg: $arg" >&2; exit 2 ;;
   esac
 done
+
+# Hard guard: yosemite and yosemite-tiger are two partitions of ONE Mac with
+# one IP. Running both legs would point two benches at whichever OS happens to
+# be booted and file the results under two different OS labels — silently wrong
+# data. The liveness probe below can't catch it: both aliases resolve to the
+# same host and both answer.
+if [ "${SKIP[yosemite]}" -eq 0 ] && [ "${SKIP[yosemite-tiger]}" -eq 0 ]; then
+  echo "[parallel-bench] yosemite and yosemite-tiger are the same Mac (one IP, one" >&2
+  echo "  OS booted at a time). Pick one: --yosemite-tiger, or --no-yosemite-tiger." >&2
+  exit 2
+fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CSV="$REPO_ROOT/benchmarks/results.csv"
@@ -84,7 +108,7 @@ fi
 
 # Active legs — order is fastest to slowest, so the wall-time tail
 # corresponds to the long-pole G3.
-ALL_LEGS=(imac-2019 mini-intel imac-g5 quicksilver mini-g4 sawtooth yosemite)
+ALL_LEGS=(imac-2019 mini-intel imac-g5 quicksilver mini-g4 sawtooth yosemite yosemite-tiger)
 ACTIVE_LEGS=()
 for LEG in "${ALL_LEGS[@]}"; do
   if [ "${SKIP[$LEG]}" -eq 0 ]; then

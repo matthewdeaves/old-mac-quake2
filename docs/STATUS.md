@@ -275,3 +275,42 @@ roadmap see `PPC_PLAN.md`; for things that went wrong see `MISTAKES.md`.
 ## Next
 - bloom redo (dedicated render-target texture, sub-res budget);
   AltiVec `R_BuildLightMap`; GL1 gamma correction; re-bench mini-g4 cool.
+
+- 2026-07-25 (v2.6.0): **Cross-configuration round** — the same slice/loader
+  fixes already applied to the Half-Life and QuakeSpasm sister ports.
+  *Slice floors:* `ppc7400` moved from the 10.4u SDK / min-10.4 to the 10.3.9
+  SDK / min-10.3 (issue #1), so a G4 stuck on Panther can load it — dyld grades
+  by CPU subtype alone, so that machine gets this slice regardless and has no
+  fallback. `x86_64` dropped to min-10.6 for the same reason on the Intel side
+  (issue #5). Same-commit A/B proved the G4 move free: quicksilver 57.10→57.35,
+  mini-g4 38.80→38.80.
+  *The near-miss:* the 10.3.9 SDK forces `-faltivec` (for the `vector` keyword
+  in `r_mesh.c`), and `-faltivec` **silently defeats `-mcpu=7400`'s cpusubtype
+  stamping** — all four artifacts came out generic `ppc (ALL)`, which in a fat
+  alongside `ppc970` mis-grades on a G3 under Tiger/Leopard and refuses to
+  exec. `build.sh` now asserts and re-stamps the subtype after every PPC build,
+  and wipes its output dir before fetching so a failed build can't leave stale
+  binaries for later checks to pass on. See MISTAKES.md.
+  *G3 on Tiger verified (issue #3).* Deployed the shipped DMG to the G3's 10.4
+  partition and ran it on the production path: PASS, 21.0 fps — identical to
+  Panther's 21.0 from the same disk image. Same-build bench A/B across the two
+  partitions: 25.50/50.40 (Panther) vs 25.80/49.10 (Tiger) at 1024×768/640×480,
+  i.e. the OS costs the G3 nothing measurable. Slice selection proven by
+  positive control: swapping in the *thin* ppc7400 `ref_gl.so` makes the engine
+  die with a null renderer vtable in `CL_Frame`, so the fat's `ppc750` member is
+  demonstrably what dyld grades on that host.
+  *Bench integrity:* nine rows from 2026-06-06 were recorded at `res=1` — a run
+  count in the resolution slot — so they rendered 1×1 pixels and reported
+  108–128 fps. They are the evidence behind the v2.5.0/v2.5.1 "stencil shadows
+  cost ~15% and clear the floor" decisions on all three G4s. Real mini-g4 figure
+  at 1024×768 is 38.8 fps. `bench.sh` now rejects a malformed resolution;
+  re-taking those decisions is issue #7.
+  *Machine map (issue #4):* `PowerMac8,1`/`PowerMac12,1` → `autoexec-imac-g5`
+  (a hang fix, not tuning — the ppc970 baseline's 1024×768 is a mode switch the
+  Leopard R300 driver cannot survive); iMac G4 models → a new, untested
+  `autoexec-imac-g4` built on the sawtooth floor.
+  *Also:* `yosemite-tiger` wired in as a bench/deploy target with a hard guard
+  against running it alongside `yosemite`; the bundle now carries the port
+  version (visible in Get Info and in crash reports); `deploy.sh` no longer
+  fails when the target already holds its paks. arm64 (issue #6) closed as out
+  of scope, matching the sister ports.

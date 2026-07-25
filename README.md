@@ -36,6 +36,7 @@ baseline picked by the running slice, and a per-machine overlay picked at boot b
 | Machine | CPU | GPU | OS | Slice |
 |---|---|---|---|---|
 | **yosemite** PowerMac1,1 1999 | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.3.9 Panther | `ppc_750` |
+| **yosemite on Tiger** same Mac, 2nd partition | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.4.11 Tiger | `ppc_750` |
 | **sawtooth** PowerMac3,1 1999 | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger | `ppc_7400` |
 | **quicksilver** PowerMac3,5 2001 | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger | `ppc_7400` |
 | **mini-g4** PowerMac10,1 2005 | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger | `ppc_7400` |
@@ -49,7 +50,7 @@ The binary carries one slice per CPU family, each stamped with its exact CPU sub
 
 | CPU | Slice | OS needed | Tested on |
 |---|---|---|---|
-| G3 (750) | `ppc750` | 10.3.9 Panther or later | 10.3.9 |
+| G3 (750) | `ppc750` | 10.3.9 Panther or later | 10.3.9 and 10.4.11 |
 | G4 (7400 / 7450 / 7447A) | `ppc7400` | 10.3.9 Panther or later | 10.4.11 |
 | G5 (970) | `ppc970` | **10.5 Leopard — a G5 on 10.3 or 10.4 is not supported** | 10.5.8 |
 | Intel, 64-bit | `x86_64` | 10.6 Snow Leopard or later | 10.7.5 and 15.7 |
@@ -77,16 +78,21 @@ median of runs 2 & 3:
 | Sawtooth (G4 / GeForce2 MX) † | 72.9 | 65.5 |
 | Mac mini G4 (Radeon 9200) | 73.9 | 38.8 |
 | Quicksilver (G4 / Radeon 9000) | 67.0 | 57.6 |
-| Yosemite (G3 / Rage 128) † | 46.4 | 25.2 |
+| Yosemite (G3 / Panther / Rage 128) | 50.4 | 25.5 |
+| Yosemite (G3 / Tiger / Rage 128) | 49.1 | 25.8 |
 | iMac 27" (2019 / Radeon Pro 580X) † | 698.8 | 732.6 |
 
 The iMac G5 runs native 1440×900 only (its Leopard driver hangs on a mode
 switch) at 46.8 fps — a deliberate visuals-over-framerate choice there.
 
-† Not benched for this release — sawtooth, the G3 and the 2019 iMac were all
-offline. Those three rows are carried forward from before the v2.5.1
-stencil-shadow rollout, so the two G4-era numbers in particular are likely
-optimistic; treat them as stale rather than current.
+The two G3 rows are the same Mac booted from two partitions, running the
+byte-identical binary out of the same disk image: **the OS costs it nothing
+measurable.** On the production config both come out at 21.0 fps exactly.
+
+† Not benched for this release — sawtooth and the 2019 iMac were offline.
+Those rows are carried forward from before the v2.5.1 stencil-shadow rollout,
+so the sawtooth figures in particular are likely optimistic; treat them as
+stale rather than current.
 
 **On the G4 numbers.** Earlier releases quoted ~99–108 fps at 1024×768 for the
 Mac mini G4. That figure was wrong: the benches behind it were accidentally run

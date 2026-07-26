@@ -1,9 +1,20 @@
 #!/usr/bin/env bash
-# pick-build-host.sh — choose a free Intel cross-build host, and (optionally)
+# pick-build-host.sh - choose a free Intel cross-build host, and (optionally)
 # claim it so nobody else grabs it mid-build.
 #
+# ============================================================================
+# CANONICAL COPY. This file lives in old-mac-build-host, which owns the minis,
+# and is distributed to the four game-port repos by scripts/sync-build-lock.sh.
+# Edit it HERE and re-run that script; do not edit the copies.
+#
+# Why here and not in a game repo: every consumer is a peer (four ports plus this
+# repo's own provisioning), so no port owns it. More practically, this is the
+# repo you clone FIRST onto a fresh workstation during a recovery - the lock has
+# to work before any game repo exists.
+# ============================================================================
+#
 # WHY: there are now TWO interchangeable Intel Lion cross-build minis
-# (mini-intel, mini-intel2 — same Macmini2,1 / 10.7.5 / same toolchain), and
+# (mini-intel, mini-intel2 - same Macmini2,1 / 10.7.5 / same toolchain), and
 # several agents/repos may want one at once. Every slice of every project
 # cross-compiles on an Intel box, so the mini is the contended resource.
 #
@@ -18,7 +29,8 @@
 # usage:
 #   scripts/pick-build-host.sh                  # print a free host, else exit 1
 #   scripts/pick-build-host.sh --status         # table of every candidate
-#   scripts/pick-build-host.sh --acquire LABEL  # pick + claim, print the host
+#   scripts/pick-build-host.sh --acquire LABEL  # pick + claim any free one
+#   scripts/pick-build-host.sh --acquire-host HOST LABEL   # claim THAT one
 #   scripts/pick-build-host.sh --release HOST   # drop our claim
 #   scripts/pick-build-host.sh --release-all    # drop our claims everywhere
 #
@@ -29,7 +41,7 @@
 #
 # A host counts as BUSY if it holds a fresh lock, OR if compiler processes are
 # running on it (catches builds started by hand, outside this mechanism).
-# A lock is STALE — and reclaimed — only if it is old AND nothing is compiling,
+# A lock is STALE - and reclaimed - only if it is old AND nothing is compiling,
 # so a killed orchestrator can't wedge a mini forever.
 
 set -uo pipefail
@@ -56,12 +68,18 @@ probe() {
 		else
 			age=-1; owner=""
 		fi
-		# Compiler activity: waf, the legacy PPC drivers, cc1/clang, make.
-		# The leading (^|[ /]) stops "cmake"/"qmake" matching "make"; makewhatis
-		# starts a line so it needs an explicit exclusion. Our own probe line is
-		# dropped because it always contains "grep".
+		# Compiler activity: waf, the legacy PPC drivers, cc1/clang, make, and the
+		# newer drivers installed under ~/local by build-modern-tools.sh (gmake,
+		# ninja) - without those two, a build driven by either would be INVISIBLE
+		# here and another agent would happily claim a busy mini.
+		# The leading (^|[ /]) plus `g?` matches "make" and "gmake" while still
+		# excluding "cmake"/"qmake" (the character before "make" there is "c"/"q",
+		# which g? cannot absorb). cmake stays excluded deliberately: it is a
+		# short configure step, and the build it drives shows up as make or ninja.
+		# makewhatis starts a line so it needs an explicit exclusion. Our own probe
+		# line is dropped because it always contains "grep".
 		n=`ps ax -o command= 2>/dev/null \
-			| grep -E "(^|[ /])(make|waf|cc1|cc1plus|clang|collect2)|gcc-4\.0|g\+\+-4\.0|powerpc-apple-darwin10-" \
+			| grep -E "(^|[ /])(g?make|waf|cc1|cc1plus|clang|collect2|ninja)|gcc-4\.0|g\+\+-4\.0|powerpc-apple-darwin10-" \
 			| grep -vE "grep|makewhatis" | wc -l | tr -d " "`
 		echo "$age $n $owner"
 	' 2>/dev/null
@@ -69,7 +87,7 @@ probe() {
 
 # free | stale (reclaimable) | busy | unknown, given age+procs.
 # Guard the numeric tests: a truncated/garbled probe (flaky ssh) must not blow up
-# with "unary operator expected" NOR be silently read as free — treat it as
+# with "unary operator expected" NOR be silently read as free - treat it as
 # unknown, and callers refuse to build on anything that is not free/stale.
 classify() {
 	local age="$1" procs="$2"
@@ -161,6 +179,14 @@ cmd_release() {
 case "${1:---pick}" in
 	--status)      cmd_status ;;
 	--acquire)     cmd_acquire "${2:-build}" ;;
+	# Claim one NAMED host rather than whichever is free. Needed whenever the work
+	# is host-specific rather than interchangeable - provisioning a particular
+	# mini, or reproducing a fault on the box that showed it. Without this the
+	# only route was to override the candidate list (BUILD_HOSTS=<host> --acquire),
+	# which works but reads like a hack and hides the intent.
+	--acquire-host)
+		h="${2:?usage: --acquire-host HOST [LABEL]}"
+		BUILD_HOSTS="$h" cmd_acquire "${3:-build}" ;;
 	--release)     cmd_release "${2:?usage: --release HOST}" ;;
 	--release-all) for h in $BUILD_HOSTS; do echo "$h: $(cmd_release "$h")"; done ;;
 	--pick)

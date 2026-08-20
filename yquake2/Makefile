@@ -99,7 +99,14 @@ endif
 
 # Refuse all other platforms as a firewall against PEBKAC
 # (You'll need some #ifdef for your unsupported  plattform!)
-ifeq ($(findstring $(ARCH), i386 x86_64 sparc64 ia64),)
+#
+# arm64 added for this port. ARCH is derived from `uname -m` and is used
+# for NOTHING but this check: every slice's real architecture comes from
+# OSX_ARCH. That is also why the PowerPC slices pass it without ppc being
+# listed, since they cross-compile from an x86_64 Lion host. On an Apple
+# Silicon box uname says arm64 and the firewall fired on a build that was
+# otherwise fine.
+ifeq ($(findstring $(ARCH), i386 x86_64 arm64 sparc64 ia64),)
 $(error arch $(ARCH) is currently not supported)
 endif
 

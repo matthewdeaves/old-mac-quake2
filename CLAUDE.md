@@ -94,7 +94,7 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
 | **imac-2019** iMac19,1 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` |
 
 Two build minis: `mini-intel` (10.188.1.190) and `mini-intel2`
-(10.188.1.216), same Macmini2,1 / 10.7.5 / identical toolchain.
+(10.188.1.164), same Macmini2,1 / 10.7.5 / identical toolchain.
 
 `yosemite` and `yosemite-tiger` are **one machine on one IP** with two OS
 partitions; only one is booted at a time. Switch with

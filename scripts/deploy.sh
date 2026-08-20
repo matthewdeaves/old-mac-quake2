@@ -138,6 +138,15 @@ cp "$BUILD_DIR/quake2"                    "$APP/Contents/MacOS/"
 cp -a "$REPO_ROOT/MacOSX/SDL.framework"   "$APP/Contents/MacOS/"
 chmod +x "$APP/Contents/MacOS/quake2"
 
+# The arm64 member of that framework is sdl12-compat, which dlopen()s a real
+# SDL2 at runtime from beside the executable. Ship ours so that is what it
+# finds. Inert on PowerPC and Intel, which link genuine SDL 1.2 and never open
+# it. Optional, exactly like the arm64 slice. docs/adr/0015.
+if [ -f "$BUILD_DIR/libSDL2-2.0.0.dylib" ]; then
+  cp "$BUILD_DIR/libSDL2-2.0.0.dylib"     "$APP/Contents/MacOS/"
+  echo "[deploy] staged libSDL2-2.0.0.dylib for the arm64 slice"
+fi
+
 # Per-machine autoexec cfgs ship INSIDE the .app bundle. The engine
 # (yquake2/src/common/misc.c:Qcommon_Init) reads the matching one at
 # boot via CFBundle + sysctl hw.model, layered AFTER the standard
@@ -168,7 +177,7 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # `//` comments + blank lines leaves only the `set` lines (~1-2 KB each),
 # a wide margin. (v2.2.0 shipped un-stripped and hit this; fixed v2.2.1.)
 for cfg in controls \
-           ppc750 ppc7400 ppc970 i386 x86_64 \
+           ppc750 ppc7400 ppc970 i386 x86_64 arm64 \
            yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \

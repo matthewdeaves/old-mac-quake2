@@ -76,8 +76,14 @@ for a in ppc750 ppc7400 ppc970 i386 x86_64; do
     *) echo "[make-dmg] $BUILD_DIR/quake2 is missing the $a slice (got: ${ARCHS:-none}), run scripts/build-fat.sh" >&2; exit 1;;
   esac
 done
-# arm64 is not asserted. This engine links SDL 1.2, which upstream never built
-# for arm64, so there is no arm64 slice to require. docs/adr/0014.
+# arm64 is REPORTED, not asserted. It cannot be cross-built on a mini, so
+# requiring it would make a release impossible from the normal build path, and
+# its absence is a Rosetta 2 downgrade rather than a fault. Reporting it is the
+# point: a release must never be quietly short a slice. docs/adr/0015.
+case " $ARCHS " in
+  *" arm64 "*) echo "[make-dmg] arm64 slice present: native on Apple Silicon" ;;
+  *)           echo "[make-dmg] NO arm64 slice: Apple Silicon will use Rosetta 2" ;;
+esac
 
 # ---- stage the disk-image contents (same layout as deploy.sh) ------------
 STAGE=$(mktemp -d -t q2-dmg.XXXXXX)
@@ -110,6 +116,20 @@ cp -a "$REPO_ROOT/MacOSX/SDL.framework"      "$APP/Contents/MacOS/"
 cp    "$BUILD_DIR/quake2"                    "$APP/Contents/MacOS/"
 chmod +x "$APP/Contents/MacOS/quake2"
 
+# The arm64 member of that framework is sdl12-compat, which dlopen()s a real
+# SDL2 at runtime and looks beside the executable for it. Ship ours so that is
+# what it finds rather than whatever SDL2 the machine happens to have. The
+# other five members are genuine SDL 1.2 and never open this file, so on
+# PowerPC and Intel it is inert. Optional, like the arm64 slice itself.
+if [ -f "$BUILD_DIR/libSDL2-2.0.0.dylib" ]; then
+  cp "$BUILD_DIR/libSDL2-2.0.0.dylib" "$APP/Contents/MacOS/"
+  echo "[make-dmg] bundled libSDL2-2.0.0.dylib for the arm64 slice"
+else
+  case " $ARCHS " in
+    *" arm64 "*) echo "[make-dmg] WARNING: arm64 slice present but no libSDL2-2.0.0.dylib to go with it; it will not start" >&2 ;;
+  esac
+fi
+
 # Both cfg layers ship inside the bundle: the four per-arch baselines
 # (picked at compile time by the fat slice dyld runs) and the six
 # per-machine overlays (picked at boot by sysctl hw.model via CFBundle —
@@ -121,7 +141,7 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # documentation comments alone blow that budget (→ "Cbuf_AddText: overflow",
 # garbled config, R300 GPU wedge on the iMac G5). Same strip as deploy.sh.
 for cfg in controls \
-           ppc750 ppc7400 ppc970 i386 x86_64 \
+           ppc750 ppc7400 ppc970 i386 x86_64 arm64 \
            yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \

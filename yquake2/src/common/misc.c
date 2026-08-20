@@ -483,6 +483,13 @@ Qcommon_Init(int argc, char **argv)
 		/* The 2006 Core Solo / Core Duo machines, which have no 64-bit
 		 * mode and so are never handed the x86_64 slice. */
 		Q2_ExecConfigFromBundle("autoexec-i386");
+#elif defined(__aarch64__) || defined(__arm64__)
+		/* Apple Silicon. Rosetta 2 would run the x86_64 slice, but dyld
+		 * prefers a native arm64 member whenever the fat carries one, so
+		 * this is what an M-series Mac actually executes. It is also the
+		 * only slice that does not link a real SDL 1.2: see
+		 * docs/adr/0015. */
+		Q2_ExecConfigFromBundle("autoexec-arm64");
 #endif
 
 		/* Layer 2: per-machine overlay, picked by hw.model at runtime. */

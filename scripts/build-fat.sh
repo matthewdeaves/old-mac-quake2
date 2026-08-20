@@ -63,15 +63,43 @@ scripts/build.sh lion
 echo "[build-fat] sub-build 5/5: i386"
 scripts/build.sh i386
 
-# All five slices present?
+# All five cross-built slices present?
 for arch in g3 g4 g5 lion i386; do
   for art in quake2 q2ded ref_gl.so baseq2/game.so; do
     if [ ! -f "build/q2-$arch/$art" ]; then
-      echo "[build-fat] missing build/q2-$arch/$art — sub-build did not produce it" >&2
+      echo "[build-fat] missing build/q2-$arch/$art - sub-build did not produce it" >&2
       exit 1
     fi
   done
 done
+
+# arm64 is OPTIONAL. No mini can cross-build it (their Xcode 4.6 predates it by
+# seven years), so it comes from scripts/build-arm64.sh run on the orchestration
+# Mac, and its absence is a Rosetta 2 downgrade rather than a fault. Say which of
+# the two happened either way: a release must never be quietly short a slice.
+ARCHES="g3 g4 g5 lion i386"
+ARM64_DIR="$REPO_ROOT/build/arm64/release"
+HAVE_ARM64=0
+if [ -d "$ARM64_DIR" ]; then
+  HAVE_ARM64=1
+  for art in quake2 q2ded ref_gl.so baseq2/game.so; do
+    [ -f "$ARM64_DIR/$art" ] || HAVE_ARM64=0
+  done
+fi
+if [ "$HAVE_ARM64" = 1 ]; then
+  # Staged under the same build/q2-<arch>/ naming the fuse loop below expects,
+  # so arm64 needs no special case there.
+  rm -rf "$REPO_ROOT/build/q2-arm64"
+  mkdir -p "$REPO_ROOT/build/q2-arm64/baseq2"
+  cp "$ARM64_DIR/quake2" "$ARM64_DIR/q2ded" "$ARM64_DIR/ref_gl.so" "$REPO_ROOT/build/q2-arm64/"
+  cp "$ARM64_DIR/baseq2/game.so" "$REPO_ROOT/build/q2-arm64/baseq2/"
+  ARCHES="$ARCHES arm64"
+  echo "[build-fat] arm64 slice present: fusing SIX"
+else
+  echo "[build-fat] NO arm64 slice (build/arm64/release incomplete or absent): fusing FIVE"
+  echo "[build-fat] Apple Silicon will run the x86_64 slice under Rosetta 2."
+  echo "[build-fat] Run scripts/build-arm64.sh on the orchestration Mac to include it."
+fi
 
 # lipo lives on macOS, not Ubuntu. Send the three per-target slices to
 # mini-intel, fuse there, scp the fat artifacts back. (Keeps the
@@ -82,27 +110,54 @@ done
 # "${BUILD_HOST:-mini-intel}" here could silently fuse on a different box than the
 # one the slices were staged to.
 : "${BUILD_HOST:?internal error: build host should have been pinned above}"
-echo "[build-fat] lipo -create on $BUILD_HOST"
+echo "[build-fat] lipo -create on $BUILD_HOST ($ARCHES)"
 ssh "$BUILD_HOST" 'mkdir -p /tmp/q2-fat-stage && rm -rf /tmp/q2-fat-stage/*'
-for arch in g3 g4 g5 lion i386; do
+for arch in $ARCHES; do
   rsync -aq build/q2-$arch/ "$BUILD_HOST:/tmp/q2-fat-stage/$arch/"
 done
 
-ssh "$BUILD_HOST" 'set -e
+# Lion's lipo WRITES an arm64 member correctly but cannot NAME it, so a six-way
+# fuse prints "cputype (16777228)" for that member in the [lipo] lines below.
+# Cosmetic. The naming check that matters runs back on this box, after the fetch.
+ssh "$BUILD_HOST" "set -e
   cd /tmp/q2-fat-stage
   mkdir -p fat/baseq2
   for art in quake2 q2ded ref_gl.so; do
-    lipo -create g3/$art g4/$art g5/$art lion/$art i386/$art -output fat/$art
-    echo "[lipo] $art:"; lipo -info fat/$art
+    lipo -create \$(for a in $ARCHES; do printf '%s ' \"\$a/\$art\"; done) -output fat/\$art
+    echo \"[lipo] \$art:\"; lipo -info fat/\$art
   done
-  lipo -create g3/baseq2/game.so g4/baseq2/game.so g5/baseq2/game.so lion/baseq2/game.so i386/baseq2/game.so -output fat/baseq2/game.so
-  echo "[lipo] baseq2/game.so:"; lipo -info fat/baseq2/game.so'
+  lipo -create \$(for a in $ARCHES; do printf '%s ' \"\$a/baseq2/game.so\"; done) -output fat/baseq2/game.so
+  echo '[lipo] baseq2/game.so:'; lipo -info fat/baseq2/game.so"
 
 mkdir -p "$REPO_ROOT/build/q2-fat/baseq2"
 echo "[build-fat] fetch → build/q2-fat/"
 rsync -aq "$BUILD_HOST:/tmp/q2-fat-stage/fat/" "$REPO_ROOT/build/q2-fat/"
 ssh "$BUILD_HOST" 'rm -rf /tmp/q2-fat-stage' 2>/dev/null || true
 
+if [ "$HAVE_ARM64" = 1 ]; then
+  cp "$ARM64_DIR/libSDL2-2.0.0.dylib" "$REPO_ROOT/build/q2-fat/libSDL2-2.0.0.dylib" 2>/dev/null || true
+fi
+
 echo "[build-fat] sanity:"
 file "$REPO_ROOT/build/q2-fat"/* "$REPO_ROOT/build/q2-fat/baseq2"/* 2>/dev/null | sed "s|$REPO_ROOT/||"
+
+# Gate every product on carrying the same member set, compared as a SET rather
+# than as an ordered string: lipo lists members in the order they were fused,
+# not in any canonical order, so an ordered compare asserts the argument order
+# of the lipo call rather than the contents of the file.
+if command -v lipo >/dev/null 2>&1; then
+  WANT_SET=$(for a in $ARCHES; do
+      case $a in g3) echo ppc750;; g4) echo ppc7400;; g5) echo ppc970;;
+                 lion) echo x86_64;; *) echo "$a";; esac
+    done | LC_ALL=C sort | tr '\n' ' ')
+  for art in quake2 q2ded ref_gl.so baseq2/game.so; do
+    GOT_SET=$(lipo -archs "$REPO_ROOT/build/q2-fat/$art" | tr ' ' '\n' | grep . | LC_ALL=C sort | tr '\n' ' ')
+    [ "$GOT_SET" = "$WANT_SET" ] || {
+      echo "[build-fat] $art has members '$GOT_SET', want '$WANT_SET'" >&2; exit 1; }
+    case " $GOT_SET " in
+      *" ppc "*) echo "[build-fat] $art has a generic ppc member, which every PowerPC host would match" >&2; exit 1;;
+    esac
+  done
+  echo "[build-fat] all four products carry: $WANT_SET"
+fi
 echo "[build-fat] OK"

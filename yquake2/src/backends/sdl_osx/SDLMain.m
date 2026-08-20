@@ -72,10 +72,24 @@ static NSString *getApplicationName(void)
 @end
 #endif
 
-@interface SDLApplication : NSApplication
+/* Renamed from SDLApplication for the arm64 slice, and left renamed on all of
+ * them so there is only one spelling to reason about.
+ *
+ * The arm64 slice links sdl12-compat rather than a real SDL 1.2, and that shim
+ * dlopen()s an SDL2 whose own Cocoa backend declares a class called
+ * SDLApplication. Two ObjC classes with one name in a single process is not a
+ * warning we can sit on: the runtime picks one and the other's methods are
+ * silently unreachable, which it announces as "may cause spurious casting
+ * failures and mysterious crashes" before carrying on. Observed live on arm64
+ * before this rename.
+ *
+ * Nothing outside this file names the class, and SDL_USE_NIB_FILE (the only
+ * path that would bind it by name from a nib) is off, so the rename is local.
+ * docs/adr/0015. */
+@interface YQ2Application : NSApplication
 @end
 
-@implementation SDLApplication
+@implementation YQ2Application
 /* Invoked from the Quit menu item */
 - (void)terminate:(id)sender
 {
@@ -334,7 +348,7 @@ static void CustomApplicationMain (int argc, char **argv)
     SDLMain				*sdlMain;
 	
     /* Ensure the application object is initialised */
-    [SDLApplication sharedApplication];
+    [YQ2Application sharedApplication];
     
 #ifdef SDL_USE_CPS
     {
@@ -343,7 +357,7 @@ static void CustomApplicationMain (int argc, char **argv)
         if (!CPSGetCurrentProcess(&PSN))
             if (!CPSEnableForegroundOperation(&PSN,0x03,0x3C,0x2C,0x1103))
                 if (!CPSSetFrontProcess(&PSN))
-                    [SDLApplication sharedApplication];
+                    [YQ2Application sharedApplication];
     }
 #endif /* SDL_USE_CPS */
 	
@@ -1024,7 +1038,7 @@ int main (int argc, char **argv)
     }
 	
 #if SDL_USE_NIB_FILE
-    [SDLApplication poseAsClass:[NSApplication class]];
+    [YQ2Application poseAsClass:[NSApplication class]];
     NSApplicationMain (argc, argv);
 #else
     CustomApplicationMain (argc, argv);

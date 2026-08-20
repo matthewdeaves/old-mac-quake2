@@ -479,6 +479,10 @@ Qcommon_Init(int argc, char **argv)
 		Q2_ExecConfigFromBundle("autoexec-ppc750");
 #elif defined(__x86_64__)
 		Q2_ExecConfigFromBundle("autoexec-x86_64");
+#elif defined(__i386__)
+		/* The 2006 Core Solo / Core Duo machines, which have no 64-bit
+		 * mode and so are never handed the x86_64 slice. */
+		Q2_ExecConfigFromBundle("autoexec-i386");
 #endif
 
 		/* Layer 2: per-machine overlay, picked by hw.model at runtime. */

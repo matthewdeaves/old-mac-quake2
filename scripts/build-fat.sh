@@ -52,17 +52,19 @@ fi
 # even with the flock the sub-builds would only ever run one at a time.
 # Running them as separate scripts.sh g3/g4/lion calls keeps the output
 # log straightforward and lets a failure surface immediately.
-echo "[build-fat] sub-build 1/4: g3"
+echo "[build-fat] sub-build 1/5: g3"
 scripts/build.sh g3
-echo "[build-fat] sub-build 2/4: g4"
+echo "[build-fat] sub-build 2/5: g4"
 scripts/build.sh g4
-echo "[build-fat] sub-build 3/4: g5"
+echo "[build-fat] sub-build 3/5: g5"
 scripts/build.sh g5
-echo "[build-fat] sub-build 4/4: lion"
+echo "[build-fat] sub-build 4/5: lion"
 scripts/build.sh lion
+echo "[build-fat] sub-build 5/5: i386"
+scripts/build.sh i386
 
-# All four slices present?
-for arch in g3 g4 g5 lion; do
+# All five slices present?
+for arch in g3 g4 g5 lion i386; do
   for art in quake2 q2ded ref_gl.so baseq2/game.so; do
     if [ ! -f "build/q2-$arch/$art" ]; then
       echo "[build-fat] missing build/q2-$arch/$art — sub-build did not produce it" >&2
@@ -82,7 +84,7 @@ done
 : "${BUILD_HOST:?internal error: build host should have been pinned above}"
 echo "[build-fat] lipo -create on $BUILD_HOST"
 ssh "$BUILD_HOST" 'mkdir -p /tmp/q2-fat-stage && rm -rf /tmp/q2-fat-stage/*'
-for arch in g3 g4 g5 lion; do
+for arch in g3 g4 g5 lion i386; do
   rsync -aq build/q2-$arch/ "$BUILD_HOST:/tmp/q2-fat-stage/$arch/"
 done
 
@@ -90,10 +92,10 @@ ssh "$BUILD_HOST" 'set -e
   cd /tmp/q2-fat-stage
   mkdir -p fat/baseq2
   for art in quake2 q2ded ref_gl.so; do
-    lipo -create g3/$art g4/$art g5/$art lion/$art -output fat/$art
+    lipo -create g3/$art g4/$art g5/$art lion/$art i386/$art -output fat/$art
     echo "[lipo] $art:"; lipo -info fat/$art
   done
-  lipo -create g3/baseq2/game.so g4/baseq2/game.so g5/baseq2/game.so lion/baseq2/game.so -output fat/baseq2/game.so
+  lipo -create g3/baseq2/game.so g4/baseq2/game.so g5/baseq2/game.so lion/baseq2/game.so i386/baseq2/game.so -output fat/baseq2/game.so
   echo "[lipo] baseq2/game.so:"; lipo -info fat/baseq2/game.so'
 
 mkdir -p "$REPO_ROOT/build/q2-fat/baseq2"

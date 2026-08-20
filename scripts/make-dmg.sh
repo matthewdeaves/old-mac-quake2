@@ -70,12 +70,14 @@ fi
 # the ppc750 slice as "ppc_650", so the old `file | grep ppc_750` check
 # spuriously failed on a good 4-arch fat. lipo -archs is authoritative.
 ARCHS=$(lipo -archs "$BUILD_DIR/quake2" 2>/dev/null || echo)
-for a in ppc750 ppc7400 ppc970 x86_64; do
+for a in ppc750 ppc7400 ppc970 i386 x86_64; do
   case " $ARCHS " in
     *" $a "*) ;;
-    *) echo "[make-dmg] $BUILD_DIR/quake2 is not the 4-arch fat binary (missing $a; got: ${ARCHS:-none}) — run scripts/build-fat.sh" >&2; exit 1;;
+    *) echo "[make-dmg] $BUILD_DIR/quake2 is missing the $a slice (got: ${ARCHS:-none}), run scripts/build-fat.sh" >&2; exit 1;;
   esac
 done
+# arm64 is not asserted. This engine links SDL 1.2, which upstream never built
+# for arm64, so there is no arm64 slice to require. docs/adr/0014.
 
 # ---- stage the disk-image contents (same layout as deploy.sh) ------------
 STAGE=$(mktemp -d -t q2-dmg.XXXXXX)
@@ -119,7 +121,7 @@ chmod +x "$APP/Contents/MacOS/quake2"
 # documentation comments alone blow that budget (→ "Cbuf_AddText: overflow",
 # garbled config, R300 GPU wedge on the iMac G5). Same strip as deploy.sh.
 for cfg in controls \
-           ppc750 ppc7400 ppc970 x86_64 \
+           ppc750 ppc7400 ppc970 i386 x86_64 \
            yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \

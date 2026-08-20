@@ -6,7 +6,7 @@
 # The build TARGET names (g3/g4/g5/lion) refer to chip family + SDK, NOT
 # machine identity (single g4 binary serves sawtooth + quicksilver + mini-g4).
 #
-# usage: scripts/build.sh <g3|g4|g5|lion>
+# usage: scripts/build.sh <g3|g4|g5|lion|i386>
 # output: build/q2-<target>/{quake2, ref_gl.so, baseq2/game.so, q2ded}
 # env:    BUILD_HOST (ssh alias; default: auto-picked from the free Intel minis
 #         by scripts/pick-build-host.sh)
@@ -14,7 +14,7 @@
 
 set -euo pipefail
 
-TARGET="${1:?usage: $0 <g3|g4|g5|lion>}"
+TARGET="${1:?usage: $0 <g3|g4|g5|lion|i386>}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # The cross-build host is an Intel Mac mini — there are now TWO interchangeable
@@ -136,8 +136,35 @@ case "$TARGET" in
     VMIN=10.6
     OSX_ARCH="-arch x86_64 -mmacosx-version-min=$VMIN -O3 -Qunused-arguments -F../MacOSX"
     ;;
+  i386)
+    # 32-bit-only Intel: the 2006 Core Solo / Core Duo machines (Mac mini 1,1,
+    # iMac 4,1, MacBook 1,1, MacBook Pro 1,1). The only Intel Macs with no
+    # 64-bit mode, and they stop at 10.6.8.
+    #
+    # Not a nicety. dyld grades by CPU subtype alone and never falls back, so
+    # those machines are never handed the x86_64 slice and, with no i386 slice
+    # present, get nothing at all: the app does not launch.
+    #
+    # min-10.4, lower than the x86_64 slice's 10.6, for the same
+    # slice-grading reason applied downward. An i386-only Mac may still be on
+    # Tiger or Leopard and there is nothing beneath this slice to catch it.
+    # The bundled SDL.framework already carries an i386 slice.
+    #
+    # NOT TESTED ON HARDWARE: no 32-bit-only Intel Mac exists in the fleet.
+    # Build-correct only.
+    CC=/usr/bin/clang
+    VMIN=10.4
+    OSX_ARCH="-arch i386 -mmacosx-version-min=$VMIN -O3 -Qunused-arguments -F../MacOSX"
+    ;;
+  arm64)
+    echo "build.sh: arm64 cannot be built on a Lion mini. Its Xcode 4.6" >&2
+    echo "build.sh: toolchain predates arm64 by seven years, and the SDL 1.2" >&2
+    echo "build.sh: this engine links has no arm64 build at all. See" >&2
+    echo "build.sh: docs/adr/0014 for where that stands." >&2
+    exit 2
+    ;;
   *)
-    echo "unknown target: $TARGET (expected: g3|g4|g5|lion)" >&2
+    echo "unknown target: $TARGET (expected: g3|g4|g5|lion|i386)" >&2
     exit 2
     ;;
 esac

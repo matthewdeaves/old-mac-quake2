@@ -1,4 +1,4 @@
-# 7. Bundle config is three layers, applied before the renderer initialises
+# 7. Bundle config is three layers: applied before the renderer initialises
 
 Date: 2026-08-20 (records decisions taken 2026-05-31)
 Status: accepted
@@ -23,7 +23,7 @@ in three layers, all of them before `CL_Init()` / `VID_Init`.** Implementation:
   `x86_64`.cfg): selected at **compile** time, so the baseline baked into the
   slice dyld picked is the one that runs. This is the floor that makes the game
   playable on **any** G3/G4/G5/Intel Mac, not just the bench boxes.
-  **`Q2_ARCH_PPC970` must be checked first** — the 970 slice also defines
+  **`Q2_ARCH_PPC970` must be checked first**, the 970 slice also defines
   `__VEC__`, so without the explicit build macro it falls into the ppc7400
   branch (ADR 0001).
 - **Layer 2, per-machine overlay** (`autoexec-<machine>.cfg`): selected at
@@ -56,7 +56,7 @@ With the cfgs applied **after** `CL_Init`, their `vid_fullscreen 1` / `gl_mode
 -1` changed the mode post-init. `R_BeginFrame` (`r_main.c`) escalates a post-init
 mode change into a full refresh-DLL reload: it sets `vid_ref->modified`, and the
 next `VID_CheckChanges` tears down and reloads `ref_gl.so` via `VID_LoadRefresh`.
-On the ATI Rage 128 / Panther G3 that reload path is fatal —
+On the ATI Rage 128 / Panther G3 that reload path is fatal,
 `Com_Error → VID_Shutdown → R_Shutdown → GLimp_Shutdown → SDL_GL_SwapBuffers` on
 a torn-down context → `EXC_BAD_ACCESS`. The menu came up, then **"start a new
 game" hard-crashed the G3** on the first rendered world frame.
@@ -83,7 +83,7 @@ bare `set` lines.
 Root cause (v2.2.0, fixed v2.2.1): the layers are `Cbuf_AddText`'d back to back
 into a fixed buffer. Verbose documentation comments pushed each file to
 4.7–7.3 KB, and two together exceeded the then-8 KB `cmd_text_buf`
-(`cmdparser.c`) on **every** machine — on the G5, 4696 + 6772 = **11,468 bytes**
+(`cmdparser.c`) on **every** machine, on the G5, 4696 + 6772 = **11,468 bytes**
 → `Cbuf_AddText: overflow`. The engine drops the overflowing text and the parser
 desyncs: leftover comment words execute as commands (`Unknown command "the"`,
 `Line has unmatched quote, discarded`) and the overlay lands only partially. The
@@ -112,11 +112,11 @@ not always harmless.
 
 - **The three iMac G5 entries are a SAFETY entry, not a tuning one.** The
   `ppc970` baseline asks for 1024x768, which on an R300 iMac is a fullscreen
-  *mode switch* — the one thing the Leopard Radeon 9600 driver cannot survive
+  *mode switch*, the one thing the Leopard Radeon 9600 driver cannot survive
   (ADR 0008). The overlay's `vid_desktopfullscreen` makes it a same-mode
   capture. Only `8,2` is in the fleet; `8,1` and `12,1` are mapped so they
   cannot fall through to the hazardous default.
-- **The iMac G4 entries are untested** — there is no iMac G4 here. The profile
+- **The iMac G4 entries are untested**, there is no iMac G4 here. The profile
   takes the sawtooth visual stack, the validated floor for the weakest member of
   that family (700 MHz + GeForce2 MX); faster ones leave framerate on the table,
   which is the right way round for a profile nobody has run.

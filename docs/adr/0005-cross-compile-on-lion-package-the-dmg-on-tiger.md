@@ -1,4 +1,4 @@
-# 5. Cross-compile every slice on an Intel Lion mini, package the disk image on a Tiger G4
+# 5. Cross-compile every slice on an Intel Lion mini: package the disk image on a Tiger G4
 
 Date: 2026-08-20 (records decisions taken 2026-05-11 and 2026-05-31)
 Status: accepted
@@ -40,7 +40,7 @@ NIB init on a 750.
 `build.sh` takes a flock; `build-fat.sh` runs g3→g4→g5→lion strictly
 sequentially and pins ONE claimed host for the whole run plus the `lipo`;
 `build.sh` also `make clean`s before each slice so a stale `.o` from a different
-`-mcpu` cannot leak. **Two builds on different minis are fine** — that is what
+`-mcpu` cannot leak. **Two builds on different minis are fine**, that is what
 the second box is for.
 
 ### Multi-tenancy with the sister projects

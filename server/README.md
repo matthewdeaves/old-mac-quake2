@@ -1,4 +1,4 @@
-# Quake II dedicated server, Linux
+# Quake II dedicated server: Linux
 
 A headless Quake II server built from the same yquake2 tree as the Mac fat
 binary. No packages to install.

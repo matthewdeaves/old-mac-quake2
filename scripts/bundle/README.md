@@ -13,7 +13,7 @@ values are in `docs/CONFIG.md`.
 | `autoexec-controls.cfg` | layer 0: shared WASD + mouse-look, overriding stock yquake2's ESDF layout |
 | `autoexec-ppc750/ppc7400/ppc970/x86_64.cfg` | layer 1: per-arch baseline, selected at **compile** time. The floor that makes any G3/G4/G5/Intel Mac playable, not just the bench boxes |
 | `autoexec-<machine>.cfg` x 8 | layer 2: per-machine overlay, selected at **runtime** by `hw.model` |
-| `set-bundle-bit.c` | HFS+ `kHasBundle` bit setter. Unused — every Mac shipped to recognises `.app` by extension. Kept for a future HFS-volume target |
+| `set-bundle-bit.c` | HFS+ `kHasBundle` bit setter. Unused, every Mac shipped to recognises `.app` by extension. Kept for a future HFS-volume target |
 
 ## Design intent per machine
 
@@ -23,12 +23,12 @@ Read the header comment in each cfg for the full context. The short version:
 |---|---|
 | `yosemite` | strip everything the Rage 128 cannot do cheaply, then spend the reclaimed budget on the ULTIMATE texture/filter/shadow/fog stack (ADR 0010) |
 | `sawtooth` | yosemite's austerity with 32 MB VRAM; dlights off, billboard halos instead |
-| `quicksilver` | middle of the fleet, GPU-light and CPU-bound — quality up |
+| `quicksilver` | middle of the fleet, GPU-light and CPU-bound, quality up |
 | `mini-g4` | fastest PPC; quicksilver's stack with a higher maxfps |
-| `imac-g5` | most-capable PPC tune at native 1440x900. **Also a safety entry** — the overlay's `vid_desktopfullscreen` is what stops the baseline's 1024x768 becoming a mode switch the R300 cannot survive (ADR 0008) |
+| `imac-g5` | most-capable PPC tune at native 1440x900. **Also a safety entry**, the overlay's `vid_desktopfullscreen` is what stops the baseline's 1024x768 becoming a mode switch the R300 cannot survive (ADR 0008) |
 | `imac-g4` | **untested, no such machine here.** Built on the sawtooth floor, pinned at 1024x768 |
 | `mini-intel` | treat the GMA 950 as a slightly better R9200; never `glFinish`, the Apple driver hates it |
-| `imac-2019` | 580X with 8 GB — max every 5.11-era knob; new cherry-picks land here first |
+| `imac-2019` | 580X with 8 GB, max every 5.11-era knob; new cherry-picks land here first |
 
 ## Adding a machine
 

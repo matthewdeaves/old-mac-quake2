@@ -80,7 +80,7 @@ A bump would have to be re-argued on the real ceiling, not that one.
 - The engine tree is ours to edit directly. There is no upstream PR path; work
   lands as commits here.
 
-## Addendum, 2026-08-20: the "current yquake2 loses the G3" objection is smaller than it looked
+## Addendum: 2026-08-20: the "current yquake2 loses the G3" objection is smaller than it looked
 
 Research into bumping the engine surfaced an apparently fatal cost: current
 yquake2's GL1 renderer hard-refuses OpenGL below 1.4

@@ -52,8 +52,8 @@ is why nothing is bundled by default.
 `scripts/make-icon.py` emits a **legacy-only ICNS** that renders in Panther
 10.3, Tiger 10.4, Lion 10.7 and Sequoia 15.7 Finder. Two constraints drive that:
 
-- **No `iconutil`** — it drops the 1-bit chunks Panther needs.
-- **No modern PNG chunks** — they break Panther's Finder.
+- **No `iconutil`**, it drops the 1-bit chunks Panther needs.
+- **No modern PNG chunks**, they break Panther's Finder.
 
 Background removal is deliberately conservative: edge flood fill that preserves
 all interior detail, with no auto-scrubbing of interior background-coloured

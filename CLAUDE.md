@@ -65,7 +65,7 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
   hard-crashes the Rage 128 G3. Cfgs use `set CVAR VALUE` and ship
   comment-stripped. `docs/adr/0007`
 - **iMac G5 hazard: the Radeon 9600 Leopard driver hard-hangs the whole OS on a
-  non-native fullscreen mode SWITCH** — grey screen, no SSH, physical power
+  non-native fullscreen mode SWITCH**, grey screen, no SSH, physical power
   button only. Three guards are in place (`vid_desktopfullscreen`,
   `GLimp_ForceDesktopFullscreen()`, `bench.sh` refusing). **Never bypass them or
   trigger a remote non-native mode switch on the G5.** `docs/adr/0008`
@@ -99,20 +99,20 @@ Two build minis: `mini-intel` (10.188.1.190) and `mini-intel2`
 `yosemite` and `yosemite-tiger` are **one machine on one IP** with two OS
 partitions; only one is booted at a time. Switch with
 `ssh yosemite 'sudo bless --mount "/Volumes/<vol>" --setBoot'` then plain
-`sudo /sbin/reboot </dev/null` — **not** `sudo -n`, which Tiger's and Panther's
+`sudo /sbin/reboot </dev/null`, **not** `sudo -n`, which Tiger's and Panther's
 sudo 1.6.x reject outright. `parallel-bench.sh` refuses to run both legs.
 
 ## Read on demand
 
-- `README.md` — public overview: fleet, framerates, install
-- `docs/BUILD.md` — build flags, patch class, deploy layout, game data
-- `docs/BENCH.md` — the harness and its safety rails
-- `docs/CONFIG.md` — cvar reference and the feature inventory with commits
+- `README.md`, public overview: fleet, framerates, install
+- `docs/BUILD.md`, build flags, patch class, deploy layout, game data
+- `docs/BENCH.md`, the harness and its safety rails
+- `docs/CONFIG.md`, cvar reference and the feature inventory with commits
 - `docs/HD_PACK.md`, `docs/WATCHLINK.md`, `server/README.md`
-- `docs/STATUS.md` — release history and what is open
-- `MISTAKES.md` — **read before lighting up anything that smells "easy /
+- `docs/STATUS.md`, release history and what is open
+- `MISTAKES.md`, **read before lighting up anything that smells "easy /
   load-time only / zero risk"**
-- `docs/adr/` — 0001 slices and subtype stamping, 0002 the 5.11 pin and SDL 1.2,
+- `docs/adr/`, 0001 slices and subtype stamping, 0002 the 5.11 pin and SDL 1.2,
   0003 arm64 is a separate question, 0004 the fat SDL framework, 0005 build
   hosts and DMG packaging, 0006 verification, 0007 config layering, 0008 the G5
   fullscreen hazard, 0009 smoke tests and benchmarks, 0010 per-machine A/B,

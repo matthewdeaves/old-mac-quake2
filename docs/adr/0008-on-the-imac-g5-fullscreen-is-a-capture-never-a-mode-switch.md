@@ -1,4 +1,4 @@
-# 8. On the iMac G5, fullscreen is a same-mode capture, never a mode switch
+# 8. On the iMac G5: fullscreen is a same-mode capture, never a mode switch
 
 Date: 2026-08-20 (records a decision taken 2026-05-31)
 Status: accepted
@@ -43,7 +43,7 @@ SDL 1.2 has no built-in desktop fullscreen, so it was added:
   same-mode capture for **every** fullscreen request independent of cvar or
   config. Proven with a pathological-config audit: `vid_fullscreen 1` +
   `vid_desktopfullscreen 0` + a non-native 1024x768 planted in `config.cfg`,
-  launched with the overlay disabled — the engine logged the requested 1024x768
+  launched with the overlay disabled, the engine logged the requested 1024x768
   but captured native 1440x900 and the OS did not hang.
 - **`bench.sh`** refuses fullscreen at any non-native resolution on `imac-g5`
   (`exit 3`), defaults to native-resolution capture, and offers `G5_WINDOWED=1`
@@ -55,7 +55,7 @@ SDL 1.2 has no built-in desktop fullscreen, so it was added:
 - The `misc.c` machine map routes all three iMac G5 model IDs to the overlay as
   a safety entry (ADR 0007).
 
-## Killing a fullscreen G5 run: TERM first, always
+## Killing a fullscreen G5 run: TERM first: always
 
 `killall -KILL` alone on a fullscreen G5 session skips SDL's shutdown, so the
 R300/Leopard captured framebuffer is never released and the screen goes **black**

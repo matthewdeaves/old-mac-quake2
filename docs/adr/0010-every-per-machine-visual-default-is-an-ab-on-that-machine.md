@@ -46,7 +46,7 @@ Corollaries that have each been paid for:
 | Feature | Machine | Measurement | Shipped |
 |---|---|---|---|
 | `gl_stencilshadow 1` | mini-g4 (R9200, Tiger) | demo2 1024x768 **103.6 → 40.6 fps**, a **60% regression**, 2026-05-23, pre-AltiVec | see note |
-| `gl_stencilshadow 1` | imac-g5 (R9600, Leopard) | **116.1 vs 115.9 fps** — free | ON |
+| `gl_stencilshadow 1` | imac-g5 (R9600, Leopard) | **116.1 vs 115.9 fps**, free | ON |
 | `gl_stencilshadow 1` | mini-intel (GMA 950) | free; the demo is CPU-bound there | ON |
 | `gl_msaa_samples` | imac-g5 @ native 1440x900 | 0x = **116**, 2x = **52.5**, 4x = **27 fps** | 2x |
 | `gl_msaa_samples` | mini-g4 @ 1024x768 | **-1.5 fps** with 2x MSAA + decals | 2x |
@@ -90,7 +90,7 @@ Bottleneck per machine, as established by resolution sweeps: **yosemite is GPU
 fillrate-bound** (Rage 128); **sawtooth is CPU-bound** on `R_BuildLightMap`;
 **quicksilver is vsync-capped with unused GPU headroom**; **mini-g4 is mixed**;
 **imac-g5 is CPU-bound on the 970FX**; **mini-intel and imac-2019 have margin**.
-Startup prints `GL_RENDERER` and the extension list — read it before enabling a
+Startup prints `GL_RENDERER` and the extension list, read it before enabling a
 code path for a GPU.
 
 Current shipped figures live in `README.md` and every row in

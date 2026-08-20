@@ -1,4 +1,4 @@
-# 1. Four slices, graded by CPU subtype, each stamped exactly
+# 1. Four slices: graded by CPU subtype, each stamped exactly
 
 Date: 2026-08-20 (records decisions taken 2026-05-11 through 2026-07-25)
 Status: accepted

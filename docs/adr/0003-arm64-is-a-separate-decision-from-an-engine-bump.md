@@ -29,7 +29,7 @@ API**, not a newer engine. `sdl12-compat` (libsdl-org) is exactly that: the SDL
 two of them hand-built. A fifth arm64 slice built from `sdl12-compat`, carrying
 the same install name, would be selected by dyld on CPU alone exactly as the
 others are (ADR 0001). PowerPC and Intel keep real SDL 1.2; only the new slice
-would run the shim; the engine source would not change. **INFERRED** — not
+would run the shim; the engine source would not change. **INFERRED**, not
 built, not linked, not run.
 
 ### What sdl12-compat can and cannot do (researched 2026-08-20)
@@ -75,5 +75,5 @@ at the engine version.
 Two things are known from the sister port and worth carrying: Lion's `lipo` can
 write a correct fat containing arm64 but cannot NAME the slice, printing a
 numeric `cputype`; and arm64 itself cannot be built on a Lion mini, whose
-toolchain predates it. **INFERRED for this repo** — neither has been tested with
+toolchain predates it. **INFERRED for this repo**, neither has been tested with
 this tree's artifacts.

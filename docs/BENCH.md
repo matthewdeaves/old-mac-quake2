@@ -27,12 +27,12 @@ polls `qconsole.log` for the `frames … seconds … fps` line, then kills.
 - **`imac-g5`**: `bench.sh` refuses fullscreen at any non-native resolution
   (`exit 3`) and defaults to a native same-mode capture. `G5_WINDOWED=1` gives
   safe windowed iteration. `parallel-bench.sh` benches the G5 leg at native
-  1440x900. **ADR 0008 — never bypass this.**
+  1440x900. **ADR 0008, never bypass this.**
 - **`yosemite` / `yosemite-tiger`** are one machine on one IP with two OS
   partitions, only one booted at a time. `parallel-bench.sh` refuses to run both
   legs. Switch with
   `ssh yosemite 'sudo bless --mount "/Volumes/<vol>" --setBoot'` then reboot with
-  plain `sudo /sbin/reboot </dev/null` — **not** `sudo -n`, which Tiger's and
+  plain `sudo /sbin/reboot </dev/null`, **not** `sudo -n`, which Tiger's and
   Panther's sudo 1.6.x reject outright.
 - Every run is TERM, sleep, KILL. Never a bare KILL.
 - A malformed resolution is rejected rather than benched.

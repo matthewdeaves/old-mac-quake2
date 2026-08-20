@@ -39,18 +39,18 @@ log. **Read the flushed log first.** The production launch uses `logfile 1`
 (buffered), so the error never reaches disk; reproduce with `+set logfile 2`
 and, on hazardous machines, `+set vid_fullscreen 0`.
 
-### Killing a run: TERM, sleep, then KILL
+### Killing a run: TERM: sleep, then KILL
 
 Always. SIGTERM lets SDL restore the captured display; a hard SIGKILL
 black-screens the R300/Leopard iMac G5 (ADR 0008). `bench.sh` does this already.
 
 ## Two launch modes, and which one to use
 
-- **`bench.sh` / `screenshot.sh` — deterministic measurement.** Pass
+- **`bench.sh` / `screenshot.sh`, deterministic measurement.** Pass
   `-noarchautoexec` to suppress the bundle hook and drive video, resolution and
   sound via command-line `+set`. Use whenever a measurement must not be coloured
   by the per-machine production defaults.
-- **`smoke-dmg.sh` — as a human launches it.** Does **not** pass
+- **`smoke-dmg.sh`, as a human launches it.** Does **not** pass
   `-noarchautoexec` and does not override video or resolution; the production
   bundle config drives the renderer and only a timedemo is added so it exits.
   This is the gate that caught the corrupt-DMG crash, and it confirms both world
@@ -63,7 +63,7 @@ redeploy, re-bench.
 
 ## Q2 timedemo specifics
 
-- `+timedemo demo1.dm2`, not `demo1` — the `.dm2` is required.
+- `+timedemo demo1.dm2`, not `demo1`, the `.dm2` is required.
 - Playback is initiated with `demomap demo1.dm2`, not `playdemo demo1`.
 - The fps line is `N frames, X.X seconds: Y.Y fps`.
 - Retail paks ship **two** playable demos, `demo1.dm2` (intro) and `demo2.dm2`
@@ -86,7 +86,7 @@ redeploy, re-bench.
 Three runs, median of runs 2 and 3. Smoke bench on the dirty tree, commit the
 code change, then `scripts/bench-and-commit.sh "<label>" --quick` on a clean
 tree to land the official rows. Full grid only at end of round. **Never wipe
-`benchmarks/results.csv` mid-round** — it is the canonical numeric record, one
+`benchmarks/results.csv` mid-round**, it is the canonical numeric record, one
 row per (commit, machine, demo, resolution). Regressions worse than 5% on any
 machine block the commit.
 
@@ -101,7 +101,7 @@ machine block the commit.
 
 ## The bench-integrity failure that made this ADR necessary
 
-Nine rows recorded on **2026-06-06** carried `res=1` — a run count that landed in
+Nine rows recorded on **2026-06-06** carried `res=1`, a run count that landed in
 the resolution argument. They therefore rendered **1x1 pixels** and reported
 108–128 fps. Those rows are the evidence behind the v2.5.0 / v2.5.1 "stencil
 shadows cost ~15% and clear the floor" decisions on all three G4s. The real

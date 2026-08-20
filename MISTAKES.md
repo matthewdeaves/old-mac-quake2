@@ -1,9 +1,9 @@
-# Mistakes log — settled negatives, do not re-chase
+# Mistakes log: settled negatives, do not re-chase
 
 Append-only register of things that were tried and were wrong, harmful or
 misjudged. Each entry exists so a future round does not re-litigate it on
 incomplete information. **Read this before lighting up an idea that smells
-"easy / load-time only / zero risk"** — that smell test has failed here four
+"easy / load-time only / zero risk"**, that smell test has failed here four
 times, and three of those took a machine down.
 
 Newest first. Where a mechanism became a standing decision it lives in
@@ -15,32 +15,32 @@ dyld install-name quirks.
 
 ---
 
-## Build, packaging and deploy
+## Build: packaging and deploy
 
-**2026-07-25 — `-faltivec` silently un-stamped the ppc7400 cpusubtype.** Nearly
+**2026-07-25, `-faltivec` silently un-stamped the ppc7400 cpusubtype.** Nearly
 shipped a fat no G3 could launch; caught before release. Root cause, blast
 radius and the assert-and-re-stamp fix: **ADR 0001**. The general lesson: a
 compiler flag added for one reason can quietly undo something unrelated three
 layers down, and the only defence is asserting the property you actually care
 about on the artifact itself.
 
-**2026-05-31 — chased a phantom "G3 corrupt renderer"; the real cause was my own
+**2026-05-31, chased a phantom "G3 corrupt renderer"; the real cause was my own
 stale DMG mounts.** Root cause and the deploy-verify fix: **ADR 0006**. The
 wrong theory is the point: I assumed flaky retro hardware (old disk, non-ECC RAM
-corrupting the copy). **It was wrong** — the G3 has a near-new SSD and hashed
+corrupting the copy). **It was wrong**, the G3 has a near-new SSD and hashed
 the file `060cc6dc…` three times deterministically in place, and a copy-to-disk
 hashed clean. *Do not reach for "flaky retro hardware" before proving it: hash
 the file in place and copy-test it first.* Second lesson: verify at the LAST hop
 the user runs (the install directory), not an earlier one, and a failing deploy
 that still prints a success-ish line is worse than one that errors.
 
-**2026-05-31 — DMG packaging flipped ONE byte and shipped an
+**2026-05-31, DMG packaging flipped ONE byte and shipped an
 illegal-instruction crash to every G4.** Root cause, opcodes and the three-part
 fix: **ADR 0006**. `hdiutil verify` is not a content check. Do not run the
 build or packaging on the flakiest hardware in the fleet when a healthier
 machine does the same job.
 
-**2026-05-31 — config comments overflowed the fixed command buffer, garbled the
+**2026-05-31, config comments overflowed the fixed command buffer, garbled the
 config, and wedged the R300 GPU on "new game" (shipped in v2.2.0).** Root cause
 and the two-layer fix: **ADR 0007**. Lessons: shipped config text has a hard
 size budget when the engine buffers it; a timedemo is not a substitute for
@@ -50,11 +50,11 @@ into hard ones.
 
 ## Video init and the fullscreen path
 
-**2026-05-31 — per-machine config applied AFTER `CL_Init` triggered a
+**2026-05-31, per-machine config applied AFTER `CL_Init` triggered a
 refresh-DLL reload that hard-crashed the Panther/Rage 128 G3 on "start a new
 game".** Root cause and the fix: **ADR 0007**.
 
-**2026-05-31 — first-launch `vid_restart` to apply per-machine defaults early
+**2026-05-31, first-launch `vid_restart` to apply per-machine defaults early
 (tried in v2.2.2, REVERTED).** The idea was to make the tuned fullscreen,
 resolution and picmip apply on the first launch instead of the second. It worked
 on G4, G5 and Intel and **hard-crashed the G3**:
@@ -65,18 +65,18 @@ It is the same fatal reload, issued deliberately.
 A compile-time guard was tried to exclude the bare-G3 slice:
 `#if !(defined(__ppc__) && !defined(__VEC__) && !defined(Q2_ARCH_PPC970))`.
 Verified that `gcc-4.0 -arch ppc -mcpu=750` defines only `__ppc__` /
-`__POWERPC__` and not `__VEC__`, so the macro *should* have excluded it — **the
+`__POWERPC__` and not `__VEC__`, so the macro *should* have excluded it, **the
 crash persisted identically.** The fix was to drop the `vid_restart` entirely;
 the real fix came later by moving the config call site (ADR 0007).
 
 Lessons: (a) `vid_restart` is not safe to issue automatically on the legacy
-Panther/Rage 128 stack — treat it as interactive-menu-only there; (b) "tested
+Panther/Rage 128 stack, treat it as interactive-menu-only there; (b) "tested
 green on 4 of 5" is not "works", and the 5th, oldest, least forgiving box is
 exactly where a video-init change bites; (c) when a fix needs a per-slice
 compile guard to be safe, that is a signal the fix itself is wrong for this
 fleet.
 
-**2026-05-31 — the iMac G5's R300/Leopard driver hard-hangs the whole OS on a
+**2026-05-31, the iMac G5's R300/Leopard driver hard-hangs the whole OS on a
 non-native fullscreen mode switch.** Hazard, mitigations and the
 never-bypass rule: **ADR 0008**. The "load-time only / zero risk" smell test
 failed here: a one-line resolution flag that is inert everywhere else can take a
@@ -85,13 +85,13 @@ new-to-the-fleet GPU/OS pair, assume the fullscreen path is the first thing that
 will bite and validate it windowed or same-mode before triggering a remote mode
 switch you cannot physically recover from.
 
-**2026-05-31 — `killall -KILL` on a fullscreen G5 leaves the screen BLACK.**
+**2026-05-31, `killall -KILL` on a fullscreen G5 leaves the screen BLACK.**
 The R300 display capture is never released. Always TERM, sleep, then KILL:
 **ADR 0008**.
 
 ## Renderer features
 
-**2026-05-31 — `gl_caustics` drew a grid of circles on water: brightness was a
+**2026-05-31, `gl_caustics` drew a grid of circles on water: brightness was a
 PRODUCT of gratings, not a SUM (fixed v2.2.6).** The overlay tiled a grid of
 soft round blobs across every water surface, on **both** the G5 (Radeon 9600 /
 Leopard) and the G3 (Rage 128 / Panther).
@@ -120,7 +120,7 @@ tile still wraps seamlessly. `r_decal.c` was never involved.
 **cannot read `/tmp` or anything outside `$HOME`** ("can't find page"). Use
 Chrome and stage previews under `$HOME`.
 
-**2026-05-31 — the `gl_trans_lighting` port missed a guard and `ERR_DROP`ed on
+**2026-05-31, the `gl_trans_lighting` port missed a guard and `ERR_DROP`ed on
 the first map with non-warp glass (base1), which presented as a freeze (fixed
 v2.2.5).** A byte-verified DMG still froze "start a new game" on the G4-mini and
 the iMac G5 (state `R`/`U`, pegged CPU, ignored SIGTERM) while the G3 was fine.
@@ -129,7 +129,7 @@ cause printed: `ERROR: R_BuildLightMap called for non-lit surface`
 (`r_light.c`, `ERR_DROP`).
 
 *Root cause:* at map load `r_model.c` calls `LM_CreateSurfaceLightmap` for
-`SURF_TRANS33/66` surfaces when the cvar is on, which calls `R_BuildLightMap` —
+`SURF_TRANS33/66` surfaces when the cvar is on, which calls `R_BuildLightMap`,
 but `R_BuildLightMap`'s **stock** guard rejects
 `SURF_SKY|SURF_TRANS33|SURF_TRANS66|SURF_WARP` as "non-lit". kmquake2, the
 feature's upstream, relaxes that exact line to `(SURF_SKY|SURF_WARP)`. We copied
@@ -140,14 +140,14 @@ carry real BSP lightmap samples and are meant to be lit; with the cvar off they
 never reach `R_BuildLightMap` anyway.
 
 *Lessons:* (1) a "fullscreen crash" that leaves a live, pegged process with no
-crash log is almost always an `ERR_DROP` to console — read the flushed log first
+crash log is almost always an `ERR_DROP` to console, read the flushed log first
 (ADR 0009). (2) The architecture split (G3 ok, G4+G5 fail) was a **red herring**:
 it tracked which features the per-machine config enables, not the CPU. Bisect by
 the actual variable, not the coincident one. (3) `+map base2` is not "new game"
-— test the real first map (ADR 0009). (4) **When porting a feature, port the
+, test the real first map (ADR 0009). (4) **When porting a feature, port the
 whole diff, including the defensive guards it relaxes.**
 
-**2026-05-29 — fixed-function bloom: too slow on PPC, and `R_LoadPic` eats the
+**2026-05-29, fixed-function bloom: too slow on PPC, and `R_LoadPic` eats the
 screen texture.** A fixed-function light bloom post-process (`r_bloom.c`,
 `gl_bloom`): capture the back buffer with `glCopyTexSubImage2D`, downsample,
 darken to isolate brights, separable blur, additive composite, hooked at the end
@@ -160,30 +160,30 @@ of `R_RenderView`.
 2. **Visually broken on GMA 950 / Lion.** The first cut left the bloom workspace
    visible as a black box in the back-buffer corner plus a heavy additive wash.
    Adding a "restore the scene from the captured screen texture, then add bloom"
-   blit fixed the corner in principle, but the whole 3D scene came back black —
+   blit fixed the corner in principle, but the whole 3D scene came back black,
    almost certainly because **`R_LoadPic(..., it_pic, ...)` resizes and repacks a
    large (1024²) pic texture**, so the `glCopyTexSubImage2D` capture region
    overflows the real texture and the copy silently stays empty (memset 0).
 
 Shipped **disabled** (`gl_bloom 0` everywhere, binary default 0), code kept
 in-tree as wired WIP. Lessons: (a) a fullscreen post-process is the wrong shape
-for the PPC fillrate budget — it needs sub-resolution work and probably only
+for the PPC fillrate budget, it needs sub-resolution work and probably only
 ever makes sense on the iMac; (b) **do not use `R_LoadPic` / `it_pic` for a
-render target** — a redo needs a dedicated full-size texture created straight
+render target**, a redo needs a dedicated full-size texture created straight
 via `qglTexImage2D` so `glCopyTexSubImage2D` has a matching destination.
 
-**2026-05-29 — procedural/effect textures get freed on map change unless
+**2026-05-29, procedural/effect textures get freed on map change unless
 protected (latent).** `gl_glows` and `gl_caustics` build a procedural texture
 once at `R_Init` and stash the `image_t*` in a global, like `r_particletexture`.
 `R_FreeUnusedImages` runs on every map change and frees any image whose
 `registration_sequence` is not current; the new textures were not in the protect
 list, so they would be freed at the first map change and the feature paths would
 then bind a deleted texnum. It did not surface in demo1 benches or screenshots
-only because those frames barely exercise the shell and caustic paths — a real
+only because those frames barely exercise the shell and caustic paths, a real
 "looked fine, was broken" trap. **Any texture created once at init and held in a
 global must be added to the `R_FreeUnusedImages` protect block** (ADR 0012).
 
-**2026-05-23 — `gl_stencilshadow 1` on Tiger ATI drivers regressed 60% fps.**
+**2026-05-23, `gl_stencilshadow 1` on Tiger ATI drivers regressed 60% fps.**
 mini-g4 (R9200, ATI Tiger driver), demo2 1024x768: **103.6 → 40.6 fps**. The
 R9200's per-fragment `GL_INCR` stencil op runs on a very slow driver path and
 the bench scene has many monsters. Reverted on all four slow-stencil machines;
@@ -193,26 +193,26 @@ blob shadows (`gl_shadows 1`) stayed on. **Lesson:** 8-bit stencil being
 it cannot guard for this.
 
 **This decision was reversed on 2026-06-06 on figures that are now known to be
-invalid** — they came from the `res=1` runs that rendered 1x1 pixels (ADR 0009).
+invalid**, they came from the `res=1` runs that rendered 1x1 pixels (ADR 0009).
 Re-taking it is issue #7. See ADR 0010; do not quote the 2026-06-06 numbers.
 
-**2026-06-06 — the blob-shadow fallback the configs claimed was never actually
+**2026-06-06, the blob-shadow fallback the configs claimed was never actually
 implemented, and the first attempt drew nothing.** `R_DrawAliasShadow`
 (`r_mesh.c:427`) projects **every** model triangle flat onto the floor; the
 stencil ops (`GL_EQUAL,1,2` + `GL_INCR`) are the only thing masking each floor
 pixel to draw once. With `gl_stencilshadow 0` the projected leg/torso/arm
 triangles overlap and each re-blends at α=0.5, compounding into dark blotches.
 The first blob replacement used `GL_MODULATE` with a `(0,0,0,0.5)` vertex
-colour, which **collapses to transparent black on the Tiger ATI driver** — so
+colour, which **collapses to transparent black on the Tiger ATI driver**, so
 there was literally no shadow. Fixed by switching to `GL_REPLACE` with the
 50% alpha pre-baked into `shadow.tga`.
 
-**2026-05-23 — multitexture state leaks into ad-hoc draw passes on GMA 950.**
+**2026-05-23, multitexture state leaks into ad-hoc draw passes on GMA 950.**
 `R_DrawDecals` (`r_decal.c`) bound the decal texture to TMU0, called
 `R_TexEnv(GL_MODULATE)` and drew alpha-blended quads. Correct on yosemite (Rage
 128, no multitex) and mini-g4 (R9200); on mini-intel (GMA 950, Lion driver) the
 same build rendered minigun decals as **light grey discs** instead of dark
-bullet holes — shape, rotation, falloff and position all right, only the colour
+bullet holes, shape, rotation, falloff and position all right, only the colour
 wrong.
 
 *Root cause:* `R_DrawWorld` leaves multitexture **enabled** with TMU1 holding
@@ -228,7 +228,7 @@ pass that runs after `R_DrawWorld` must explicitly disable multitexture if it
 expects single-texture semantics. "It works on PPC" is not a sufficient sanity
 check for a state-machine bug.
 
-**2026-05-21 — `R_ApplyGLBuffer` toggling multitexture destroyed the
+**2026-05-21, `R_ApplyGLBuffer` toggling multitexture destroyed the
 `GL_COMBINE_EXT` setup.** The initial port of yquake2-latest's `gl1_buffer.c`
 followed upstream in calling `R_EnableMultitexture(true)` on flush entry and
 `(false)` on exit. Walls, floors and ceilings then rendered flat yellow/beige
@@ -258,9 +258,9 @@ code does set up the combiner. **Any future port from yquake2-latest must check
 whether the inner state configuration was hoisted out into the new code or
 stayed in `R_DrawWorld`.**
 
-## Dynamic lights on the GeForce2 MX — three attempts, all negative
+## Dynamic lights on the GeForce2 MX: three attempts, all negative
 
-**2026-05-19 (try 1) — `gl_dynamic 1` on sawtooth is catastrophic.**
+**2026-05-19 (try 1), `gl_dynamic 1` on sawtooth is catastrophic.**
 **83 → 15 fps** demo1 1024x768, **95 → 15 fps** at 640, roughly **-80%**. The
 GF2 MX cannot afford per-frame lightmap rebuild for dlight-touched surfaces
 regardless of headroom elsewhere: a single rocket light or muzzle flash forces a
@@ -269,16 +269,16 @@ has enough dlights to stay in that path most of the frame. The cost is AGP
 bandwidth, not fillrate. The original autoexec comment ("GeForce2 MX still pays
 the lightmap-reblend cost; skip") was load-bearing.
 
-**2026-05-19 (try 2) — the lightmap subrect upload does not unlock it either.**
+**2026-05-19 (try 2), the lightmap subrect upload does not unlock it either.**
 After landing `gl_lightmap_subrect` (commit `937a870`), which predicted ~4-12%
 on AGP-bound dynamic uploads: **15.25 fps** demo1 1024x768 **and 15.3 fps at
-640x480** — identical at half the pixel count. That is the smoking gun: the
+640x480**, identical at half the pixel count. That is the smoking gun: the
 bottleneck is not GPU or AGP, it is CPU-side `R_BuildLightMap` +
 `R_AddDynamicLights` per-luxel float maths, which runs once per dlight-touched
 surface per frame regardless of resolution. **A bandwidth optimisation cannot
 fix CPU.** When a regression scales the same at two resolutions, it is CPU-bound.
 
-**2026-05-23 (try 3) — AltiVec `R_BuildLightMap` is net-negative.** Ported the
+**2026-05-23 (try 3), AltiVec `R_BuildLightMap` is net-negative.** Ported the
 `scale != 1.0F` paths (both the `nummaps==1` assign and `nummaps>1` accumulate
 variants). The output stride is 3 floats, incompatible with `vec_st`'s 16-byte
 aligned contract, so each loop body builds aligned stack temps for input and
@@ -296,7 +296,7 @@ temp. Net per-luxel cost exceeds the scalar 3 fmul + 3 fmadd.
 
 *Reverted*, including the `__attribute__((aligned(16)))` on `s_blocklights`;
 sawtooth restored to `gl_dynamic 0` + `gl_flashblend 1` (~69 fps demo1 1024, the
-shipped answer — billboard halos, no per-surface relight at all).
+shipped answer, billboard halos, no per-surface relight at all).
 
 *Do not re-attempt this function shape.* **AltiVec on array-of-structures-3
 layouts is structurally limited**: `R_LerpVerts` can win because its output is
@@ -311,17 +311,17 @@ Options left for a future round, none of them SIMD on the existing code:
 per-light subrect upload only; batching multiple lights into a single
 `R_BuildLightMap` pass; or accepting `gl_flashblend 1` as permanent.
 
-**2026-05-19 — the subrect port was queued against the wrong machine.** Before
+**2026-05-19, the subrect port was queued against the wrong machine.** Before
 any code changed: the sister-project audit predicting +4.2% on demo1 1024 for
 yosemite overlooked that yosemite's autoexec sets `gl_dynamic 0`, which gates
 the entire dynamic path in 5.11 (`r_surf.c:279/429/651`). With dlights off
 `LM_UploadBlock(true)` never fires and there is nothing to optimise. **Per-machine
-autoexec settings change which code paths are hot** — re-check a cherry-pick's
+autoexec settings change which code paths are hot**, re-check a cherry-pick's
 justification against the target's own config first (ADR 0010).
 
 ## AltiVec
 
-**2026-05-23 — AltiVec `R_LerpVerts` produced warped alias-model geometry
+**2026-05-23, AltiVec `R_LerpVerts` produced warped alias-model geometry
 (commit `55bfeb8`, reverted).** Each vertex's
 `lerp = move + ov->v * backv + v->v * frontv` reduced to two `vec_madd`s plus
 one `vec_st`, gated by `#ifdef __ALTIVEC__` so only the G4 slice picked it up.
@@ -335,7 +335,7 @@ because the broken vertex maths was strictly cheaper than the correct maths, so
 the timedemo finished slightly faster.**
 
 The other smoking gun: a second mini-g4 bench at 1024x768 of the **same** binary
-that read **103.30 fps** the first time read **17.50 fps** on the retry —
+that read **103.30 fps** the first time read **17.50 fps** on the retry,
 likely the GL driver dropping into a software fallback after the
 warped-geometry render corrupted its state.
 
@@ -345,14 +345,14 @@ lane-insertion codegen for "3 byte loads + 3 sint→float + 3 vector inserts + 1
 literal 0" can go wrong if the compiler uses a stack temp that is not 16-byte
 aligned, or emits a `vec_ld` with a wrong shift permute.
 
-*Lessons:* (1) **bench correctness is not visual correctness** — always
+*Lessons:* (1) **bench correctness is not visual correctness**, always
 corroborate a +N% AltiVec win with a screenshot diff against the scalar
 reference, especially in a per-vertex or per-luxel pipeline; (2)
 **`(vector float){a,b,c,d}` with non-constant lane values is risky on gcc-4.0
-PPC** — prefer writing to a `float v[4] __attribute__((aligned(16)))` stack
+PPC**, prefer writing to a `float v[4] __attribute__((aligned(16)))` stack
 buffer then `vec_ld(0, v)`; (3) re-attempting this needs the aligned-stack-load
 pattern **plus** a visual A/B from a fixed camera angle, scalar build vs AltiVec
-build; (4) watch bench-to-bench stability of the AltiVec slice — rapidly
+build; (4) watch bench-to-bench stability of the AltiVec slice, rapidly
 degrading fps across runs suggests bad geometry is putting the driver in a
 degraded mode.
 
@@ -362,7 +362,7 @@ Not failures, but analyses that concluded "no" and should not be re-derived:
 
 - **`frsqrte` `Q_rsqrt_ppc` backport: ~0% framewide.** The per-frame render path
   has only 3 `VectorNormalize` calls (`r_mesh.c`, `r_main.c`, `r_decal.c`),
-  saving roughly 25 ns each, about 75 ns per frame — well under 0.01% of a 16 ms
+  saving roughly 25 ns each, about 75 ns per frame, well under 0.01% of a 16 ms
   frame. The 26 calls in `cl_effects.c` are bursty particle spawns and the 7 in
   `pmove.c` run at 10 Hz. Worth doing only for parity with the sister project.
 - **AltiVec 16-bit sound mixer: forecast ~1-2% framewide on G4 during heavy
@@ -376,7 +376,7 @@ Not failures, but analyses that concluded "no" and should not be re-derived:
   hand-port.** It is a 2024 multi-file refactor and every cherry-pick conflicts
   with the `refresh/` → `gl1/` directory rename and the intermingled client
   refactor commits. What shipped here is our own `r_buffer.c` (`gl_groupdraw`).
-- **KMQuake2 decals are game-DLL-driven upstream** — `R_AddDecal` is called from
+- **KMQuake2 decals are game-DLL-driven upstream**, `R_AddDecal` is called from
   `g_combat.c` / `p_weapon.c` impact handlers, so a pure renderer port delivers
   nothing without touching `baseq2/game.so` too. This port instead hooks the
   client temp-entity handlers in `cl_tempentities.c`.

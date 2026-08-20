@@ -1,4 +1,4 @@
-# Quake II — old-Mac port
+# Quake II: old-Mac port
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](yquake2/LICENSE)
 [![Platform: PPC + Intel macOS](https://img.shields.io/badge/Platform-PPC%20%7C%20Intel%20macOS-lightgrey.svg)](#tested-machines)
@@ -10,13 +10,13 @@
 </p>
 
 A Quake II port (yquake2 5.11) built as one fat PowerPC + Intel binary inside a
-single `Quake2.app`, tested on a range of old Macs — G3, G4, G5 and Intel, from a
+single `Quake2.app`, tested on a range of old Macs, G3, G4, G5 and Intel, from a
 1999 Power Mac to a 2019 iMac. The app carries three config layers: shared
 controls, a per-arch baseline picked by the running slice, and a per-machine
 overlay picked at boot by `sysctl hw.model`. A headless Linux dedicated server
 builds from the same tree (see [`server/`](server/README.md)).
 
-> **About this project.** A personal project — I love Quake and I collect and
+> **About this project.** A personal project, I love Quake and I collect and
 > tinker with old Macs. My part is the setup and testing: the build, deploy and
 > benchmark scripts, and the per-machine settings. The engine and config changes
 > were made mostly **with AI (Claude), which I directed and checked against real
@@ -53,16 +53,16 @@ The binary carries one slice per CPU family, each stamped with its exact CPU sub
 |---|---|---|---|
 | G3 (750) | `ppc750` | 10.3.9 Panther or later | 10.3.9 and 10.4.11 |
 | G4 (7400 / 7450 / 7447A) | `ppc7400` | 10.3.9 Panther or later | 10.4.11 |
-| G5 (970) | `ppc970` | **10.5 Leopard — a G5 on 10.3 or 10.4 is not supported** | 10.5.8 |
+| G5 (970) | `ppc970` | **10.5 Leopard, a G5 on 10.3 or 10.4 is not supported** | 10.5.8 |
 | Intel, 64-bit | `x86_64` | 10.6 Snow Leopard or later | 10.7.5 and 15.7 |
 
 `dyld` picks a slice by CPU alone; the OS plays no part in it. A Mac running an OS
 older than its slice needs gets that slice anyway rather than falling back to a lower
-one, and won't launch — which is why the G3 and G4 slices are both built at min 10.3
+one, and won't launch, which is why the G3 and G4 slices are both built at min 10.3
 even though no G4 here runs Panther. Two rows are honest about the gap between what is
 built and what is tested: **a G4 on Panther and an Intel Mac on Snow Leopard should both
 work but neither has been run on hardware** (no such machine in the fleet). The G5 is the
-exception — its slice genuinely needs 10.5, so that row is a real floor, not a gap in
+exception, its slice genuinely needs 10.5, so that row is a real floor, not a gap in
 testing.
 
 32-bit-only Intel Macs (Core Duo / Core Solo, 2006) have no slice at all: there is no
@@ -84,13 +84,13 @@ median of runs 2 & 3:
 | iMac 27" (2019 / Radeon Pro 580X) † | 698.8 | 732.6 |
 
 The iMac G5 runs native 1440×900 only (its Leopard driver hangs on a mode
-switch) at 46.8 fps — a deliberate visuals-over-framerate choice there.
+switch) at 46.8 fps, a deliberate visuals-over-framerate choice there.
 
 The two G3 rows are the same Mac booted from two partitions, running the
 byte-identical binary out of the same disk image: **the OS costs it nothing
 measurable.** On the production config both come out at 21.0 fps exactly.
 
-† Not benched for this release — sawtooth and the 2019 iMac were offline.
+† Not benched for this release, sawtooth and the 2019 iMac were offline.
 Those rows are carried forward from before the v2.5.1 stencil-shadow rollout,
 so the sawtooth figures in particular are likely optimistic; treat them as
 stale rather than current.
@@ -123,21 +123,21 @@ cover the setup, the build pipeline and the timedemo bench loop.
 - **One fat binary** (PPC G3 + G4 AltiVec + G5 + Intel x86_64) in a
   self-contained `Quake2.app`; runs on Mac OS X 10.3.9 Panther through modern
   macOS.
-- **Three config layers baked into the `.app`** — shared controls, a per-arch
+- **Three config layers baked into the `.app`**, shared controls, a per-arch
   baseline picked by the running slice, and a per-machine overlay dispatched at
   boot by `sysctl hw.model` (all applied before video init, so the renderer
   comes up in its final mode). Every visual knob is a runtime cvar.
-- **GL1 renderer cherry-picks + KMQuake2 visual features** — cvar-driven fog,
+- **GL1 renderer cherry-picks + KMQuake2 visual features**, cvar-driven fog,
   underwater warp, group-draw batching, MSAA, energy-shell glow, lightmapped
   glass/grates, water caustics, extended draw distance.
-- **World decals + per-weapon blast marks** — rocket, grenade, plasma, BFG and
+- **World decals + per-weapon blast marks**, rocket, grenade, plasma, BFG and
   railgun each leave a distinct mark on the surface they actually hit (ported
   from KMQuake2's fragment clipper; `gl_decals`).
 - **Stencil shadows on every PowerPC machine**, with a soft blob fallback where
   the GPU can't afford them.
-- **Native-res desktop fullscreen** — same-mode display capture; hardwired on
+- **Native-res desktop fullscreen**, same-mode display capture; hardwired on
   the iMac G5 where a mode switch hangs the Leopard driver.
-- Optional **Apple Watch "tactical computer" companion** (`watchlink`) — streams
+- Optional **Apple Watch "tactical computer" companion** (`watchlink`), streams
   live health / armor / ammo / inventory / objectives to an iPhone + Watch over
   Bonjour; off by default. Companion app:
   [quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch).
@@ -146,14 +146,14 @@ cover the setup, the build pipeline and the timedemo bench loop.
 
 Download the latest disk image from
 [**Releases**](https://github.com/matthewdeaves/old-mac-quake2/releases/latest)
-(`Quake2-OldMac-<version>.dmg`) — one image runs on Mac OS X 10.3.9 Panther,
+(`Quake2-OldMac-<version>.dmg`), one image runs on Mac OS X 10.3.9 Panther,
 Tiger, Leopard, Lion and modern macOS.
 
 1. Mount the `.dmg` and copy `Quake2.app`, `ref_gl.so`, `q2ded` and the `baseq2/`
    folder into one directory (e.g. `~/Desktop/quake2/`).
-2. **Add your retail data** — drop your own `pak0.pak`, `pak1.pak`, `pak2.pak`
+2. **Add your retail data**, drop your own `pak0.pak`, `pak1.pak`, `pak2.pak`
    into `baseq2/`, and copy the whole `players/` folder from your retail
-   `baseq2/` (models/skins — without it multiplayer models render invisible).
+   `baseq2/` (models/skins, without it multiplayer models render invisible).
    Retail Quake II is on Steam and GOG; the shareware `pak0.pak` also works.
 3. Double-click `Quake2.app`. It auto-detects the machine, applies the tuned
    config and opens fullscreen. On modern macOS, clear Gatekeeper with
@@ -170,4 +170,4 @@ Same machines, same tooling, other id engines:
 
 Built on [yquake2](https://github.com/yquake2/yquake2) and id Software's Quake II
 engine. GPLv2 (see [`yquake2/LICENSE`](yquake2/LICENSE)). Game data (`baseq2`
-paks) is **not** included — bring your own from Steam / GOG / retail CD.
+paks) is **not** included, bring your own from Steam / GOG / retail CD.

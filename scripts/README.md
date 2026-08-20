@@ -23,4 +23,4 @@ the way they do: `docs/adr/`.
 | `make-icon.py` | legacy-only ICNS pipeline. ADR 0012 |
 | `watchlink-listen.py` | desktop receiver for the UDP player-state feed. `docs/WATCHLINK.md` |
 | `bundle/` | static assets and the autoexec layer staged into the `.app` |
-| `tidy-quicksilver.sh` | proposed cleanup of quicksilver's existing Q2 install. **Do not run without the user's confirmation** — it deletes the legacy 1999 Mac binaries, which are not reusable but are still the user's property. It keeps `Q2DedicatedServer`, the 2006 PPC OS X server build |
+| `tidy-quicksilver.sh` | proposed cleanup of quicksilver's existing Q2 install. **Do not run without the user's confirmation**, it deletes the legacy 1999 Mac binaries, which are not reusable but are still the user's property. It keeps `Q2DedicatedServer`, the 2006 PPC OS X server build |

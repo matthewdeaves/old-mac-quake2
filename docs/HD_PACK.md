@@ -1,4 +1,4 @@
-# HD texture pack — install guide
+# HD texture pack: install guide
 
 Why no pack ships, and how the bundle search path is wired: **ADR 0012**.
 
@@ -64,7 +64,7 @@ None are bundled; sourcing is the operator's.
 
 ## Verifying and measuring
 
-A clean retex load prints nothing — it is silent success. Set `developer 1` to
+A clean retex load prints nothing, it is silent success. Set `developer 1` to
 see `LoadJPG:` / `LoadTGA:` lines, or:
 
     grep -E "Loading retex|texture .* failed" ~/.yq2/baseq2/qconsole.log

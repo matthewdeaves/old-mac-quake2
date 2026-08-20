@@ -1,4 +1,4 @@
-# Build, deploy and package
+# Build: deploy and package
 
 Operational how-to. The reasoning lives in the ADRs and is not repeated here:
 slices and cpusubtype stamping **ADR 0001**, the engine pin **ADR 0002**, SDL
@@ -66,7 +66,7 @@ The class to expect if a new file is added: `NSAlertStyle` macros (10.4 only has
 `stringWithCString:` fallback on 10.3), `kCGLCEMPEngine` (10.4.8+, absent from
 the 10.3.9 SDK headers, wrap in
 `#if MAC_OS_X_VERSION_MAX_ALLOWED >= 1040`), and Objective-C 2.0 dot notation,
-which gcc-4.0 does not parse. **Do not pre-patch speculatively** — let `make`
+which gcc-4.0 does not parse. **Do not pre-patch speculatively**, let `make`
 surface the list.
 
 ## Deploy layout
@@ -82,7 +82,7 @@ Target install layout, `~/Desktop/quake2/`:
 
 ```
 Quake2.app/                 everything, incl. Contents/Resources/autoexec-*.cfg
-ref_gl.so                   OUTSIDE the bundle — Q2 resolves these via basedir=.
+ref_gl.so                   OUTSIDE the bundle, Q2 resolves these via basedir=.
 q2ded
 baseq2/game.so
 baseq2/pak*.pak             the user's own data
@@ -104,7 +104,7 @@ release), `pak2.pak` (45 KB), `baseq2/players/`, `baseq2/video/`. Optional:
 `ctf/` (pak0 + pak1), `rogue/`, `xatrix/`. No game content is in this repo
 (ADR 0012).
 
-## Reuse from QuakeSpasm, do not duplicate
+## Reuse from QuakeSpasm: do not duplicate
 
 SSH config with legacy crypto and `~/.ssh/id_rsa_tiger`; the cross-build
 toolchain on the minis; the vendored prerequisites in `~/quakespasm/prereqs/`

@@ -1,4 +1,4 @@
-# 4. The fat SDL 1.2 framework is reused whole, with a dedicated ppc970 Leopard slice
+# 4. The fat SDL 1.2 framework is reused whole: with a dedicated ppc970 Leopard slice
 
 Date: 2026-08-20 (records decisions taken 2026-05-11 and 2026-05-31)
 Status: accepted

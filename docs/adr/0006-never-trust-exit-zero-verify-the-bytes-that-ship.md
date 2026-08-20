@@ -18,8 +18,8 @@ user runs.**
 
 `build.sh` `rm -rf`s `build/q2-$TARGET` **before** fetching, and `make clean`s on
 the build host. Without that, a failed build leaves the previous run's binaries
-in place and every downstream check — `lipo`, `file`, even the cpusubtype
-assertion — passes on an artifact nobody meant to ship. This bit on 2026-07-25:
+in place and every downstream check, `lipo`, `file`, even the cpusubtype
+assertion, passes on an artifact nobody meant to ship. This bit on 2026-07-25:
 `build/q2-g4` held an old-flags build after the fat had been linked, so the
 per-target directory and the fat's member disagreed.
 
@@ -30,7 +30,7 @@ slice afterwards they are different files:
 
     lipo -thin ppc7400 build/q2-fat/quake2 -output /tmp/m && md5sum /tmp/m build/q2-g4/quake2
 
-**The PPC builds are not byte-reproducible** — roughly **138 bytes** of embedded
+**The PPC builds are not byte-reproducible**, roughly **138 bytes** of embedded
 build metadata differ between two builds of identical source. So an md5 mismatch
 across two separate runs proves nothing; only compare artifacts from the **same**
 run.
@@ -95,7 +95,7 @@ Fix → `make-dmg` (verified) → `deploy-dmg` → `smoke-dmg` on G3/G4/G5 → a
 starts a new game. Then publish, **download the published GitHub asset back and
 md5-compare it to the verified source DMG.** Before tagging, fact-check the
 README (per-CPU OS floors, framerate table), the in-DMG `README.txt` and the SVG
-diagrams — those name SDKs and `-mmacosx-version-min` values and go stale
+diagrams, those name SDKs and `-mmacosx-version-min` values and go stale
 silently. State plainly which configurations are built but untested (ADR 0001).
 
 ## Implementation gotchas in the verify path

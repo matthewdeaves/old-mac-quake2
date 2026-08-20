@@ -37,6 +37,7 @@ case "$HOST" in
   g5-desktop|g5-tiger|g5-panther|quad-leopard|quad-tiger)
                TIMEOUT=120; COOLDOWN=2 ;;
   mini-intel2) TIMEOUT=60;  COOLDOWN=1 ;;
+  mini-sl)     TIMEOUT=60;  COOLDOWN=1 ;;
   *) echo "unknown machine: $HOST" >&2; exit 2 ;;
 esac
 

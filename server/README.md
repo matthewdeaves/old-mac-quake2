@@ -157,8 +157,10 @@ you types. It behaves the same on Panther as on macOS 26.
 
 ## Tuned for the machines that will actually connect
 
-The clients are the fat binary: `ppc750`, `ppc7400`, `i386`, `x86_64` and
-`arm64` from one app. The oldest of those is what the config is aimed at.
+The clients are the fat binary: `ppc750`, `ppc7400`, `ppc970` and `x86_64`
+from one app. The oldest of those is what the config is aimed at. Note there
+is no `i386` slice, so 32-bit-only Intel Macs are not covered, and no `arm64`
+slice yet.
 
 `timeout` is 125 rather than the default, because a vintage Mac stalling on a
 slow link should not be dropped for it. `sv_maplist` is worth filling with

@@ -79,3 +79,56 @@ A bump would have to be re-argued on the real ceiling, not that one.
   pre-configuring TMU1, ours had not (ADR 0010).
 - The engine tree is ours to edit directly. There is no upstream PR path; work
   lands as commits here.
+
+## Addendum, 2026-08-20: the "current yquake2 loses the G3" objection is smaller than it looked
+
+Research into bumping the engine surfaced an apparently fatal cost: current
+yquake2's GL1 renderer hard-refuses OpenGL below 1.4
+(`src/client/refresh/gl1/gl1_main.c`, "Support for OpenGL 1.4 is not
+available"), and the G3's Rage 128 reports GL 1.1. That would put the oldest
+machine on the software renderer.
+
+Read against the code, the gate does not reflect what the renderer needs.
+
+- It is a **version-string test**: `sscanf` on `GL_VERSION`, reject if minor
+  < 4. It is the **only `return false` in the whole of `GL1_Init`**.
+- Everything after it probes extensions individually and degrades. A missing
+  multitexture prints `Failed` and continues; point parameters are behind a
+  capability flag with ARB and EXT fallbacks.
+- The one genuine 1.4 dependency, `GL_GENERATE_MIPMAP`, is in
+  `R_Upload32Native`, and `R_Upload32` only routes there when
+  `gl_config.npottextures` is set. Hardware without NPOT takes
+  `R_Upload32Soft`, which builds mipmaps by hand with `R_MipMap()` and plain
+  `glTexImage2D` per level. That is GL 1.1 code.
+
+So the hardware the check excludes is the hardware that would never reach the
+1.4-dependent path.
+
+**Measured on the fleet** (from each machine's own `qconsole.log`):
+
+| Machine | GPU | `GL_VERSION` | Passes the gate |
+|---|---|---|---|
+| yosemite (G3, 10.3.9) | Rage 128 | **1.1** ATI-1.3.28 | no |
+| mini-g4 (10.4.11) | Radeon 9200 | **1.3** ATI-1.4.18 | no |
+| g5-leopard (10.5.8) | Radeon 9600 | 2.0 ATI-1.5.48 | yes |
+
+Note it is **not only the G3**: the G4 mini fails too. quicksilver, sawtooth
+and imac-g5 were powered off and have not been checked.
+
+The G3's extension list settles the rest. `GL_ARB_multitexture` **present**, so
+multitexturing survives. `GL_ARB_texture_env_combine` **present**.
+`GL_ARB_texture_non_power_of_two` **absent**, so it routes to the soft path
+automatically. `GL_SGIS_generate_mipmap` **present**, so even the native path's
+token would work, since it is the same value. Point parameters absent, and
+guarded, so particles degrade rather than fail.
+
+**Consequence.** Replacing the version test with capability tests, which is
+what the surrounding code already does for everything else, should restore
+hardware OpenGL on both failing machines. That is small, principled, and
+plausibly an upstream contribution rather than a local patch.
+
+**Status: INFERRED.** This is static analysis of one renderer's init and
+texture paths, plus a capability probe of real hardware. Nothing has compiled
+current yquake2 for `ppc750`, and other parts of the engine may carry
+requirements not found here. The test that settles it is building the current
+GL1 renderer for `ppc750` with the gate relaxed and running it on `yosemite`.

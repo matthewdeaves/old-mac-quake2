@@ -32,6 +32,35 @@ others are (ADR 0001). PowerPC and Intel keep real SDL 1.2; only the new slice
 would run the shim; the engine source would not change. **INFERRED** — not
 built, not linked, not run.
 
+### What sdl12-compat can and cannot do (researched 2026-08-20)
+
+Scope corrected after checking it. An earlier draft of this ADR implied it was a
+general answer to SDL 1.2 on modern systems. It is not.
+
+- **It cannot help PowerPC, ever.** It `dlopen`s SDL2 at runtime and enforces a
+  **minimum of SDL2 2.0.7 on macOS** (`src/SDL12_compat.c:1293`, checked at
+  `:1755`). The PowerPC ceiling is **2.0.3** (ADR 0002 and the sister Half-Life
+  `docs/adr/0004`), four releases short. So it is only ever a candidate for the
+  arm64 slice, never a way to modernise the PowerPC ones.
+- **It does build for arm64 on macOS**, verified on the orchestration Mac, and
+  arm64 is in upstream CI. Upstream ships no macOS binaries, so we would build
+  it ourselves.
+- **It does not make an existing binary run.** It replaces the SDL library, not
+  the game's Mach-O. The engine still has to be compiled for arm64 either way.
+- **Known risks, and they are not small for a GL game.** Its OpenGL scaling path
+  redirects rendering through a fake backbuffer and is documented to break
+  applications that use FBOs; its macOS quirks table is empty
+  (`src/SDL12_compat.c:1490-1493`), so no per-game workaround auto-applies; and
+  there is an open upstream bug (#216) about a Quake II software renderer
+  showing wrong palette colours under it.
+
+So the honest position: `sdl12-compat` remains the cheapest route to an arm64
+slice **without** touching the engine, and it is the only route that leaves the
+PowerPC and Intel slices completely alone. The alternative is an engine with a
+real SDL2 path, which means the bump this ADR exists to keep separate. Neither
+is free. Prove the shim on `q2dm1` with the GL1 renderer before committing to
+it.
+
 The old reason for closing arm64 has expired: the sister Half-Life port now
 ships a five-slice fat including `arm64`, so "matching the sister ports" would
 today argue *for* it.

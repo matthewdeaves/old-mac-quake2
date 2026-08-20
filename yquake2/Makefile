@@ -133,6 +133,21 @@ endif
 
 # ----------
 
+# EXTRA_CFLAGS / EXTRA_LDFLAGS: composable additions for callers.
+#
+# The CFLAGS and LDFLAGS above are `:=` assignments, so a caller passing
+# CFLAGS= on the command line does not add to them, it replaces them, losing
+# -O2, the warning set and -MMD with it. Routing additions through a separate
+# variable keeps the Makefile's own configuration intact.
+#
+# Used by scripts/build-server-linux.sh to harden the dedicated-server build
+# (stack canaries, FORTIFY_SOURCE, full RELRO), which the Mac client builds do
+# not need and do not get. Empty unless a caller sets it, so every existing
+# build is unaffected.
+CFLAGS += $(EXTRA_CFLAGS)
+
+# ----------
+
 # Systemwide installation
 ifeq ($(WITH_SYSTEMWIDE),yes)
 CFLAGS += -DSYSTEMWIDE
@@ -191,6 +206,9 @@ LDFLAGS := -lws2_32 -lwinmm
 else ifeq ($(OSTYPE), Darwin)
 LDFLAGS := $(OSX_ARCH) -lm
 endif
+
+# See the EXTRA_CFLAGS note above: same reasoning, link side.
+LDFLAGS += $(EXTRA_LDFLAGS)
 
 # ----------
 

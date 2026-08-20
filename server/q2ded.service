@@ -1,0 +1,61 @@
+[Unit]
+Description=Quake II dedicated server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=quake2
+Group=quake2
+WorkingDirectory=/opt/quake2-server
+
+# The console.
+#
+# Quake II has rcon, so most day to day admin can happen from inside the game.
+# This FIFO is the way in when rcon is disabled, or when you want the console
+# without launching the game at all.
+#
+# A plain redirect from a FIFO would be no good: the server sees EOF and stops
+# reading the moment a writer closes, so exactly one command would ever work.
+# Opening the FIFO read-write on fd 3 keeps a writer attached from the server's
+# own side, so it never reaches EOF. After that:
+#
+#     echo "gamemap q2dm2" > /run/quake2-server/console
+RuntimeDirectory=quake2-server
+RuntimeDirectoryMode=0750
+ExecStartPre=/usr/bin/mkfifo -m 0600 /run/quake2-server/console
+ExecStart=/bin/sh -c 'exec 3<>/run/quake2-server/console; \
+    exec /opt/quake2-server/q2ded \
+        +set dedicated 1 \
+        +set game baseq2 \
+        +set basedir /opt/quake2-server \
+        +exec server.cfg \
+        +map q2dm1 <&3'
+
+Restart=on-failure
+RestartSec=5s
+
+# yquake2 refuses to run as root by its own check, which this unit satisfies
+# anyway. The rest is because this is a 1997 UDP protocol with no
+# authentication, reachable from the internet.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+
+# Quake II writes config and savegames back into the game directory.
+ReadWritePaths=/opt/quake2-server/baseq2
+
+[Install]
+WantedBy=multi-user.target

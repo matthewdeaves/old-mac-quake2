@@ -70,9 +70,10 @@ not reinvent them.
 | **Modern** (imac-2019 Sequoia) | huge | never the target | reference only — separates CPU-bound from GPU-bound effects. |
 
 Startup console prints `GL_RENDERER` + the extension list — **read it to know
-exactly what a GPU supports** before enabling a code path for it. Note yquake2
-ships both a GL1.4 (`gl1`) and a GL3 renderer — the old GPUs need **gl1**; GL3/GLSL
-is only for the G5/modern-Intel end.
+exactly what a GPU supports** before enabling a code path for it. Note this port
+pins yquake2 5.11, which has ONE renderer: `src/refresh/` builds a single
+`ref_gl.so` (GL 1.x fixed-function). The `gl1`/`gl3` split is upstream-only and
+does not exist here, so there is no renderer to choose.
 
 ## Optimization search space (cheapest → deepest)
 **Config / cvar (no rebuild — always try first):** texture detail (`gl_picmip`) +
@@ -80,7 +81,7 @@ is only for the G5/modern-Intel end.
 (`gl_ext_*compress*`), anisotropy; **framebuffer depth** (16-bit — fill win on
 Rage128/GMA); lighting / dynamic lights / particle detail; geometry & world
 detail; present (`gl_swapinterval` / vsync, `cl_maxfps`); **sound mix rate** (CPU
-win on the G3); renderer choice (`vid_renderer gl1` on the old GPUs).
+win on the G3); there is no renderer choice on 5.11, see above.
 *Consult `docs/CONFIG.md` for the exact cvar names.*
 
 **Code (rebuild — when config is exhausted or the win needs it):**

@@ -1,5 +1,25 @@
 # Getting a Quake engine working on the iMac G5 (Leopard 10.5.8, ATI Radeon 9600)
 
+> **Correction, 2026-08-20.** Parts of this file describe UPSTREAM yquake2, not
+> the 5.11 tree this port actually builds, and they have misled at least one
+> planning exercise. Two claims below are wrong for this repo and are marked
+> inline where they appear:
+>
+> - **"yquake2 ships two renderers, `ref_gl1` and `ref_gl3`."** Not at 5.11.
+>   This tree has a single renderer in `src/refresh/`, producing one
+>   `ref_gl.so`. There is no `vid_renderer` or `gl_renderer` cvar to set.
+> - **"For yquake2 this maps to SDL2, which it already uses."** It does not.
+>   Every shipped slice links SDL 1.2 (`yquake2/Makefile:11,221`, and
+>   `otool -L` on the built binary shows `-framework SDL` at 1.2.16). Choosing
+>   5.11 *was* choosing SDL 1.2, see `CLAUDE.md:43-46`.
+>
+> The SDL2-on-PowerPC ceiling quoted further down ("2.0.6 for Leopard 10.5+")
+> is also incomplete: it names only `leopard-sdl2`. The sister Half-Life port
+> ships `panther-sdl2` 2.0.3 targeting **10.3 and 10.4**, statically linked,
+> and it runs on the G3. That does not by itself make an engine bump viable
+> here, but it does mean the "SDL2 cannot reach Panther or Tiger" premise
+> behind `NEXT_ROUND_PLAN.md:246-248` needs re-checking rather than quoting.
+
 Notes from the **QuakeSpasm** PPC port for the **Quake II / yquake2** sister
 project. Hardware: iMac G5 `PowerMac8,2`, 2.0 GHz PPC 970, **ATI Radeon 9600
 (R300 family / RV351), 128 MB**, Mac OS X **10.5.8 Leopard**, native panel
@@ -71,7 +91,9 @@ string seen: `GL_RENDERER: ATI Radeon 9600 OpenGL Engine`, `GL_VERSION: 2.0
 ATI-1.5.48`.
 
 ### How this maps to yquake2 / Quake II
-- yquake2 ships **two renderers**: `ref_gl1` (OpenGL 1.4 fixed-function) and
+- **[WRONG FOR THIS REPO, see the correction at the top: 5.11 has one renderer,
+  `src/refresh/` producing `ref_gl.so`, and no renderer-selection cvar.]**
+  yquake2 ships **two renderers**: `ref_gl1` (OpenGL 1.4 fixed-function) and
   `ref_gl3` (OpenGL 3.2 core). The R300 only does **GL 2.0/2.1**, so **`ref_gl3`
   cannot initialize at all** — Q2 on the G5 **must use `ref_gl1`** (set
   `vid_renderer "gl1"` / `gl_renderer "gl1"`; verify the cvar name in-repo).
@@ -105,6 +127,9 @@ Gotcha: SDL's build injects `-force_cpusubtype_ALL`, which stamps the dylib as
 generic `ppc` and collides with the existing slice. Strip it from the generated
 `Makefile` so `-mcpu=970` stamps a real `ppc970` subtype, then
 `lipo -create existing.framework new-ppc970.dylib`.
+
+**[WRONG FOR THIS REPO: yquake2 5.11 uses SDL 1.2, not SDL2. See the correction
+at the top. The SDL slice work this port actually does is in `docs/BUILD.md`.]**
 
 **For yquake2 this maps to SDL2**, which it already uses. The same idea: ensure
 the SDL2 you ship is built for **Leopard PPC** (there is a known "SDL2 for

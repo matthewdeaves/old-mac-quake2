@@ -9,10 +9,11 @@
 #   Quake2.app/
 #     Contents/Info.plist
 #     Contents/MacOS/quake2                  (fat: ppc750 + ppc7400 + ppc970 + x86_64)
-#     Contents/MacOS/SDL.framework/          (fat: ppc + i386 + x86_64)
+#     Contents/MacOS/SDL.framework/          (fat: ppc + ppc970 + i386 + x86_64)
 #     Contents/Resources/Quake2.icns
 #     Contents/Resources/autoexec-<arch>.cfg × 4      ← per-arch baselines
-#     Contents/Resources/autoexec-<machine>.cfg × 6   ← per-machine overlays
+#     Contents/Resources/autoexec-<machine>.cfg × 8   ← per-machine overlays
+#     Contents/Resources/autoexec-<arch>.cfg    × 4   ← per-slice baselines
 #   ref_gl.so                                ← outside .app (Q2's basedir=.)
 #   baseq2/
 #     game.so                                ← outside .app (Q2's gamedir)

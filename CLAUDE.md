@@ -45,6 +45,41 @@ SDL2); already has OS X support we backport to 10.3/10.4; tiny SDL backend
 (~3,500 LOC); renderer in `src/refresh/` is independent of the SDL backend so
 GL1 improvements cherry-pick cleanly. (Full rationale in git history / PPC_PLAN.)
 
+**arm64 does NOT require bumping the engine.** Recorded 2026-08-20, because the
+two were treated as one decision and they are not.
+
+The coupling is narrower than "old engine, no Apple Silicon". It is: 5.11 means
+SDL 1.2, and SDL 1.2 upstream never produced an arm64 build, so the shipped
+`SDL.framework` has no arm64 slice. What an arm64 engine slice needs is an
+**arm64 implementation of the SDL 1.2 API**, not a newer engine. `sdl12-compat`
+(libsdl-org) is exactly that: the SDL 1.2 API on top of SDL2, and it is
+arm64-native.
+
+`SDL.framework` here is already fat with four slices (`x86_64 i386 ppc ppc970`),
+two of them hand-built. A fifth arm64 slice built from `sdl12-compat`, carrying
+the same install name, would be selected by dyld on CPU alone exactly as the
+others are. PowerPC and Intel keep real SDL 1.2; only the new slice runs the
+shim; the engine source does not change.
+
+So treat these as separate decisions with separate justifications:
+
+| Goal | What it needs | Engine bump? |
+|---|---|---|
+| arm64 slice | arm64 SDL 1.2 via `sdl12-compat`, and a `lipo` that can fuse arm64 | no |
+| Upstream security fixes | 8.x base | yes |
+
+The old reason for closing arm64 (`docs/STATUS.md:315-316`, "matching the sister
+ports") has expired: the Half-Life port now ships a five-slice fat including
+`arm64`, so matching the sister ports would today argue FOR it.
+
+**Also re-check before quoting `NEXT_ROUND_PLAN.md:246-248`** ("SDL2 base bump,
+hard pass, loses Panther + Tiger"). That ruling rests on
+`docs/imac-g5-leopard-port-notes.md`, which names only `leopard-sdl2` (2.0.6,
+Leopard 10.5+). It does not mention `panther-sdl2` (2.0.3, targeting 10.3 and
+10.4), which the Half-Life port links statically into its PowerPC slices and
+which runs on the G3. The ruling may still be right, but its stated evidence is
+incomplete.
+
 ## Repo layout
 
 ```

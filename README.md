@@ -11,9 +11,10 @@
 
 A Quake II port (yquake2 5.11) built as one fat PowerPC + Intel binary inside a
 single `Quake2.app`, tested on a range of old Macs — G3, G4, G5 and Intel, from a
-1999 Power Mac to a 2019 iMac. The app carries two config layers: a per-arch
-baseline picked by the running slice, and a per-machine overlay picked at boot by
-`sysctl hw.model`.
+1999 Power Mac to a 2019 iMac. The app carries three config layers: shared
+controls, a per-arch baseline picked by the running slice, and a per-machine
+overlay picked at boot by `sysctl hw.model`. A headless Linux dedicated server
+builds from the same tree (see [`server/`](server/README.md)).
 
 > **About this project.** A personal project — I love Quake and I collect and
 > tinker with old Macs. My part is the setup and testing: the build, deploy and
@@ -35,11 +36,11 @@ baseline picked by the running slice, and a per-machine overlay picked at boot b
 
 | Machine | CPU | GPU | OS | Slice |
 |---|---|---|---|---|
-| **yosemite** PowerMac1,1 1999 | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.3.9 Panther | `ppc_750` |
-| **yosemite on Tiger** same Mac, 2nd partition | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.4.11 Tiger | `ppc_750` |
-| **sawtooth** PowerMac3,1 1999 | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger | `ppc_7400` |
-| **quicksilver** PowerMac3,5 2001 | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger | `ppc_7400` |
-| **mini-g4** PowerMac10,1 2005 | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger | `ppc_7400` |
+| **yosemite** PowerMac1,1 1999 | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.3.9 Panther | `ppc750` |
+| **yosemite on Tiger** same Mac, 2nd partition | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.4.11 Tiger | `ppc750` |
+| **sawtooth** PowerMac3,1 1999 | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger | `ppc7400` |
+| **quicksilver** PowerMac3,5 2001 | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger | `ppc7400` |
+| **mini-g4** PowerMac10,1 2005 | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger | `ppc7400` |
 | **imac-g5** PowerMac8,2 2004 | 2.0 GHz PPC 970FX | ATI Radeon 9600 128 MB | 10.5.8 Leopard (native 1440×900) | `ppc970` |
 | **mini-intel** Macmini2,1 2007 | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion | `x86_64` |
 | **imac-2019** iMac19,1 2019 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` |
@@ -122,10 +123,10 @@ cover the setup, the build pipeline and the timedemo bench loop.
 - **One fat binary** (PPC G3 + G4 AltiVec + G5 + Intel x86_64) in a
   self-contained `Quake2.app`; runs on Mac OS X 10.3.9 Panther through modern
   macOS.
-- **Two config layers baked into the `.app`** — a per-arch baseline picked by
-  the running slice, and a per-machine overlay dispatched at boot by
-  `sysctl hw.model` (applied before video init so the renderer comes up in its
-  final mode). Every visual knob is a runtime cvar.
+- **Three config layers baked into the `.app`** — shared controls, a per-arch
+  baseline picked by the running slice, and a per-machine overlay dispatched at
+  boot by `sysctl hw.model` (all applied before video init, so the renderer
+  comes up in its final mode). Every visual knob is a runtime cvar.
 - **GL1 renderer cherry-picks + KMQuake2 visual features** — cvar-driven fog,
   underwater warp, group-draw batching, MSAA, energy-shell glow, lightmapped
   glass/grates, water caustics, extended draw distance.

@@ -1,151 +1,86 @@
-# HD texture pack — install + bundle guide
+# HD texture pack — install guide
 
-`WITH_RETEXTURING=yes` is now compiled into every slice (g3, g4, lion)
-as of commit `3b594e1` — `jpeg.c` switched from libjpeg to a vendored
-stb_image header, dropping the external dep that previously forced
-`WITH_RETEXTURING=no` in `scripts/build.sh`.
+Why no pack ships, and how the bundle search path is wired: **ADR 0012**.
 
-With retexturing on, the engine looks for TGA / JPG replacements for
-every `.pcx` / `.wal` texture it loads from `baseq2/pak0.pak`. The
-search order is dictated by the order in which game directories were
-added to the filesystem search chain (`FS_AddGameDirectory` —
-newest-first). A successful lookup uses the hi-res replacement; a miss
-falls back transparently to the original 256×256 source asset.
+With `WITH_RETEXTURING=yes` (compiled into every slice since `3b594e1`) the
+engine looks for TGA/JPG replacements for every `.pcx` / `.wal` it loads from
+`baseq2/pak0.pak`. Search order follows the order game directories were added to
+the filesystem chain (`FS_AddGameDirectory`, newest first). A miss falls back
+transparently to the original 256x256 asset.
 
 ## Two install paths
 
-### 1. Drop pack into the user's `baseq2/` (simple, per-user)
-
-End-user puts the HD textures next to their pak files:
+**1. Next to the paks** (per-user, mix and match):
 
 ```
 ~/Desktop/quake2/
   Quake2.app/
   baseq2/
-    pak0.pak     ← retail data
-    pak1.pak
-    pak2.pak
-    textures/    ← HD replacements at game-relative paths
-      e1u1/wall1_1.tga
-      e1u1/floor1_1.tga
-      ...
-    players/
-      male/grunt.tga
-      ...
+    pak0.pak  pak1.pak  pak2.pak
+    textures/e1u1/wall1_1.tga …
+    players/male/grunt.tga …
 ```
 
-Pros: any user can mix in their own pack. Cons: ships separately from
-the `.app`; user has to source it.
-
-### 2. Bundle pack inside `Quake2.app/Contents/Resources/hd-pak/`
-(self-contained `.app`, distributable)
-
-The engine now checks for an `hd-pak` subdirectory inside the running
-bundle's Resources at `FS_InitFilesystem` time (Mac builds only). If
-found, it's added to the filesystem search chain so the contents are
-visible at every gl_retexturing lookup. Layout:
+**2. Inside the bundle** (self-contained `.app`):
 
 ```
-Quake2.app/Contents/Resources/
-  hd-pak/
-    textures/
-      e1u1/wall1_1.tga
-      ...
-    players/
-      male/grunt.tga
-      ...
-    decals/
-      bullet.tga    ← shipped procedurally
-      blood.tga
-      greenblood.tga
-      scorch.tga
+Quake2.app/Contents/Resources/hd-pak/
+  textures/e1u1/wall1_1.tga …
+  players/male/grunt.tga …
+  decals/bullet.tga  blood.tga  greenblood.tga  scorch.tga …
 ```
 
-The `hd-pak/` directory is added to the searchpath chain directly
-(no `/baseq2` suffix appended). Files live under `hd-pak/<gamerel>`,
-matching the path used in `R_FindImage("textures/e1u1/wall1_1.tga")`
-or `R_FindImage("decals/bullet.tga")`.
+The `hd-pak/` directory is added to the search chain **directly**, with no
+`/baseq2` suffix, so files sit at `hd-pak/<gamerel>`, matching
+`R_FindImage("textures/e1u1/wall1_1.tga")` and
+`R_FindImage("decals/bullet.tga")`.
 
-To stage textures this way:
-1. Drop the pack source into `scripts/bundle/hd-pak/baseq2/...`
-   (a directory you create; not currently checked in).
-2. Modify `scripts/deploy.sh` to `cp -r scripts/bundle/hd-pak`
-   into `$APP/Contents/Resources/` next to the cfg copies.
-3. Rebuild fat + redeploy. The pack ships with the binary.
+To stage a pack this way: drop the source into `scripts/bundle/hd-pak/` (a
+directory you create; not checked in), have `scripts/deploy.sh` `cp -r` it into
+`$APP/Contents/Resources/` next to the cfg copies, then rebuild fat and
+redeploy. Cost: 200-500 MB of `.app` size and a slower deploy rsync.
 
-Pros: one self-contained drop, runs on every machine without per-host
-texture install. Cons: balloons `.app` size by ~200-500 MB; deploy
-rsync gets slower (rsync --partial / checksum-mode mitigates).
+## Per-machine on/off
 
-The bundle-search hook is in
-`yquake2/src/common/misc.c:Q2_GetBundleHDPakPath` (resolves via
-`CFBundleCopyResourceURL`) and wired into
-`yquake2/src/common/filesystem.c:FS_InitFilesystem`. fs_gamedir is
-explicitly preserved as `baseq2` after the bundle path is added so
-config.cfg / savegames still write to the user-visible dir, not the
-read-only bundle.
-
-## Recommended packs
-
-The author has not committed to one specific pack — these are
-candidates worth evaluating. None of them are bundled in this repo;
-sourcing is left to the operator.
-
-| Pack | Source | License | Notes |
+| Machine | `gl_retexturing` | VRAM | Note |
 |---|---|---|---|
-| **NeuralUpscale 2x** | community AI upscale of id1 baseq2 textures | derivative — id1 EULA | Most accessible. ~400MB. Available on the Quake2 modding circuit. Looks natural; no artistic reinterpretation. |
-| **Berserker @ Quake2 HD** | Berserker mod team | freeware | ~200MB. Heavily reworked textures with painted detail. Visually impressive but more "modernized" than faithful. |
-| **id1 retextured (Quaddicted)** | various | per-asset, often CC | Several smaller packs for specific areas; mix and match. |
-| **Quake2-RTX assets** | NVIDIA Quake 2 RTX | restricted (NVIDIA EULA) | High quality but EULA limits redistribution; only usable with NVIDIA's own engine fork in practice. |
+| yosemite (R128 16 MB) | 0 | tight | cannot afford full-res replacements |
+| sawtooth (GF2 MX 32 MB) | 0 | tight | would fit a subset, but CPU TGA decode on a 500 MHz G4 dominates map load |
+| quicksilver (R9000 64 MB) | 1 | comfortable | first HD experiment candidate |
+| mini-g4 (R9200 32 MB) | 1 | viable | tight, works for moderate packs |
+| mini-intel (GMA 950 64 MB) | 1 | comfortable | Intel driver handles TGA/JPG fine |
+| imac-2019 (Polaris 8 GB) | 1 | unbounded | even 4K upscales fit |
 
-Practical recommendation: start with NeuralUpscale 2x for quicksilver
-/ mini-g4 / mini-intel (32-64 MB VRAM) and the imac-2019 (8 GB
-laughs). Skip the HD path entirely on yosemite (16 MB VRAM Rage 128 —
-`gl_retexturing 0` in autoexec-yosemite.cfg already opts out).
+## Candidate packs
 
-## Per-machine HD on/off matrix
+None are bundled; sourcing is the operator's.
 
-| Machine | gl_retexturing | VRAM budget | Notes |
-|---|---|---|---|
-| yosemite (R128 16MB)     | 0 | tight | Cannot afford full-res replacements; stay on the 256×256 baseline. |
-| sawtooth (GF2 MX 32MB)   | 0 | tight | Could fit a subset but CPU TGA decode on the 500 MHz G4 dominates map-load. Skip. |
-| quicksilver (R9000 64MB) | 1 | comfortable | Targeted candidate for the first HD experiment. |
-| mini-g4 (R9200 32MB)     | 1 | viable | Tight but works for moderate packs. |
-| mini-intel (GMA 950 64MB)| 1 | comfortable | Intel GMA driver handles TGA/JPG fine. |
-| imac-2019 (Polaris 8GB)  | 1 | unbounded | Send it. Even 4K-upscaled packs fit. |
+| Pack | Licence | Notes |
+|---|---|---|
+| NeuralUpscale 2x | derivative, id1 EULA | ~400 MB, community AI upscale. Most accessible; natural, no reinterpretation |
+| Berserker @ Quake2 HD | freeware | ~200 MB, heavily reworked with painted detail; more modernised than faithful |
+| id1 retextured (Quaddicted) | per-asset, often CC | several smaller area-specific packs |
+| Quake2-RTX assets | NVIDIA EULA, restricted | high quality but redistribution-limited; in practice only usable with NVIDIA's fork |
 
-## How to verify a pack is loading
+## Verifying and measuring
 
-After dropping textures into either install path, launch and check
-`qconsole.log`:
+A clean retex load prints nothing — it is silent success. Set `developer 1` to
+see `LoadJPG:` / `LoadTGA:` lines, or:
 
-```
-$ grep -E "Loading retex|texture .* failed" ~/.yq2/baseq2/qconsole.log
-```
+    grep -E "Loading retex|texture .* failed" ~/.yq2/baseq2/qconsole.log
 
-A clean retex load doesn't print anything by default — it's silent
-success. To see which textures the engine looked up, enable
-`developer 1` and watch for `LoadJPG: ...` / `LoadTGA: ...` lines.
+A/B the cost:
 
-To bench A/B impact, run the same demo with retexturing on vs off:
+    EXTRA='+cmd "set gl_retexturing 0"' scripts/bench.sh <machine> demo1 1024x768 3
+    EXTRA='+cmd "set gl_retexturing 1"' scripts/bench.sh <machine> demo1 1024x768 3
 
-```
-EXTRA='+cmd "set gl_retexturing 0"' scripts/bench.sh <machine> demo1 1024x768 3
-EXTRA='+cmd "set gl_retexturing 1"' scripts/bench.sh <machine> demo1 1024x768 3
-```
+Typical impact is **under 5% fps**: decode is a one-time per-texture cost paid
+at map load, not per frame.
 
-Typical impact: <5% fps cost when the pack is loaded (TGA / JPG decode
-is a one-time per-texture cost paid at map load, not per-frame).
+## Not implemented
 
-## Future engine work
-
-- A small `gl_max_retex_size` cvar to clamp uploaded texture dim
-  per-machine (skip 1024×1024 replacements on the 16 MB R128 even if
-  the pack ships them).
-- `gl_retex_mipmap_quality` to choose between mip-generation cost
-  vs runtime sample quality.
-- `r_image_palettized` retexture mode for paletted-only chips
-  (Rage 128) — pre-quantize the HD pack to 8-bit at map load.
-
-None of these block shipping an HD pack today. The plumbing now in
-place is enough.
+Three engine knobs would help the tightest machines and none of them blocks
+shipping a pack today: `gl_max_retex_size` to clamp uploaded texture dimensions
+per machine; `gl_retex_mipmap_quality` to trade mip generation cost against
+sample quality; and a palettised retexture mode that pre-quantises to 8-bit at
+map load for the Rage 128.

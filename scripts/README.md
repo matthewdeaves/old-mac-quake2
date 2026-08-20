@@ -1,49 +1,26 @@
 # scripts/
 
-Build/deploy/bench scaffolding for the yquake2 PPC port. **Adapted
-from `~/quakespasm/scripts/`** — read those originals as templates.
-Don't reinvent.
+Index only. How to use them: `docs/BUILD.md` and `docs/BENCH.md`. Why they work
+the way they do: `docs/adr/`.
 
-## Status: pre-Phase-A
-
-Build/deploy/bench scripts will be ported from QuakeSpasm as Phase A.1 /
-A.2 / A.4 land. Until then this directory holds:
-
-- `make-icon.py` — end-to-end Mac OS icon pipeline. Single Python tool
-  that takes a source PNG (white-bg, black-bg, or already-transparent),
-  removes the background with edge-flood-fill (so interior near-bg pixels
-  are preserved), and emits a **legacy-only ICNS** that renders on
-  Panther 10.3 + Tiger 10.4 + Lion 10.7 + Sequoia 15.7 Finder. No `iconutil`
-  (drops 1-bit chunks Panther needs), no modern PNG chunks (break Panther
-  Finder). Run with `--help` for the flag list. Pre-reqs: `~/quake2/.venv`
-  with numpy + Pillow + scipy.
-- `tidy-quicksilver.sh` — proposed cleanup of `quicksilver:~/Desktop/Quake 2/`
-  (the user's existing Q2 install) into a clean game-data layout.
-  **Do not run without user confirmation** — it deletes the legacy
-  1999 Mac binaries that aren't reusable but are still the user's
-  property. Keeps `Q2DedicatedServer` (the 2006 PPC OSX server build)
-  in case the user wants to host multiplayer from the G4.
-
-## To adapt from QuakeSpasm (Phase A.1)
-
-| QuakeSpasm script | Q2 adaptation |
+| Script | Role |
 |---|---|
-| `build.sh <g3\|g4\|lion>` | Same shape. Engine source at `yquake2/` top-level. Different makefile (yquake2/Makefile, not Quake/Makefile.darwin). Override `OSX_ARCH`, `CFLAGS`, `LDFLAGS` for cross-targets. Disable WITH_OGG/OPENAL/CDA for Phase A. |
-| `deploy.sh <machine>` | Same shape. Bundle layout differs slightly: yquake2 ships ref_gl.so as either a dlopen plugin or linked-in depending on `OSX_APP` makefile target — investigate before writing. Reuse `~/quakespasm/MacOSX/SDL.framework` byte-for-byte. |
-| `bench.sh <machine> <demo> <res>` | Same shape. Q2 demo names have `.dm2` suffix (`+timedemo demo1.dm2`). Timedemo output format differs — adapt parse_qconsole.py. |
-| `parallel-bench.sh` | Same shape, no Q1-specific assumptions to fix. |
-| `bench-and-commit.sh` | Same shape, no changes needed. |
-| `full-bench.sh` | Same shape. |
-| `setup-lion.sh` | **Probably not needed** — mini-intel is already set up from QuakeSpasm. Re-verify gcc-4.0 + 10.3.9/10.4u SDKs are still installed. |
-| `install-host-tools.sh` | **Not needed** — qsreboot.sh already on every bench Mac. |
-| `build-fat.sh` + `lipo` | **Defer to Phase B** at earliest. Get per-target builds working first. |
-| `host-bin/qsreboot.sh` | Already deployed on every Mac. Reuse via SSH. |
-| `bundle/autoexec-<machine>.cfg` | Q2-flavored per-machine configs — populate as Phase C lands. |
-
-## Cross-references in `~/quakespasm/CLAUDE.md` to consult
-
-- "Tooling — DON'T reinvent these inline" — the scripts contract
-- "Hosts" — SSH alias table
-- "Bench-and-commit cadence" — the commit/bench discipline
-- "How the fat SDL was built" — for future SDL framework changes
-- "Required patches for our target build" — patch class to expect
+| `pick-build-host.sh` | claims a free Intel Lion mini (`--status`, `--acquire LABEL`, `--release HOST`). The lock lives ON the host, so it sees builds other repos and agents started. ADR 0005 |
+| `build.sh <g3\|g4\|g5\|lion>` | one slice. Wipes its output dir, `make clean`s remotely, then **asserts and re-stamps the cpusubtype**. ADR 0001, ADR 0006 |
+| `build-fat.sh` | g3→g4→g5→lion sequentially on ONE pinned host, then `lipo`. The only supported way to produce `build/q2-fat` |
+| `deploy.sh <machine>` | ships the fat `Quake2.app` plus the loose `ref_gl.so` / `q2ded` / `baseq2/game.so`; md5-verifies what landed |
+| `make-dmg.sh` | stages the image, runs `hdiutil create -format UDZO` on a **Tiger** box, then mounts the result and md5s every binary inside it against source. ADR 0005, ADR 0006 |
+| `deploy-dmg.sh <machine>` | installs from the mounted image the way a human does; md5-verifies each installed binary, retries 4x, exits 7 on failure |
+| `smoke-dmg.sh <machine>` | launches the installed copy with the PRODUCTION config and a timedemo so it auto-exits. ADR 0009 |
+| `bench.sh <machine> <demo> <WxH> [runs]` | timedemo harness. Rejects a malformed resolution; refuses a non-native fullscreen on `imac-g5`; TERM-sleep-KILL always |
+| `parallel-bench.sh` | fleet grid; refuses to run both `yosemite` partitions |
+| `bench-and-commit.sh` | lands official `benchmarks/results.csv` rows on a clean tree |
+| `screenshot.sh` | visual A/B captures; same G5 safety rails as `bench.sh` |
+| `analyze.sh` | static-analysis pass over the engine tree |
+| `build-server-linux.sh` | Linux `q2ded` + `game.so` in a Debian 11 container (`--arch x86_64\|aarch64`). ADR 0011 |
+| `docker/server-build.Dockerfile` | that container |
+| `gen-decals.py` | generates every decal and shadow TGA. ADR 0012 |
+| `make-icon.py` | legacy-only ICNS pipeline. ADR 0012 |
+| `watchlink-listen.py` | desktop receiver for the UDP player-state feed. `docs/WATCHLINK.md` |
+| `bundle/` | static assets and the autoexec layer staged into the `.app` |
+| `tidy-quicksilver.sh` | proposed cleanup of quicksilver's existing Q2 install. **Do not run without the user's confirmation** — it deletes the legacy 1999 Mac binaries, which are not reusable but are still the user's property. It keeps `Q2DedicatedServer`, the 2006 PPC OS X server build |

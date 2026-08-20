@@ -647,7 +647,20 @@ Cmd_TokenizeString(char *text, qboolean macroExpand)
 		{
 			int l;
 
-			strcpy(cmd_args, text);
+			/* Bounded, because `text` here can come straight off the
+			   network. SV_ReadPackets hands a connectionless packet to
+			   SV_ConnectionlessPacket, which tokenizes it without ever
+			   capping its length, so an unauthenticated UDP datagram of up
+			   to MAX_MSGLEN (1400) reaches this copy while cmd_args is
+			   MAX_STRING_CHARS (1024). A plain strcpy overflowed the static
+			   buffer by up to ~376 bytes.
+
+			   Found by fuzzing the server's out-of-band packet handler: a
+			   1204-byte "status" query with ~600 arguments aborted the
+			   server through __fortify_fail. Without FORTIFY_SOURCE it
+			   would have corrupted whatever follows cmd_args instead of
+			   stopping. Upstream yquake2 made the same change. */
+			Q_strlcpy(cmd_args, text, sizeof(cmd_args));
 
 			/* strip off any trailing whitespace */
 			l = strlen(cmd_args) - 1;

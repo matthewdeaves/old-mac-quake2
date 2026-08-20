@@ -53,6 +53,29 @@ LockPersonality=true
 MemoryDenyWriteExecute=true
 SystemCallArchitectures=native
 CapabilityBoundingSet=
+RestrictSUIDSGID=true
+UMask=0077
+ProtectProc=invisible
+ProcSubset=pid
+ProtectHostname=true
+ProtectClock=true
+PrivateUsers=true
+
+# Seccomp. @system-service is the standard allow-list for a long-running
+# daemon; everything outside it returns EPERM rather than killing the process,
+# so an exploit that reaches for execve or ptrace gets an error instead of a
+# shell.
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources @obsolete @cpu-emulation @debug @mount @swap @reboot @module
+SystemCallErrorNumber=EPERM
+
+# Bound the blast radius of a memory-exhaustion bug. These are generous for a
+# game server carrying a handful of players and still stop one process taking
+# the whole box down.
+MemoryMax=1G
+TasksMax=64
+LimitNOFILE=1024
+LimitCORE=0
 
 # Quake II writes config and savegames back into the game directory.
 ReadWritePaths=/opt/quake2-server/baseq2

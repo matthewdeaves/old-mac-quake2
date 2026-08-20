@@ -100,6 +100,47 @@ Between the join password and the firewall this is a genuinely private server,
 but the protocol underneath is from 1997 and has no encryption. Treat the box
 as disposable and do not co-host anything you care about.
 
+### The firewall is not optional, and here is the measured reason
+
+This server answers unauthenticated status queries with far more than it was
+asked for. Measured against this exact build:
+
+| Query | Sent | Received | Amplification |
+|---|---|---|---|
+| `status` | 10 bytes | 228 bytes | **23x** |
+| `info` | 11 bytes | 41 bytes | 4x |
+
+There is no rate limiting anywhere in the yquake2 server for these, unlike
+Quake III which carries a leaky bucket. So anyone who can reach the port can
+spoof your address as the source and have your box fire the replies at someone
+else, under your IP. That is a DDoS reflector.
+
+An address allowlist fixes it completely: a spoofed packet claims to come from
+the victim, not from you, so the allowlist drops it. That is why the `ufw`
+rules above are per source address rather than open to the world.
+
+If an allowlist is impractical, rate limit instead:
+
+```sh
+sudo iptables -A INPUT -p udp --dport 27910 \
+  -m hashlimit --hashlimit-name q2-query --hashlimit-above 10/sec \
+  --hashlimit-burst 20 --hashlimit-mode srcip -j DROP
+```
+
+### One remote overflow was found and fixed here
+
+Fuzzing the out-of-band handler found a genuine remote crash in this engine: a
+`status` query of about 1200 bytes overflowed `cmd_args`, a 1024-byte static
+buffer, through an unbounded `strcpy` in `Cmd_TokenizeString`. No password and
+no connection were needed. It is fixed in this tree the way upstream fixed it,
+with a bounded copy, and verified against both the saved crash corpus and a
+fresh run.
+
+Worth knowing what that implies: this build is yquake2 5.11 and upstream is at
+8.70. That gap is the real risk, and one bug found by a few hours of fuzzing
+is not evidence that it is the only one. The firewall matters here more than
+on the other three.
+
 ## Connecting
 
 From the Mac client:
@@ -108,10 +149,30 @@ From the Mac client:
 connect your.server.address
 ```
 
-If a password is set, `set password "..."` on the client first. Nothing else
-about the client differs for internet play. The server is little-endian and
-the PowerPC clients are big-endian; that is the same arrangement the Mac
-builds already handle on a LAN.
+If a password is set, `set password "..."` on the client first.
+
+Connecting by name works everywhere: the engine resolves through
+`getaddrinfo`, so point an A record at the box and that name is all either of
+you types. It behaves the same on Panther as on macOS 26.
+
+## Tuned for the machines that will actually connect
+
+The clients are the fat binary: `ppc750`, `ppc7400`, `i386`, `x86_64` and
+`arm64` from one app. The oldest of those is what the config is aimed at.
+
+`timeout` is 125 rather than the default, because a vintage Mac stalling on a
+slow link should not be dropped for it. `sv_maplist` is worth filling with
+maps you have actually watched run on the oldest machine that will join,
+rather than on the Apple Silicon one where everything is fast.
+
+Endianness needs nothing from you. A little-endian Linux server talking to
+big-endian PowerPC clients is the arrangement the Mac builds already handle,
+and the protocol does the conversion.
+
+The downloads settings are off deliberately. `allow_download` and its
+siblings push content out to clients, and both of your clients already carry
+the same content from the same release, so leaving them on only ever serves a
+stranger.
 
 ## Building it yourself
 

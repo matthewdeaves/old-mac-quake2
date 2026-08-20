@@ -16,11 +16,30 @@
 #                experiment. Default: "Phase A baseline".
 #   COMMIT       override the recorded commit hash (parallel-bench.sh
 #                exports this so a long matrix run tags consistently).
-#   EXTRA        extra +cmd "set X Y" tokens appended to the engine
-#                cmdline. Used for A/B'ing cvars against the production
-#                autoexec without rebuild/redeploy. +cmd executes AFTER
-#                the bundle's autoexec hook, so it overrides cleanly.
-#                Example: EXTRA='+cmd "set gl_overbrightbits 4"'
+#   EXTRA        extra +set tokens appended to the engine cmdline. Used for
+#                A/B'ing cvars against the production autoexec without a
+#                rebuild or redeploy.
+#                Example: EXTRA='+set gl_overbrightbits 4'
+#
+#                USE +set, NOT +cmd. This block used to say +cmd "set X Y",
+#                which is the Quake 1 / Half-Life spelling. In Quake II `cmd`
+#                FORWARDS ITS TEXT TO THE SERVER (Cmd_ForwardToServer), so it
+#                never touches a local cvar. An EXTRA built that way is not an
+#                error and prints no warning: the engine starts, the demo
+#                runs, a plausible number comes out, and both legs of the A/B
+#                have silently measured the shipped config. That is how the
+#                2026-06-06 stencil rows came to be believed. See issue #7.
+#
+#                +set works because Qcommon_Init applies the command-line
+#                early commands a SECOND time, at misc.c:500
+#                (Cbuf_AddEarlyCommands(true)), which runs AFTER the bundle's
+#                per-arch autoexec block. So an explicit +set overrides the
+#                production default, which is what the autoexec's own comment
+#                at misc.c:365 promises.
+#
+#                Sanity-check any A/B before believing it: run one leg with a
+#                cvar that MUST move the frame rate, and confirm it does. Not
+#                gl_picmip, which needs a vid_restart to take effect.
 #
 # CSV columns (results.csv):
 #   timestamp     UTC ISO-8601, captured at row-write time

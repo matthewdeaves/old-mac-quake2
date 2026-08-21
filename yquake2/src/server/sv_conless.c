@@ -379,6 +379,259 @@ SVC_RemoteCommand(void)
 }
 
 /*
+ * =======================================================================
+ *
+ * CONNECTIONLESS RATE LIMIT
+ *
+ * A leaky bucket per source address, so an unauthenticated query cannot be
+ * used to point this server's replies at somebody else.
+ *
+ * Why it is needed. Every handler above runs before any client is accepted:
+ * no password, no `public` check, no address check. The source address of a
+ * UDP packet is whatever the sender writes in it, so a stranger can send
+ * small packets carrying a victim's address and have this server deliver the
+ * flood, under this machine's IP. Measured on this exact build (ADR 0011), a
+ * 10-byte `status` query is answered with 228 bytes, which is 23x, and there
+ * was no rate limit anywhere in the yquake2 server.
+ *
+ * A firewall allowlist is the primary defence and it works, because a spoofed
+ * packet claims to come from the victim rather than from the attacker, so the
+ * allowlist drops it. This exists so that a mistake in one ufw or nft rule is
+ * the difference between annoying and catastrophic, rather than the only
+ * thing standing between the box and being a usable reflector. Both, not
+ * either.
+ *
+ * Ported from ioquake3's sv_main.c, which has carried this for years, by way
+ * of the same change made to the sister Half-Life port's engine. Two
+ * deliberate differences from ioquake3: time is kept as double seconds, and
+ * the address is hashed field by field rather than over the whole netadr_t,
+ * because netadr_t has padding and padding bytes are not initialised.
+ *
+ * =======================================================================
+ */
+#define MAX_RATE_BUCKETS 1024   /* distinct addresses tracked at once */
+#define MAX_RATE_HASHES 256
+
+typedef struct leakybucket_s
+{
+	netadr_t adr;
+	qboolean inuse;              /* an explicit flag, see SV_BucketForAddress */
+	double lasttime;             /* server time at the last accounting */
+	int burst;
+	int hash;
+	struct leakybucket_s *prev, *next;
+} leakybucket_t;
+
+static leakybucket_t sv_buckets[MAX_RATE_BUCKETS];
+static leakybucket_t *sv_buckethashes[MAX_RATE_HASHES];
+
+/*
+ * svs.realtime is milliseconds and its header calls it "always increasing",
+ * which is not true: SV_Frame winds it back to sv.time - 100 when the server
+ * runs ahead, and SV_InitGame zeroes the whole of svs on a restart. Both
+ * cases show up here as a negative interval, and both are handled by
+ * resetting the bucket rather than by trusting the clock.
+ */
+static double
+SV_RateTime(void)
+{
+	return (double)svs.realtime * 0.001;
+}
+
+static int
+SV_HashForAddress(const netadr_t *adr)
+{
+	int hash = 0;
+	int i, n = 0;
+
+	/* Everything that identifies the host, and deliberately not the port:
+	   varying the source port costs an attacker nothing, so one host has to
+	   land in one bucket however many ports it sends from. */
+	hash += (int)adr->type * (n++ + 119);
+
+	for (i = 0; i < (int)sizeof(adr->ip); i++)
+	{
+		hash += (int)adr->ip[i] * (n++ + 119);
+	}
+
+	for (i = 0; i < (int)sizeof(adr->ipx); i++)
+	{
+		hash += (int)adr->ipx[i] * (n++ + 119);
+	}
+
+	for (i = 0; i < (int)sizeof(adr->scope_id); i++)
+	{
+		hash += (int)((adr->scope_id >> (i * 8)) & 0xff) * (n++ + 119);
+	}
+
+	hash = hash ^ (hash >> 10) ^ (hash >> 20);
+
+	return hash & (MAX_RATE_HASHES - 1);
+}
+
+static leakybucket_t *
+SV_BucketForAddress(netadr_t adr, int burst, double period)
+{
+	leakybucket_t *bucket;
+	int hash = SV_HashForAddress(&adr);
+	int i;
+
+	for (bucket = sv_buckethashes[hash]; bucket; bucket = bucket->next)
+	{
+		if (NET_CompareBaseAdr(bucket->adr, adr))
+		{
+			return bucket;
+		}
+	}
+
+	for (i = 0; i < MAX_RATE_BUCKETS; i++)
+	{
+		bucket = &sv_buckets[i];
+
+		/* Reclaim a bucket that has had time to drain completely. The
+		   interval < 0 case catches the clock moving backwards, which
+		   would otherwise strand the bucket forever. */
+		if (bucket->inuse)
+		{
+			double interval = SV_RateTime() - bucket->lasttime;
+
+			if ((interval > (burst * period)) || (interval < 0.0))
+			{
+				if (bucket->prev != NULL)
+				{
+					bucket->prev->next = bucket->next;
+				}
+				else
+				{
+					sv_buckethashes[bucket->hash] = bucket->next;
+				}
+
+				if (bucket->next != NULL)
+				{
+					bucket->next->prev = bucket->prev;
+				}
+
+				memset(bucket, 0, sizeof(*bucket));
+			}
+		}
+
+		if (!bucket->inuse)
+		{
+			/* An explicit flag rather than an empty-looking address or a
+			   zero timestamp: NA_LOOPBACK is 0 in netadrtype_t, so a zeroed
+			   bucket and a real loopback bucket have the same type, and
+			   svs.realtime is genuinely 0 for the first frames after a
+			   restart, so a zero lasttime does not mean free either. */
+			bucket->adr = adr;
+			bucket->inuse = true;
+			bucket->lasttime = SV_RateTime();
+			bucket->burst = 0;
+			bucket->hash = hash;
+
+			bucket->next = sv_buckethashes[hash];
+
+			if (sv_buckethashes[hash] != NULL)
+			{
+				sv_buckethashes[hash]->prev = bucket;
+			}
+
+			bucket->prev = NULL;
+			sv_buckethashes[hash] = bucket;
+
+			return bucket;
+		}
+	}
+
+	/* Every bucket is in use and none has drained. That is either a real
+	   flood from many addresses or a deliberate attempt to exhaust the
+	   table, and in both cases the safe answer is to say no. */
+	return NULL;
+}
+
+/*
+ * true means "over the limit, drop it". A NULL bucket, meaning the table is
+ * full, also means true: fail closed, never open.
+ */
+qboolean
+SV_RateLimitAddress(netadr_t adr, int burst, double period)
+{
+	leakybucket_t *bucket;
+	double interval;
+	int expired;
+
+	if ((burst <= 0) || (period <= 0.0))
+	{
+		return false; /* disabled */
+	}
+
+	bucket = SV_BucketForAddress(adr, burst, period);
+
+	if (bucket == NULL)
+	{
+		return true;
+	}
+
+	interval = SV_RateTime() - bucket->lasttime;
+
+	if (interval < 0.0)
+	{
+		interval = 0.0;
+	}
+
+	expired = (int)(interval / period);
+
+	if (expired > bucket->burst)
+	{
+		bucket->burst = 0;
+		bucket->lasttime = SV_RateTime();
+	}
+	else
+	{
+		bucket->burst -= expired;
+		bucket->lasttime = SV_RateTime() - (interval - (expired * period));
+	}
+
+	if (bucket->burst < burst)
+	{
+		bucket->burst++;
+		return false;
+	}
+
+	return true;
+}
+
+/*
+ * Which connectionless commands are gated, and why the rest are not.
+ *
+ * Gated: `status` and `info`, the two measured amplifiers; `ping`, whose
+ * reply is small but still bigger than nothing and costs an attacker nothing
+ * to ask for; and `rcon`, which answers a wrong password with a packet and
+ * writes the whole datagram to the console, so ungated it is both a reflector
+ * and an unlimited dictionary attack against rcon_password. ioquake3 rate
+ * limits its rcon for exactly that reason.
+ *
+ * Deliberately not gated: `connect` and `getchallenge`, because throttling
+ * those throttles joining, which is the thing the server is for; and `ack`,
+ * which sends no reply.
+ */
+static qboolean
+SV_ConnectionlessQueryLimited(const char *c)
+{
+	qboolean amplifying;
+
+	amplifying = !strcmp(c, "status") || !strcmp(c, "info") ||
+				 !strcmp(c, "ping") || !strcmp(c, "rcon");
+
+	if (!amplifying)
+	{
+		return false;
+	}
+
+	return SV_RateLimitAddress(net_from, (int)sv_query_rate_burst->value,
+			(double)sv_query_rate_period->value);
+}
+
+/*
  * A connectionless packet has four leading 0xff
  * characters to distinguish it from a game channel.
  * Clients that are in the game can still send
@@ -399,6 +652,11 @@ SV_ConnectionlessPacket(void)
 
 	c = Cmd_Argv(0);
 	Com_DPrintf("Packet %s : %s\n", NET_AdrToString(net_from), c);
+
+	if (SV_ConnectionlessQueryLimited(c))
+	{
+		return;
+	}
 
 	if (!strcmp(c, "ping"))
 	{

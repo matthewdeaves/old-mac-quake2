@@ -141,16 +141,39 @@ asked for. Measured against this exact build:
 | `status` | 10 bytes | 228 bytes | **23x** |
 | `info` | 11 bytes | 41 bytes | 4x |
 
-There is no rate limiting anywhere in the yquake2 server for these, unlike
-Quake III which carries a leaky bucket. So anyone who can reach the port can
-spoof your address as the source and have your box fire the replies at someone
-else, under your IP. That is a DDoS reflector.
+Anyone who can reach the port can put your victim's address in the packet and
+have this box fire the replies at them, under your IP. That is a DDoS
+reflector.
 
 An address allowlist fixes it completely: a spoofed packet claims to come from
 the victim, not from you, so the allowlist drops it. That is why the `ufw`
-rules above are per source address rather than open to the world.
+rules above are per source address rather than open to the world. **Keep them.**
 
-If an allowlist is impractical, rate limit instead:
+The engine also caps its own reply rate now, per source address, so a mistake
+in one `ufw` rule is the difference between annoying and catastrophic rather
+than the only thing standing between the box and being a usable reflector.
+Measured on this build, 40 `status` queries from one address:
+
+| `sv_query_rate_burst` | Replies | Bytes out |
+|---|---:|---:|
+| `0` (limiter off) | 40 | 9040 |
+| `10` (the default) | 10 | 2260 |
+
+Gated: `status`, `info`, `ping` and `rcon`. Not gated: `connect` and
+`getchallenge`, because throttling those throttles joining. Normal use is
+untouched, measured the same way: five queries got five replies, and five more
+got five after the bucket drained.
+
+`rcon` is in the list because a wrong password is answered with a packet and
+written to the console, so ungated it is both a reflector and an unlimited
+dictionary attack. Measured: 40 wrong passwords now get 10 replies.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `sv_query_rate_burst` | `10` | Queries allowed per address per period; `0` disables the limit |
+| `sv_query_rate_period` | `1` | Seconds each of those slots takes to drain |
+
+If you want a second layer in the kernel as well:
 
 ```sh
 sudo iptables -A INPUT -p udp --dport 27910 \

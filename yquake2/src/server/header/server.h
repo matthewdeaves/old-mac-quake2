@@ -186,10 +186,13 @@ extern cvar_t *sv_noreload;                 /* don't reload level state when ree
 extern cvar_t *sv_airaccelerate;            /* don't reload level state when reentering */
 											/* development tool */
 extern cvar_t *sv_enforcetime;
+extern cvar_t *sv_query_rate_burst;
+extern cvar_t *sv_query_rate_period;
 
 extern client_t *sv_client;
 extern edict_t *sv_player;
 
+qboolean SV_RateLimitAddress(netadr_t adr, int burst, double period);
 void SV_FinalMessage(char *message, qboolean reconnect);
 void SV_DropClient(client_t *drop);
 

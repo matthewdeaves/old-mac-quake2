@@ -42,16 +42,45 @@ asked for. Measured against this exact build:
 | `status` | 10 bytes | 228 bytes | **23x** |
 | `info` | 11 bytes | 41 bytes | 4x |
 
-**There is no rate limiting anywhere in the yquake2 server for these**, unlike
-Quake III, which carries a leaky bucket. So anyone who can reach the port can
-spoof your address as the source and have the box fire the replies at someone
-else, under your IP. That is a DDoS reflector.
+Anyone who can reach the port can put a victim's address in the packet and have
+the box fire the replies at them, under your IP. That is a DDoS reflector.
 
 **An address allowlist fixes it completely**, because a spoofed packet claims to
 come from the victim rather than from you, so the allowlist drops it. That is
 why the shipped `ufw` rules are per source address rather than open to the
-world. Where an allowlist is impractical, rate limit with `iptables
--m hashlimit` instead (recipe in `server/README.md`).
+world.
+
+**When this was written there was no rate limiting anywhere in the yquake2
+server, unlike Quake III, which carries a leaky bucket. There is now.** A leaky
+bucket per source address sits in front of the amplifying connectionless
+handlers, ported from ioquake3 by way of the same change made to the sister
+Half-Life port. The allowlist is still the primary defence and is still not
+optional: it stops a spoofed packet reaching the engine at all, while this caps
+what the engine emits once one does. What changes is that a mistake in one
+`ufw` or `nft` rule is now the difference between annoying and catastrophic.
+
+Measured on the aarch64 build, 40 `status` queries from one address:
+
+| `sv_query_rate_burst` | Replies | Bytes out |
+|---|---:|---:|
+| `0` | 40 | 9040 |
+| `10` (default) | 10 | 2260 |
+
+The control run re-measures the amplification in the table above: 9040 bytes of
+reply for 400 bytes of query is 22.6x. Normal use is untouched, measured the
+same way: five queries got five replies, five more got five after the bucket
+drained, and 40 `getchallenge` packets got 40 replies.
+
+`status`, `info`, `ping` and `rcon` are gated. `connect` and `getchallenge` are
+deliberately not, because throttling those throttles joining, which is the thing
+the server is for. `rcon` is gated even though it is nominally authenticated,
+because a wrong password is still answered with a packet and still written to
+the console, so ungated it is both a small reflector and an unlimited dictionary
+attack against `rcon_password`; ioquake3 rate limits its own rcon for that
+reason. Measured: 40 wrong passwords get 10 replies.
+
+Where a kernel-level layer is wanted as well, `iptables -m hashlimit` still
+applies (recipe in `server/README.md`).
 
 **`public 0` keeps the server off the master list**, so it appears in nobody's
 in-game browser. **The `setmaster` console command sets `public 1` as its first

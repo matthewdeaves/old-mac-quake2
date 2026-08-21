@@ -49,6 +49,8 @@ cvar_t *maxclients; /* rename sv_maxclients */
 cvar_t *sv_showclamp;
 cvar_t *hostname;
 cvar_t *public_server; /* should heartbeats be sent */
+cvar_t *sv_query_rate_burst;  /* unauthenticated queries per address per period */
+cvar_t *sv_query_rate_period; /* seconds each of those slots takes to drain */
 
 void Master_Shutdown(void);
 void SV_ConnectionlessPacket(void);
@@ -612,6 +614,13 @@ SV_Init(void)
 	sv_airaccelerate = Cvar_Get("sv_airaccelerate", "0", CVAR_LATCH);
 
 	public_server = Cvar_Get("public", "0", 0);
+
+	/* A stranger can put your victim's address in a UDP packet and have this
+	   server answer it, so the reply rate has to be capped per source address.
+	   The default 10 per second is far above any server browser and leaves a
+	   LAN game untouched; 0 disables the limit entirely. See sv_conless.c. */
+	sv_query_rate_burst = Cvar_Get("sv_query_rate_burst", "10", CVAR_ARCHIVE);
+	sv_query_rate_period = Cvar_Get("sv_query_rate_period", "1", CVAR_ARCHIVE);
 
 	SZ_Init(&net_message, net_message_buffer, sizeof(net_message_buffer));
 }

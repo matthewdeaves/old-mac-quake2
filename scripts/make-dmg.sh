@@ -260,6 +260,47 @@ RSYNC_EXTRA=""
 # staged $IMG copies are plain local `cp` of build/q2-fat, so $IMG md5s ARE
 # the true-source md5s.
 VERIFY_FILES="Quake2.app/Contents/MacOS/quake2 ref_gl.so baseq2/game.so"
+# ---- ad-hoc code-sign the staged bundle ----------------------------------
+# macOS on arm64 refuses to map a page whose code signature does not validate
+# and kills the process with CODESIGNING / Invalid Page. An INVALID signature is
+# worse than none: unsigned code gets an implicit ad-hoc identity, broken code
+# is rejected. Signing also gives the bundle a stable identity, so macOS stops
+# re-asking for Desktop/Documents access on every single launch.
+#
+# Order is not optional: codesign validates a bundle's nested code when it signs
+# the bundle, so anything inside must already be signed. Plain dylibs first,
+# then each framework as a DIRECTORY (never by its inner binary path), then the
+# .app last. Signed here rather than on DMG_HOST, which is a Tiger G4 with no
+# codesign, and before SRC_SUMS so the byte verification hashes what ships.
+if command -v codesign >/dev/null 2>&1; then
+	echo "[make-dmg] ad-hoc code-signing the staged bundle"
+	SAPP="$IMG/Quake2.app"
+	find "$SAPP" -type f -name '*.dylib' -not -path '*.framework/*' -print0 2>/dev/null \
+	  | while IFS= read -r -d '' f; do codesign --force --sign - "$f" >/dev/null 2>&1 || true; done
+	for fw in "$SAPP"/Contents/MacOS/*.framework; do
+		[ -d "$fw" ] || continue
+		# Only symlinks and Versions/ may live at a framework root, or codesign
+		# refuses it with "unsealed contents present in the root directory".
+		for stray in "$fw"/*; do
+			[ -L "$stray" ] && continue
+			[ "$(basename "$stray")" = "Versions" ] && continue
+			mkdir -p "$fw/Versions/A/Resources"
+			mv "$stray" "$fw/Versions/A/Resources/" 2>/dev/null || true
+		done
+		codesign --force --sign - "$fw" >/dev/null 2>&1 || true
+	done
+	codesign --force --sign - "$SAPP" >/dev/null 2>&1 || true
+	# The loose payload beside the .app is dlopen'd, so it needs signing too.
+	for loose in "$IMG"/ref_gl.so "$IMG"/q2ded "$IMG"/baseq2/game.so; do
+		[ -f "$loose" ] && codesign --force --sign - "$loose" >/dev/null 2>&1 || true
+	done
+	codesign -v "$SAPP" >/dev/null 2>&1 || {
+		echo "[make-dmg] FATAL: the .app bundle signature does not validate" >&2; exit 1; }
+	echo "[make-dmg] signatures verified on the bundle"
+else
+	echo "[make-dmg] WARN: no codesign here; the bundle will NOT run on Apple Silicon" >&2
+fi
+
 SRC_SUMS=$(cd "$IMG" && for f in $VERIFY_FILES; do \
              printf '%s  %s\n' "$(md5sum "$f" | cut -d' ' -f1)" "$f"; done)
 

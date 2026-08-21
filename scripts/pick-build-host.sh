@@ -81,16 +81,25 @@ probe() {
 		n=`ps ax -o command= 2>/dev/null \
 			| grep -E "(^|[ /])(g?make|waf|cc1|cc1plus|clang|collect2|ninja)|gcc-4\.0|g\+\+-4\.0|powerpc-apple-darwin10-" \
 			| grep -vE "grep|makewhatis" | wc -l | tr -d " "`
-		echo "$age $n $owner"
+		os=`sw_vers -productVersion 2>/dev/null || echo unknown`
+		echo "$age $n $os $owner"
 	' 2>/dev/null
 }
 
-# free | stale (reclaimable) | busy | unknown, given age+procs.
+# free | stale (reclaimable) | busy | unknown | wrong-os, given age+procs+os.
 # Guard the numeric tests: a truncated/garbled probe (flaky ssh) must not blow up
 # with "unary operator expected" NOR be silently read as free - treat it as
 # unknown, and callers refuse to build on anything that is not free/stale.
+#
+# wrong-os exists because of mini-sl, the 10.6 box added 2026-08-04. This picker
+# treats its candidates as INTERCHANGEABLE, and a 10.6 host cannot build the
+# Lion-targeted slices at all - no libc++, and a C++98-only compiler. The docs
+# have always said "never add it to BUILD_HOSTS", but nothing enforced that, and
+# an unenforced invariant is one typo away from a confusing mid-build failure or,
+# worse, a silently wrong binary. Now it is refused by name.
 classify() {
-	local age="$1" procs="$2"
+	local age="$1" procs="$2" os="${3:-}"
+	case "$os" in 10.7*|'') : ;; *) echo wrong-os; return ;; esac
 	case "$age"   in ''|*[!0-9-]*) echo unknown; return ;; esac
 	case "$procs" in ''|*[!0-9]*)  echo unknown; return ;; esac
 	if [ "$age" -lt 0 ]; then
@@ -106,30 +115,32 @@ classify() {
 usable() { [ "$1" = free ] || [ "$1" = stale ]; }
 
 cmd_status() {
-	printf '%-14s %-12s %-8s %-6s %s\n' HOST STATE LOCK-AGE PROCS OWNER
+	printf '%-14s %-12s %-8s %-8s %-6s %s\n' HOST STATE OS LOCK-AGE PROCS OWNER
 	for h in $BUILD_HOSTS; do
-		local out age procs owner state
+		local out age procs os owner state
 		if ! out="$(probe "$h")" || [ -z "$out" ]; then
-			printf '%-14s %-12s %-8s %-6s %s\n' "$h" unreachable - - -
+			printf '%-14s %-12s %-8s %-8s %-6s %s\n' "$h" unreachable - - - -
 			continue
 		fi
 		age="$(echo "$out" | awk '{print $1}')"
 		procs="$(echo "$out" | awk '{print $2}')"
-		owner="$(echo "$out" | cut -d' ' -f3-)"
-		state="$(classify "$age" "$procs")"
-		[ "$age" -lt 0 ] && age=-
-		printf '%-14s %-12s %-8s %-6s %s\n' "$h" "$state" "$age" "$procs" "${owner:--}"
+		os="$(echo "$out" | awk '{print $3}')"
+		owner="$(echo "$out" | cut -d' ' -f4-)"
+		state="$(classify "$age" "$procs" "$os")"
+		case "$age" in ''|*[!0-9-]*) age=- ;; *) [ "$age" -lt 0 ] && age=- ;; esac
+		printf '%-14s %-12s %-8s %-8s %-6s %s\n' "$h" "$state" "${os:--}" "$age" "$procs" "${owner:--}"
 	done
 }
 
 # Try to claim $1. Returns 0 on success.
 try_acquire() {
-	local h="$1" label="$2" out age procs state
+	local h="$1" label="$2" out age procs os state
 	out="$(probe "$h")" || return 1
 	[ -z "$out" ] && return 1
 	age="$(echo "$out" | awk '{print $1}')"
 	procs="$(echo "$out" | awk '{print $2}')"
-	state="$(classify "$age" "$procs")"
+	os="$(echo "$out" | awk '{print $3}')"
+	state="$(classify "$age" "$procs" "$os")"
 	usable "$state" || return 1
 	# Reclaim a stale lock first, then take it atomically via mkdir.
 	ssh "${SSH_OPTS[@]}" "$h" "

@@ -21,7 +21,7 @@
   <rect width="1320" height="1020" fill="#faf6ef"/>
 
   <!-- Title -->
-  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Build pipeline: four slices, one fat binary</text>
+  <text x="660" y="48" text-anchor="middle" font-size="26" font-weight="700" fill="#1a1a1a">Build pipeline: six slices, one fat binary</text>
   <text x="660" y="76" text-anchor="middle" font-size="14" fill="#666"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">scripts/build-fat.sh</tspan> on the orchestration Mac: runs four flock-serialised sub-builds on the Lion mini, then lipos them into one Mach-O universal</text>
 
   <!-- Vertical guide rail with stage numbers down the left -->
@@ -173,7 +173,7 @@
     <!-- merge down to lipo box -->
     <path d="M 660 690 L 660 728" marker-end="url(#bp-ar-green)"/>
   </g>
-  <text x="660" y="710" text-anchor="middle" font-size="10.5" font-style="italic" fill="#0f8a5f">four slices ready · lipo runs on Lion, where the old cctools live</text>
+  <text x="660" y="710" text-anchor="middle" font-size="10.5" font-style="italic" fill="#0f8a5f">six slices ready · lipo runs on Lion, where the old cctools live · plus i386 (Lion mini) and arm64 (Apple Silicon Mac: no mini can build it)</text>
 
   <!-- ============================================================ -->
   <!-- Stage 4 :: lipo                                                 -->
@@ -187,7 +187,7 @@
       <rect x="0" y="0" width="6" height="92" rx="3" fill="#3b6dd5"/>
       <text x="22" y="28" font-size="14" font-weight="700" fill="#1a1a1a">lipo on Lion</text>
       <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="11" fill="#444">
-        <text x="22" y="54">scp 4 slices → /tmp/ on mini-intel</text>
+        <text x="22" y="54">scp 6 slices → /tmp/ on mini-intel</text>
         <text x="22" y="74">lipo -create  q2-{g3,g4,g5,lion}  -output  q2-fat</text>
       </g>
     </g>
@@ -209,7 +209,7 @@
     <g transform="translate(330, 0)">
       <rect x="0" y="0" width="660" height="84" rx="10" fill="#eaf6ee" stroke="#a3cfb3" stroke-width="1.4" filter="url(#bp-shadow)"/>
       <text x="22" y="32" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" font-weight="700" fill="#1a1a1a">build/q2-fat</text>
-      <text x="22" y="54" font-size="12" fill="#444">Mach-O universal · 4 slices: ppc750 + ppc7400 + ppc970 + x86_64 · ~5 KB padding overhead vs sum-of-slices</text>
+      <text x="22" y="54" font-size="12" fill="#444">Mach-O universal · 6 slices: ppc750 + ppc7400 + ppc970 + i386 + x86_64 + arm64 · ~5 KB padding overhead vs sum-of-slices</text>
       <text x="22" y="74" font-size="11.5" fill="#0f8a5f" font-weight="600"><tspan font-family="ui-monospace, Menlo, Consolas, monospace">deploy.sh &lt;machine&gt;</tspan> ships the same Quake2.app to every host: dyld picks the right slice automatically</text>
     </g>
   </g>

@@ -65,8 +65,17 @@ work but neither has been run on hardware** (no such machine in the fleet). The 
 exception, its slice genuinely needs 10.5, so that row is a real floor, not a gap in
 testing.
 
-32-bit-only Intel Macs (Core Duo / Core Solo, 2006) have no slice at all: there is no
-`i386` build, and no such machine here to make one on.
+32-bit-only Intel Macs (Core Duo / Core Solo, 2006) **now have their own `i386`
+slice**, and Apple Silicon has a native `arm64` one, so there is no longer any Mac
+this binary cannot run on natively. Neither has been run on hardware here: there is no
+32-bit-only Intel Mac in the fleet, and the arm64 slice is verified on the
+orchestration Mac rather than a bench machine. Both configs say so in their comments.
+
+The `arm64` slice is the only one that does not link a real SDL 1.2, because none
+exists for that architecture. It links `sdl12-compat` over an SDL 2.32.4 this project
+builds and ships itself, so the stack is two layers under our control rather than
+whatever a package manager resolves to. Every other slice keeps genuine SDL 1.2 and is
+untouched by it. See `docs/adr/0015`.
 
 ## Framerate
 
@@ -114,7 +123,7 @@ cover the setup, the build pipeline and the timedemo bench loop.
 
 ![Build and bench rack: one orchestration Mac drives the fleet via the Lion mini cross-build host](docs/images/architecture.svg)
 
-![Build pipeline: four slices (ppc750, ppc7400, ppc970, x86_64) lipo'd into one fat binary](docs/images/build-pipeline.svg)
+![Build pipeline: six slices (ppc750, ppc7400, ppc970, i386, x86_64, arm64) lipo'd into one fat binary](docs/images/build-pipeline.svg)
 
 ![Bench loop: the orchestration Mac launches a timedemo over SSH, reads qconsole.log back, and the median lands in results.csv](docs/images/bench-loop.svg)
 

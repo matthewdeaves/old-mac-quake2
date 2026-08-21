@@ -80,10 +80,22 @@ docker build --platform "$DOCKER_PLATFORM" \
 # Build in a copy. The Mac drivers rsync this same directory to the Lion mini
 # and run make there, so leaving Linux object files in it would be a way to
 # poison a later Mac build.
+#
+# --exclude release/build: it poisons the OTHER direction too, and that is worse.
+# A local Mac build leaves Mach-O binaries in yquake2/release/. Staged into the
+# container they are newer than the sources, so make considers its targets up to
+# date, skips compiling entirely, and `cp release/q2ded /work/out/` copies a
+# macOS arm64 binary into a tarball labelled linux-x86_64. Caught 2026-08-21 by
+# the container's own `file` check, which reported
+#   /work/out/q2ded: Mach-O 64-bit arm64 executable
+# on a build that otherwise looked like it had succeeded. Both directories are
+# gitignored build output, so nothing in them is ever an input. Quake III's
+# driver never had this because it stages only `code Makefile misc`.
 echo "[server] staging source"
 rm -rf "$WORK/src"
 mkdir -p "$WORK/src"
-tar cf - yquake2 | tar xf - -C "$WORK/src"
+tar cf - --exclude='yquake2/release' --exclude='yquake2/build' yquake2 \
+	| tar xf - -C "$WORK/src"
 
 cat > "$WORK/build-in-container.sh" <<'CONTAINER_SCRIPT'
 #!/bin/sh

@@ -128,6 +128,27 @@ main(int argc, char **argv)
 {
 	int time, oldtime, newtime;
 
+	/* Line buffer stdout before anything is printed.
+	 *
+	 * When stdout is a pipe rather than a tty, libc fully buffers it and holds
+	 * output until 4 KB accumulates. A dedicated server running normally never
+	 * produces 4 KB quickly, so `journalctl -u q2ded` shows only systemd's own
+	 * two lines: no banner, no "execing server.cfg", no errors at all.
+	 *
+	 * Measured cost of not doing this: a server that had failed to load its
+	 * game DLL and was spinning at 90% of a core reported `active` with an open
+	 * UDP socket the whole time, while the engine was printing
+	 *
+	 *     LoadLibrary (.../baseq2/game.so): cannot open shared object file
+	 *     ERROR: failed to load game DLL
+	 *
+	 * into a buffer nobody ever saw. Confirming it needed the unit stopped and
+	 * the binary re-run by hand under `stdbuf -o0`.
+	 *
+	 * Free on a tty, where line buffering is already the default. Issue #11.
+	 */
+	setvbuf(stdout, NULL, _IOLBF, 0);
+
 #if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
 	OSX_ChdirToBundleParent();
 #endif

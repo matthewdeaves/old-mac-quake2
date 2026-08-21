@@ -19,6 +19,37 @@ supply `baseq2/pak0.pak` and `baseq2/pak1.pak` from your own copy.
 `game.so` is not optional and cannot be borrowed from the Mac release: the
 game logic runs on the server, as native code for the server's CPU.
 
+### `game.so` has no architecture in its name, and that will bite you
+
+Quake II calls the game library plain `game.so` on every platform. The x86_64
+copy and the aarch64 copy are the same filename, so one will silently replace
+the other, and `baseq2/` holds both game content and this library, so any rsync
+of "the content directory" between two machines moves it too.
+
+When the wrong one lands, the engine says:
+
+```
+LoadLibrary (/opt/quake2-server/baseq2/game.so): cannot open shared object file: No such file or directory
+```
+
+which is the loader's way of saying **wrong architecture**. The file is plainly
+there with the right owner and permissions, so the message points nowhere near
+the actual problem. `file baseq2/game.so` is what settles it:
+
+```sh
+file /opt/quake2-server/baseq2/game.so     # want: ELF 64-bit ... x86-64  (or aarch64)
+uname -m                                   # want: the same
+```
+
+The failure is quiet in every other respect. The unit stays `active`, the UDP
+socket binds and shows in `ss`, and the server answers nothing while burning
+100% of a core in a `pselect6` loop.
+
+So: copy content between machines with `--exclude game.so`, and re-check it
+after any move. Half-Life avoids this by naming its libraries `hl_amd64.so` and
+`hl_arm64.so` so both can coexist; renaming here would mean engine changes, so
+the warning is the fix.
+
 ## Requirements
 
 Any Linux with glibc 2.31 or newer, so Ubuntu 20.04 and up, Debian 11 and up.

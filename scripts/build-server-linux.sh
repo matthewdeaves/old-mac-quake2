@@ -122,8 +122,13 @@ export EXTRA_CFLAGS="-fstack-protector-strong -D_FORTIFY_SOURCE=2"
 export EXTRA_LDFLAGS="-Wl,-z,relro,-z,now -Wl,-z,noexecstack"
 
 echo "[container] building q2ded and baseq2/game.so"
-make server game -j"$(nproc)" > /work/build.log 2>&1
-MAKE_RC=$?
+make server game -j"$(nproc)" # 'set -e' above would abort the instant make returned non-zero, BEFORE the
+# MAKE_RC check below could tail the log to stderr. That made two aarch64
+# builds in the sister Quake III repo fail in total silence, exiting 2 with no
+# reason given while the real error sat in /work/build.log. Keep make out of
+# set -e's reach so the diagnostics below actually run.
+MAKE_RC=0
+> /work/build.log 2>&1 || MAKE_RC=$?
 
 # waf and make both have a habit of reporting success for a build that did not
 # produce anything, so the exit code is checked AND the artifacts are checked.
@@ -166,9 +171,10 @@ echo "[container] hardening: canaries yes, full RELRO, NX"
 # minimal server image, which is why it is allowed here and nothing else is.
 for f in /work/out/q2ded /work/out/baseq2/game.so; do
 	ldd "$f" > /work/ldd.txt 2>&1 || true
-	BAD=$(grep -oE '^[[:space:]]*[a-zA-Z0-9_.+-]+\.so[0-9.]*' /work/ldd.txt \
-		| tr -d '[:space:]' \
-		| grep -vE '^(libc|libm|libdl|libpthread|librt|libz|libgcc_s|ld-linux.*)\.so' || true)
+	BAD=$(awk '{print $1}' /work/ldd.txt \
+		| sed 's|.*/||' \
+		| grep -E '\.so' \
+		| grep -vE '^(linux-vdso|libc|libm|libdl|libpthread|librt|libz|libgcc_s|ld-linux.*)\.so' || true)
 	if [ -n "$BAD" ]; then
 		echo "[container] $f depends on libraries outside the base system:" >&2
 		echo "$BAD" >&2

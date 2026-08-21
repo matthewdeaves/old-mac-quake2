@@ -106,7 +106,13 @@ endif
 # listed, since they cross-compile from an x86_64 Lion host. On an Apple
 # Silicon box uname says arm64 and the firewall fired on a build that was
 # otherwise fine.
-ifeq ($(findstring $(ARCH), i386 x86_64 arm64 sparc64 ia64),)
+#
+# aarch64 added too, and it is NOT a duplicate of arm64: macOS reports the
+# 64-bit ARM machine type as "arm64" and Linux reports it as "aarch64", so
+# the Mac slice passing this check said nothing about the Linux dedicated
+# server, which is the ARM VPS case. That build failed with
+#   Makefile:110: *** arch aarch64 is currently not supported.
+ifeq ($(findstring $(ARCH), i386 x86_64 arm64 aarch64 sparc64 ia64),)
 $(error arch $(ARCH) is currently not supported)
 endif
 

@@ -38,8 +38,14 @@
 #include <SDL/SDL.h>
 #endif
 
-#ifdef __APPLE__
+/* arm64 ONLY. PowerPC and Intel link a real SDL 1.2, whose SDLMain.m already
+ * does this chdir, so they need none of it; and the 10.3/10.4 SDKs declare
+ * _NSGetExecutablePath with an `unsigned long *` second argument rather than
+ * `uint32_t *`, and have no PATH_MAX in scope here, so compiling it there just
+ * breaks the PowerPC build for no gain. */
+#if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
 #include <mach-o/dyld.h>
+#include <limits.h>
 #include <libgen.h>
 
 /*
@@ -115,14 +121,14 @@ OSX_ChdirToBundleParent(void)
 
 	free(p);
 }
-#endif /* __APPLE__ */
+#endif /* __APPLE__ && arm64 */
 
 int
 main(int argc, char **argv)
 {
 	int time, oldtime, newtime;
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
 	OSX_ChdirToBundleParent();
 #endif
 

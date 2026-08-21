@@ -167,9 +167,9 @@ Quake II — Old-Mac fat build ($VERSION)
 =======================================
 
 A yquake2 5.11 fork tuned to look as good as possible while staying playable
-on retro Macs from 1999 to today. ONE universal binary (PowerPC G3 + PowerPC
-G4/AltiVec + PowerPC G5 + Intel x86_64); the right code slice and the right
-per-machine visual/perf config are picked automatically at launch.
+on retro Macs from 1999 to today. ONE universal binary carrying SIX code
+slices; the right slice and the right per-machine visual/perf config are both
+picked automatically at launch.
 
 WHICH MAC OS EACH CPU NEEDS
 ---------------------------
@@ -180,18 +180,23 @@ launch. The real floors:
    G3 (750)                 10.3.9 Panther or later
    G4 (7400/7450/7447A)     10.3.9 Panther or later
    G5 (970)                 10.5 Leopard  — a G5 on 10.3/10.4 is NOT supported
-   Intel, 64-bit            10.6 Snow Leopard or later
+   Intel, 32-bit (i386)     10.4 Tiger or later
+   Intel, 64-bit (x86_64)   10.6 Snow Leopard or later
+   Apple Silicon (arm64)    11 Big Sur or later
 
-Two of those are built but untested: no G4 on Panther and no Intel Mac on Snow
-Leopard exist in the test fleet. They should work; nobody has proven it.
+Three of those are built but untested: no G4 on Panther, no Intel Mac on Snow
+Leopard and no 32-bit Intel Mac exist in the test fleet. They should work;
+nobody has proven it.
 
-32-bit-only Intel Macs (Core Duo / Core Solo, 2006) have no slice at all and
-cannot run this build. Apple Silicon runs the x86_64 slice under Rosetta 2 —
-there is no native arm64 slice.
+The i386 slice covers the 2006 Core Solo and Core Duo Macs, the only Intel
+Macs with no 64-bit mode. Apple Silicon runs its own native arm64 slice, not
+Rosetta 2.
 
 INSTALL
 -------
-1. Make a folder for the game, e.g.  ~/Desktop/quake2/
+1. Make a folder for the game. On Panther through Lion anywhere will do, e.g.
+   ~/Desktop/quake2/. On Apple Silicon and recent macOS use /Applications/quake2/
+   instead, for the reason in APPLE SILICON AND MODERN macOS below.
 2. Copy EVERYTHING from this disk image into that folder:
        Quake2.app
        ref_gl.so
@@ -218,12 +223,28 @@ The final layout:
    ~/Desktop/quake2/baseq2/game.so
    ~/Desktop/quake2/baseq2/pak0.pak (+ pak1, pak2, players/, video/)
 
-MODERN macOS (Gatekeeper)
--------------------------
-The bundle is unsigned, so recent macOS will quarantine it. Either right-click
-Quake2.app and choose Open the first time, or run:
-   xattr -dr com.apple.quarantine ~/Desktop/quake2/Quake2.app
+APPLE SILICON AND MODERN macOS
+------------------------------
+Put the game folder in /Applications, i.e. /Applications/quake2/, and run it
+from there.
+
+That is not a style preference. macOS grants privacy permissions against a
+program's identity and location, and a game folder sitting on the Desktop or
+in Documents is inside a protected location, so every launch re-asks for
+access to it. /Applications is outside those locations, so the prompts stop.
+
+The bundle is ad-hoc signed, which gives it a stable identity for the same
+reason. Downloaded copies still carry the quarantine flag, so the first launch
+needs either a right-click and Open, or:
+   xattr -dr com.apple.quarantine /Applications/quake2/Quake2.app
 (Not needed on Panther / Tiger / Lion.)
+
+Do not upgrade by copying the new files over an old install with cp. macOS
+caches the code-signature validation of the file that was there before, and the
+replacement then fails page validation and is killed at load with
+"CODESIGNING / Invalid Page". Delete the old Quake2.app, ref_gl.so, q2ded and
+baseq2/game.so first, or drag them to the Trash in Finder, then copy the new
+ones in. Your pak files and saves are untouched either way.
 
 PER-MACHINE CONFIG
 ------------------

@@ -203,6 +203,16 @@ cmd_release() {
 	local h="$1"
 	local strict=""
 	[ -n "$CLAIM" ] && strict="claim=$CLAIM"
+	# Say so when falling back to identity. Every split acquire/release caller in
+	# the fleet lands here, and without this the release looks clean while being
+	# the exact case issue #7 is about: ME is user@host:repo, two sessions in one
+	# repo share it, and either can drop the other's lock. The bench picker has
+	# said this since #7; this one did not, which is why the gap read as absent.
+	if [ -z "$strict" ] && [ "${FORCE:-0}" != 1 ]; then
+		echo "pick-build-host: releasing $h on identity alone; this cannot tell two" >&2
+		echo "  sessions in $REPO_NAME apart. Export BENCH_LOCK_CLAIM around the" >&2
+		echo "  acquire and the release to get a strict one." >&2
+	fi
 	ssh "${SSH_OPTS[@]}" "$h" "
 		O=\"$LOCK/owner\"
 		if [ -d \"$LOCK\" ]; then

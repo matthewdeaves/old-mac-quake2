@@ -80,6 +80,31 @@ never complains about it.
 
 Set `password` and `rcon_password` in `server.cfg` before you expose the port.
 
+### Where the engine keeps its own state
+
+The engine writes a small amount of state of its own, separately from
+`baseq2/`: a console log, screenshot directory and the like. It wants an XDG
+data directory for it and works out the location from the environment.
+
+The unit gives it `/var/lib/quake2-server`, created and owned by the service
+user through `StateDirectory=`, and points both `HOME` and `XDG_DATA_HOME`
+there. Nothing to do by hand; it is listed here because it is the one writable
+path outside `/opt/quake2-server`.
+
+Do not drop `ProtectHome=true` to solve a permission problem here. The engine
+asks for `$HOME/.local/share/YamagiQ2` when `XDG_DATA_HOME` is unset, and its
+`Sys_Mkdir` is one `mkdir()` rather than a walk, so it creates a single level
+and fails on the first missing parent. Under `ProtectHome=true` that is:
+
+```
+Error: Couldn't create dir /home/quake2/.local/share/YamagiQ2/
+q2ded.service: Main process exited, code=exited, status=1/FAILURE
+```
+
+Pointing `XDG_DATA_HOME` at the state directory is what fixes it, because the
+path the engine then asks for is one level below a directory systemd has
+already created.
+
 ## Changing the map
 
 Two ways.

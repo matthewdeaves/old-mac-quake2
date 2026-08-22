@@ -26,11 +26,42 @@ RuntimeDirectoryMode=0750
 ExecStartPre=/usr/bin/mkfifo -m 0600 /run/quake2-server/console
 ExecStart=/bin/sh -c 'exec 3<>/run/quake2-server/console; \
     exec /opt/quake2-server/q2ded \
+        -datadir /opt/quake2-server \
         +set dedicated 1 \
         +set game baseq2 \
-        +set basedir /opt/quake2-server \
         +exec server.cfg \
         +map q2dm1 <&3'
+
+# Where the engine keeps its own writable state, and why it is not $HOME.
+#
+# 8.70 wants an XDG data directory and derives it from the environment on the
+# first write. 5.11 never asked for one, so the unit and the engine only stopped
+# agreeing when the server moved to the newer tree, and the server would not
+# start at all: `Couldn't create dir /home/quake2/.local/share/YamagiQ2/`,
+# exit 1, restart loop. ProtectHome=true is correct and stays; /home/quake2 does
+# not exist for this process and should not.
+#
+# StateDirectory= creates /var/lib/quake2-server and chowns it to the service
+# user, before the process starts. HOME points there so the engine's probe for a
+# legacy ~/.yq2 looks somewhere harmless, and so its "no HOME" early-out cannot
+# fire.
+#
+# XDG_DATA_HOME is what actually fixes it, and the reason is the engine's
+# Sys_Mkdir: it is a single mkdir(), not a walk, so it creates one level and
+# fails on the first missing parent. Left to its default the engine asks for
+# $HOME/.local/share/YamagiQ2 and dies on `.local`. Pointing XDG_DATA_HOME at
+# the state directory makes the path it wants /var/lib/quake2-server/YamagiQ2,
+# one level below a directory systemd has already created and chowned, so the
+# single mkdir succeeds.
+#
+# Creating .local/share/YamagiQ2 with an ExecStartPre works too, and was what
+# the outage was patched with. This form is preferred because it does not
+# hard-code the engine's internal directory layout: if that leaf name changes,
+# a pre-made path is silently the wrong one and Sys_Mkdir fails again.
+StateDirectory=quake2-server
+StateDirectoryMode=0750
+Environment=HOME=/var/lib/quake2-server
+Environment=XDG_DATA_HOME=/var/lib/quake2-server
 
 Restart=on-failure
 RestartSec=5s

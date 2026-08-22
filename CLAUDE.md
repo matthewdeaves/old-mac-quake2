@@ -44,6 +44,12 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
   `ref_gl.so`. There is no gl1/gl3 split and no renderer-selection cvar; that is
   upstream only. Any doc claiming otherwise is describing upstream, not this
   tree. `docs/adr/0002`
+- **The `arm64` slice is the odd one out twice.** It builds at `-O2` where every
+  other slice is `-O3` (`build-arm64.sh:138`), and it is the only slice whose
+  `SDL.framework` member is **sdl12-compat**, which `dlopen`s the bundled
+  `libSDL2-2.0.0.dylib` at runtime. It still links the same
+  `@executable_path/SDL.framework/...` install name as the other five, and it
+  does **not** link SDL2 directly. `docs/adr/0014`, `0015`
 - **Five slices cross-compile on an Intel Lion mini** (`mini-intel` or
   `mini-intel2`, interchangeable); `arm64` cannot, and is built on the
   orchestration Mac by `scripts/build-arm64.sh`. Ask

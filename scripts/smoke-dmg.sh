@@ -35,11 +35,14 @@ HOST="${1:?usage: $0 <machine> [demo]}"
 # workstations, not just this checkout. It also refuses a host booted into an OS
 # its alias does not name, which the multi-boot machines otherwise allow.
 #
-# RETRO_BENCH_LOCK guards against the re-exec recursing.
+# RETRO_BENCH_LOCK names the machine claimed further up the chain, which is what
+# stops the re-exec below recursing. Compare it against the target rather than
+# testing whether it is set: a step that targets a DIFFERENT machine still has
+# to claim that one, and the emptiness test skipped it silently. Issue #19.
 # BENCH_NO_LOCK=1 skips the lock, for when the picker itself is what you are
 # debugging. It is not a way to get past a machine someone else is using.
 _PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
-if [ -z "${RETRO_BENCH_LOCK:-}" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
+if [ "${RETRO_BENCH_LOCK:-}" != "$HOST" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$HOST"
 	exec "$_PICK" --run "$HOST" "smoke-dmg" -- "$0" "$@"
 fi

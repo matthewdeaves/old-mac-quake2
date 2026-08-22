@@ -78,7 +78,9 @@ fi
 # That is fine: the claim below is the authority, and losing that race fails
 # loudly here rather than proceeding onto a machine someone else holds.
 _PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
-if [ -z "${RETRO_BENCH_LOCK:-}" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
+# Compared against the target, not tested for emptiness: a step targeting a
+# DIFFERENT machine must still claim it. Issue #19.
+if [ "${RETRO_BENCH_LOCK:-}" != "$DMG_HOST" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$DMG_HOST" DMG_HOST
 	exec "$_PICK" --run "$DMG_HOST" "make-dmg" -- "$0" "$@"
 fi

@@ -2,7 +2,7 @@
 
 Date: 2026-08-20 (records decisions taken 2026-08-19 and 2026-08-20)
 Status: accepted, but the "same tree" half is **superseded by
-[ADR 0013](0013-the-linux-server-builds-from-a-newer-engine-than-the-mac-client.md)**
+[ADR 0016](0016-the-linux-server-builds-from-a-newer-engine-than-the-mac-client.md)**
 as of 2026-08-22. The server now builds from yquake2 8.70 while the Mac client
 stays on 5.11. Everything else here, the container, the glibc floor, the
 game.so requirement, server.cfg placement and the firewall reasoning, still

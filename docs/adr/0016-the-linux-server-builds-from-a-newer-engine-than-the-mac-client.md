@@ -1,4 +1,4 @@
-# 13. The Linux server builds from a newer engine than the Mac client
+# 16. The Linux server builds from a newer engine than the Mac client
 
 Date: 2026-08-22
 Status: accepted. Supersedes the "same tree" half of [ADR 0011](0011-the-linux-dedicated-server-ships-from-the-same-tree.md); the rest of 0011 stands.

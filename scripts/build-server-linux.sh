@@ -7,7 +7,7 @@
 # 0002. The server has no such constraint, only protocol compatibility, and
 # Quake II protocol 34 is stable across the range. Proven rather than assumed,
 # with a Power Mac G3 running the 5.11 client playing on an 8.70 server. ADR
-# 0013 supersedes the "same tree" half of ADR 0011.
+# 0016 supersedes the "same tree" half of ADR 0011.
 #
 # (historical) Build the Linux dedicated-server release from the same yquake2 tree the Mac
 # fat binary is built from.

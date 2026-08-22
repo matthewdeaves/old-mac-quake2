@@ -1,20 +1,22 @@
 #!/usr/bin/env bash
-# Build a 4-arch universal yquake2 by composing the existing per-target
-# builds with `lipo`. Same pattern as the QuakeSpasm sister project's
-# scripts/build-fat.sh.
+# Build a universal yquake2 by composing the existing per-target builds with
+# `lipo`. Same pattern as the QuakeSpasm sister project's scripts/build-fat.sh.
 #
-# Output: build/q2-fat/
-#   quake2              Mach-O universal: ppc750 + ppc7400 + ppc970 + x86_64
-#   q2ded               Mach-O universal: ppc750 + ppc7400 + ppc970 + x86_64
-#   ref_gl.so           Mach-O universal dylib: 4 slices
-#   baseq2/game.so      Mach-O universal dylib: 4 slices
+# Output: build/q2-fat/, four products, each carrying the same slices:
+#   quake2  q2ded  ref_gl.so  baseq2/game.so
+#
+# Six slices when the arm64 tree is present, five without it:
+#   ppc750  ppc7400  ppc970  x86_64  i386  [arm64]
+# Five of them cross-compile on a Lion mini. arm64 cannot (their Xcode 4.6
+# predates it by seven years) and comes from scripts/build-arm64.sh on the
+# orchestration Mac, so its absence is a Rosetta 2 downgrade, not a fault.
 #
 # dyld picks the right slice per host CPU subtype, so the same Quake2.app
-# bundle runs on G3 Panther, G4 Tiger, G5 Leopard, and Intel Lin/modern.
+# bundle runs on G3 Panther, G4 Tiger, G5 Leopard, Intel and Apple Silicon.
 #
 # usage: scripts/build-fat.sh
-# pre:   mini-intel reachable; SDKs installed (10.3.9 + 10.4u + 10.5 + Lion default)
-# post:  build/q2-{g3,g4,g5,lion,fat} all present; fat is the deliverable
+# pre:   an Intel mini reachable; SDKs installed (10.3.9 + 10.4u + 10.5 + Lion default)
+# post:  build/q2-{g3,g4,g5,lion,i386,fat} all present; fat is the deliverable
 #
 # Why not Apple's single-pass `gcc -arch ppc750 -arch ppc7400 ...`:
 #   - Four different SDKs (10.3.9, 10.4u, 10.5, Lion default); gcc takes
@@ -22,7 +24,7 @@
 #   - Two different compilers (gcc-4.0 for PPC, clang for x86_64).
 #   - -mcpu / -maltivec differ between the three PPC slices (no AltiVec
 #     on the 750; required on the 7400 and 970, with distinct scheduling).
-# So we do four separate builds and lipo the results.
+# So we do separate builds and lipo the results.
 
 set -euo pipefail
 

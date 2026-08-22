@@ -3,7 +3,7 @@
 # the runtime-loaded libraries + a user-facing README — the easy way to
 # hand the build to the old Macs.
 #
-# The contents are staged exactly like deploy.sh: the fat 4-arch binary,
+# The contents are staged exactly like deploy.sh: the fat multi-arch binary,
 # SDL.framework, per-arch + per-machine autoexec cfgs and decal textures
 # inside the .app; ref_gl.so / q2ded / baseq2/game.so OUTSIDE it (Q2 resolves those
 # via basedir=. — see deploy.sh for the why). Linux has no hdiutil, so a
@@ -68,7 +68,7 @@ fi
 # (reads the Mach header directly) rather than file(1): file's ppc subtype
 # names vary by host/toolchain — on an Apple-silicon workstation it renders
 # the ppc750 slice as "ppc_650", so the old `file | grep ppc_750` check
-# spuriously failed on a good 4-arch fat. lipo -archs is authoritative.
+# spuriously failed on a good fat. lipo -archs is authoritative.
 ARCHS=$(lipo -archs "$BUILD_DIR/quake2" 2>/dev/null || echo)
 for a in ppc750 ppc7400 ppc970 i386 x86_64; do
   case " $ARCHS " in

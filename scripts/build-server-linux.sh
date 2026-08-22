@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
-# Build the Linux dedicated-server release from the same yquake2 tree the Mac
+# Build the Linux dedicated-server release from yquake2-server/, which is
+# yquake2 8.70 plus this port's three server fixes. NOT from yquake2/, which is
+# 5.11 and belongs to the Mac client.
+#
+# The client pin cannot move: 5.11 is why the PowerPC slices work at all, ADR
+# 0002. The server has no such constraint, only protocol compatibility, and
+# Quake II protocol 34 is stable across the range. Proven rather than assumed,
+# with a Power Mac G3 running the 5.11 client playing on an 8.70 server. ADR
+# 0013 supersedes the "same tree" half of ADR 0011.
+#
+# (historical) Build the Linux dedicated-server release from the same yquake2 tree the Mac
 # fat binary is built from.
 #
 # This is a SEPARATE release from the fat Mac app. It ships ELF binaries for
@@ -82,7 +92,7 @@ docker build --platform "$DOCKER_PLATFORM" \
 # poison a later Mac build.
 #
 # --exclude release/build: it poisons the OTHER direction too, and that is worse.
-# A local Mac build leaves Mach-O binaries in yquake2/release/. Staged into the
+# A local Mac build leaves Mach-O binaries in yquake2-server/release/. Staged into the
 # container they are newer than the sources, so make considers its targets up to
 # date, skips compiling entirely, and `cp release/q2ded /work/out/` copies a
 # macOS arm64 binary into a tarball labelled linux-x86_64. Caught 2026-08-21 by
@@ -94,13 +104,13 @@ docker build --platform "$DOCKER_PLATFORM" \
 echo "[server] staging source"
 rm -rf "$WORK/src"
 mkdir -p "$WORK/src"
-tar cf - --exclude='yquake2/release' --exclude='yquake2/build' yquake2 \
+tar cf - --exclude='yquake2-server/release' --exclude='yquake2-server/build' yquake2-server \
 	| tar xf - -C "$WORK/src"
 
 cat > "$WORK/build-in-container.sh" <<'CONTAINER_SCRIPT'
 #!/bin/sh
 set -e
-cd /work/src/yquake2
+cd /work/src/yquake2-server
 
 # Hardening.
 #

@@ -4,7 +4,7 @@
 #
 # ============================================================================
 # CANONICAL COPY. This file lives in old-mac-build-host, which owns the fleet,
-# and is distributed to the four game-port repos by scripts/sync-build-lock.sh.
+# and is distributed to the four game-port repos by scripts/sync-shared-scripts.sh.
 # Edit it HERE and re-run that script; do not edit the copies.
 # ============================================================================
 #
@@ -360,6 +360,24 @@ cmd_run() {
 	# claimed the same host.
 	[ -n "$CLAIM" ] || CLAIM="$(new_claim)"
 	cmd_acquire "$h" "$label" >/dev/null || return 1
+	# Tell the command it is running inside a claim, naming the host. Scripts
+	# guard their own re-exec with
+	#     [ "${RETRO_BENCH_LOCK:-}" != "$TARGET" ]
+	# so without this a script run under --run that calls ANOTHER claiming script
+	# hits a nested acquire on a host we already hold. The lock is a bare mkdir
+	# and not reentrant, so the inner claim fails, and callers commonly degrade
+	# that to a warning rather than an error.
+	#
+	# Measured by quake3 2026-08-22, by running it rather than reading it:
+	# release-check.sh began claiming its host, its nested lsregister-app.sh could
+	# no longer claim the same machine, and release-check reported "lsregister
+	# inconclusive" on a healthy box. That is the ONE check that catches "the app
+	# will not open by double-click", and it degrades to WARN, so it would have
+	# stayed broken indefinitely.
+	#
+	# Naming the host rather than setting a flag is deliberate: a nested step that
+	# targets a DIFFERENT machine must still claim that one.
+	export RETRO_BENCH_LOCK="$h"
 	trap 'cmd_release '"$h"' >/dev/null 2>&1' EXIT INT TERM
 	"$@"
 	rc=$?

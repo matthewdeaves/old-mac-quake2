@@ -4,7 +4,7 @@
 #
 # ============================================================================
 # CANONICAL COPY. This file lives in old-mac-build-host, which owns the minis,
-# and is distributed to the four game-port repos by scripts/sync-build-lock.sh.
+# and is distributed to the four game-port repos by scripts/sync-shared-scripts.sh.
 # Edit it HERE and re-run that script; do not edit the copies.
 #
 # Why here and not in a game repo: every consumer is a peer (four ports plus this

@@ -65,7 +65,7 @@
 # minis and on mini-sl, and on Linux wherever perl is. It is NOT on 10.5.8,
 # 10.4.11 or 10.3.9 -- see docs/HOSTS.md. That is fine, because nothing stamps
 # on a PowerPC bench machine, but it is why this is not called universal.
-# sync-build-lock.sh already hashes with shasum for the same reason.
+# sync-shared-scripts.sh already hashes with shasum for the same reason.
 
 # WHAT THE CALLER MUST DO, and the one that has already bitten
 # --------------------------------------------------------------

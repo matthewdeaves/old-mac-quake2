@@ -113,6 +113,29 @@ journalctl -u q2ded -f
 `sv_maplist` in `server.cfg` handles rotation on its own when a time or frag
 limit is hit.
 
+**Put every map you intend to load into `sv_maplist`.** Loading a map that is
+not in the list used to be able to kill the server: on a timelimit rotation the
+game issued `gamemap ""`, the engine failed to load `maps/.bsp`, shut the game
+down, and then **kept running with the port still bound**. `systemctl` reported
+`active`, `Restart=on-failure` never fired because nothing had failed, and the
+server answered no query at all until somebody restarted it by hand.
+
+That is fixed as of the v2.8.1 server: an empty map name now restarts the
+current level instead. The advice still stands, because a rotation list that
+covers what you actually play is what you want anyway.
+
+Worth knowing for monitoring either way: **`systemctl is-active` is not a
+health check for a game server.** Query the engine's own status protocol, which
+is the only thing that distinguishes a server that is serving from a process
+that is merely running:
+
+```sh
+printf '\xff\xff\xff\xffstatus\n' | nc -u -w2 127.0.0.1 27910
+```
+
+A healthy server answers with its `mapname` and player list. A dead one answers
+nothing while still looking `active`.
+
 ## The network side
 
 Default port is UDP 27910.

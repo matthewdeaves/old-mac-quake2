@@ -23,7 +23,7 @@ Files: `scripts/bundle/autoexec-*.cfg`,
 | `r_2D_unfiltered` | HUD pics on `GL_NEAREST` | 1 on all six (all use trilinear) |
 | `gl_glows` | sphere-map energy shell glow | on multitex, off G3 + sawtooth |
 | `gl_trans_lighting` | lightmapped glass/grates, latched at map load | on multitex, off G3 + sawtooth |
-| `gl_caustics` | water-surface caustic overlay | on multitex, off G3 + sawtooth |
+| `gl_caustics` | water-surface caustic overlay. **Water only**: skips lava and slime, see below | on multitex, off G3 + sawtooth |
 | `gl_zfix` | polygon-offset coplanar surfaces | on (all) |
 | `gl_farsee` | extended far clip, `CVAR_LATCH` | on x86 only |
 | `gl_bloom` (+ `_alpha` `_darken` `_size`) | fixed-function light bloom | **0 everywhere, WIP, broken on the GL1 path, see MISTAKES.md** |
@@ -51,6 +51,24 @@ tweak wins, fold it into `scripts/bundle/autoexec-<machine>.cfg`, redeploy,
 re-bench. See `docs/BENCH.md` and ADR 0010.
 
 ## Tuning the caustic look (`gl_caustics`)
+
+**It is a WATER effect and is gated to water.** `R_EmitWaterPolys` draws every
+`SURF_DRAWTURB` surface, and lava and slime are warp surfaces too, so an
+ungated overlay paints its blue-white net over molten lava. That shipped, and
+was reported from hardware on q2dm6 "Lava Tomb": the lava read as pale blue
+water while still behaving as lava when you jumped in.
+
+Measured on q2dm6, whose only liquid texture is `e3u1/brlava`, mean RGB over
+the lava pool: on (67.6, 36.9, **39.7**) blue shifted, off (71.7, 38.2,
+**31.3**) correct orange, fixed (69.4, 44.8, **30.6**). The texture's two
+commonest palette indices are RGB(159,47,35) and (155,31,0), so orange is what
+the asset itself describes.
+
+The gate is by **exclusion**, `CONTENTS_LAVA | CONTENTS_SLIME`, not by testing
+for `CONTENTS_WATER`. Plenty of maps leave the wal's contents field at 0 for
+water and set it on the brush instead, so requiring the water bit would
+silently drop caustics from surfaces that have them today. `image_t` keeps the
+wal contents for this; `LoadWal` used to throw the header away.
 
 The overlay texture is generated procedurally; there is no asset to edit. Tune
 `R_InitCausticTexture` in `yquake2/src/refresh/r_misc.c` and rebuild.

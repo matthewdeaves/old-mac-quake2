@@ -24,6 +24,14 @@
 # factor this out as the shared primitive across the four ports, so keep it that
 # way: no product names, no build/ layout, no per-port logic.
 
+# yquake2/release/ is the engine Makefile's OUTPUT directory, gitignored by both
+# .gitignore:4 and yquake2/.gitignore:2 and tracked by nothing. It was in the
+# hashed set until 2026-08-22. build.sh builds on the mini and fetches from the
+# REMOTE release/, so it never writes the local one; build-arm64.sh compiles in
+# place and does, and runs `make clean` first. So the hash of an unchanged source
+# tree moved depending on whether an arm64 build had run. Build output must never
+# be part of "what the source is".
+#
 # The one definition of "what a build is built from". build.sh's rsync reads
 # this too (source_stamp_rsync_excludes), so the two cannot drift apart. A file
 # outside this set cannot affect a build; a file inside it must change the hash.
@@ -38,6 +46,7 @@ SOURCE_STAMP_EXCLUDES='.git
 build/
 benchmarks/
 prereqs/
+yquake2/release/
 reference/'
 
 # Emit the --exclude= flags for rsync, from the same list the hash uses.

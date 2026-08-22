@@ -124,6 +124,18 @@ rm -f "$OUT/.sdl-noarm.dylib"
 # the build host; we do the same here, on a copy, so the working tree is never
 # left modified if this script dies partway.
 echo "==> [3/4] building quake2, q2ded, ref_gl.so, game.so (arm64, macOS $VMIN)"
+
+# Stamp the tree AT REST, before the sed below touches the Makefile.
+#
+# This used to be computed at the end, next to where it is written. The sed is
+# reverted by the EXIT trap, which fires AFTER that point, so the stamp described
+# a Makefile state that never survived the script. build.sh stamps the tree at
+# rest, so the arm64 stamp could never equal the other five and build-fat.sh
+# refused every six-slice build. Measured 2026-08-22: tree at rest 8e643192b2b9,
+# tree with the sed applied 9896723a7cbd, and 9896723a7cbd is exactly what this
+# line recorded. See issue #17.
+SRC_STAMP="$(source_stamp_compute "$REPO_ROOT")"
+
 MK="$REPO_ROOT/yquake2/Makefile"
 cp "$MK" "$OUT/.Makefile.orig"
 trap 'cp "$OUT/.Makefile.orig" "$MK" 2>/dev/null; rm -f "$OUT/.Makefile.orig"; true' EXIT
@@ -172,7 +184,10 @@ otool -L "$OUT/release/quake2" | grep -q '@executable_path/SDL.framework/Version
 # stamp, which is why the stamp is defined over the source and not over the
 # transfer. arm64 is the only slice a fat build never rebuilds, so this stamp is
 # the one that actually matters. See issue #17.
-source_stamp_write "$OUT/release" "$(source_stamp_compute "$REPO_ROOT")"
+# SRC_STAMP was computed before the Makefile sed, not here. Recomputing at this
+# point would hash the reverted-later Makefile and the arm64 binaries this build
+# just wrote into yquake2/release/.
+source_stamp_write "$OUT/release" "$SRC_STAMP"
 echo "==> source stamp $(source_stamp_read "$OUT/release" | cut -c1-12)"
 
 echo "==> done -> build/arm64/release/"

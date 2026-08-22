@@ -290,6 +290,11 @@ try_acquire() {
 
 cmd_acquire() {
 	local h="${1:?usage: --acquire HOST [LABEL]}" label="${2:-bench}"
+	# See cmd_run: the bypass is not honoured here, because a caller told
+	# "acquired" while holding nothing would use a machine it does not own. Say so
+	# rather than ignoring it silently, since somebody set it expecting an effect.
+	[ "${BENCH_NO_LOCK:-0}" = 1 ] && \
+		echo "pick-bench-host: BENCH_NO_LOCK is set but --acquire always claims; use --run to bypass." >&2
 	local deadline=$(( $(date +%s) + WAIT_SECS )) rc
 	while :; do
 		try_acquire "$h" "$label"; rc=$?
@@ -354,6 +359,25 @@ cmd_run() {
 	shift 2
 	[ "${1:-}" = "--" ] && shift
 	[ "$#" -gt 0 ] || { echo "usage: --run HOST LABEL -- CMD [ARGS...]" >&2; return 2; }
+	# BENCH_NO_LOCK=1 runs the command WITHOUT claiming, for debugging the picker
+	# itself. Honoured here so there is ONE implementation of the bypass that says
+	# out loud it happened, instead of N silent per-repo copies. Issue #11.
+	#
+	# Loud on purpose. This is the only sanctioned way to work around the fleet's
+	# only arbitration, and until now a run that bypassed the lock was
+	# indistinguishable from one that never needed it: no warning, no record,
+	# nothing to grep.
+	#
+	# Deliberately NOT honoured by --acquire. Acquire's whole job is to claim, and
+	# a caller that is told "acquired" while holding nothing would go on to use a
+	# machine it does not own, which is worse than not having the hatch.
+	if [ "${BENCH_NO_LOCK:-0}" = 1 ]; then
+		echo "pick-bench-host: BENCH_NO_LOCK=1, running on $h WITHOUT claiming it." >&2
+		echo "  Nothing is arbitrating this machine for the next command. This is" >&2
+		echo "  for debugging the picker, NOT for getting past a host someone holds." >&2
+		"$@"
+		return $?
+	fi
 	# One invocation, one nonce, so the release below can only ever remove the
 	# lock this invocation created. This is the case issue #7 called live: a
 	# predecessor's EXIT trap firing after a successor in the same repo had

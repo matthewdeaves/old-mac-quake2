@@ -184,6 +184,9 @@ try_acquire() {
 }
 
 cmd_acquire() {
+	[ "${BENCH_NO_LOCK:-0}" = 1 ] && \
+		echo "pick-build-host: BENCH_NO_LOCK is set but the build lock is never bypassed here." >&2
+
 	local label="${1:-build}" deadline=$(( $(date +%s) + WAIT_SECS ))
 	while :; do
 		for h in $BUILD_HOSTS; do
@@ -199,6 +202,10 @@ cmd_acquire() {
 
 # Release our claim. Refuses to drop someone else's lock unless FORCE=1, so a
 # stray --release can't yank a mini out from under another repo's running build.
+# This picker has no --run, so there is nothing here that could safely bypass the
+# lock: every caller acquires and holds. BENCH_NO_LOCK is therefore not honoured,
+# and saying so beats ignoring it, since somebody set it expecting an effect.
+# Issue #11.
 cmd_release() {
 	local h="$1"
 	local strict=""

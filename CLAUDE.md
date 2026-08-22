@@ -87,6 +87,13 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
 - **Every per-machine default is an A/B on that machine**, never inferred from
   GPU class. `docs/adr/0010`
 - **We ship code and generated art, never game content.** `docs/adr/0012`
+- **`scripts/source-stamp.sh` is NOT ours to edit.** It is canonical in
+  `old-mac-build-host`, byte-identical across five repos, and a drift check
+  enforces that. It takes the exclude list as an argument and returns 2 without
+  one. This repo's list lives in `scripts/source-stamp-excludes.sh`; change
+  that, never the shared file. Both get sourced together, and all four call
+  sites pass `"$SOURCE_STAMP_EXCLUDES"` (`build.sh:199`, `:257`,
+  `build-fat.sh:140`, `build-arm64.sh:140`). Issue #20.
 
 ## Machines
 

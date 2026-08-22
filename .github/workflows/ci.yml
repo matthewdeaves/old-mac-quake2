@@ -1,0 +1,48 @@
+name: CI
+
+# master, not main: this repo's default branch is master, and a workflow copied
+# from a sibling port with `branches: [main]` would never run here. That is not
+# hypothetical — a "no runs" reading of this repo on 2026-08-22 came from asking
+# GitHub about a branch that does not exist. Issue #21.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+# Deliberately Linux-only, and deliberately NOT a build.
+#
+# Five of the six slices are compiled by gcc-4.0 against the 10.3.9 SDK on a
+# Lion Mac mini reached over ssh, and arm64 on the workstation. Nothing on a
+# GitHub runner resembles any of that, so a green ubuntu build would prove
+# nothing about a G3 and would invite someone to trust it. Smoke tests and
+# benchmarks need real fleet hardware and the bench lock, so they cannot live
+# here either. What is left is what needs no toolchain and no hardware.
+jobs:
+  shell-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse every shell script
+        run: |
+          fail=0
+          for f in scripts/*.sh tests/*.sh; do
+            if bash -n "$f"; then echo "ok   $f"; else echo "FAIL $f"; fail=1; fi
+          done
+          exit $fail
+      - name: Parse every Python script
+        run: |
+          fail=0
+          for f in scripts/*.py; do
+            if python3 -m py_compile "$f"; then echo "ok   $f"; else echo "FAIL $f"; fail=1; fi
+          done
+          exit $fail
+
+  repo-invariants:
+    # Each invariant encodes a bug this repo shipped, and the script proves its
+    # own detectors against fixtures before trusting them. See tests/test-repo.sh.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repo invariants
+        run: tests/test-repo.sh

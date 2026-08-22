@@ -135,10 +135,15 @@ ME="${USER:-unknown}@$(hostname -s 2>/dev/null || echo host):${REPO_NAME}"
 # process and releases from a trap in ANOTHER:
 #     BUILD_HOST="$(pick-build-host.sh --acquire "quake2 build-fat")"
 #     trap '... --release "$BUILD_HOST"' EXIT
-# quake2 build-fat.sh:11,16 and build.sh:13,20; quake3 build-fat.sh:9,14,
-# build-gamedylibs.sh:7,14 and build.sh:10,17; quakespasm build-fat.sh:14,19 and
-# build.sh:12,21. A pid match would refuse every one of those releases, so the
-# lock would be held until the 90 minute reclaim on every build in the fleet.
+# That shape is in quake2 build-fat.sh and build.sh, quake3 build-fat.sh,
+# build-gamedylibs.sh and build.sh, and quakespasm build-fat.sh and build.sh.
+# Seven callers, four repos. A pid match would refuse every one of those
+# releases, so the lock would be held until the 90 minute reclaim on every build
+# in the fleet.
+#
+# Deliberately no line numbers for those files. This comment ships BYTE-IDENTICAL
+# into all four ports, and their line numbers move without this file changing, so
+# any number here rots silently and cannot be verified from the repo it lives in.
 #
 # Hence: --run generates a nonce and uses it for both halves, because it is one
 # invocation and that is the case the trap-ordering bug actually bites. A caller

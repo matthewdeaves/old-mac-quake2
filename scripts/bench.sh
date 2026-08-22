@@ -240,8 +240,18 @@ fi' 2>/dev/null || echo "unknown")
 # Commas are sanitised to semicolons so CSV stays parseable. The commit
 # subject is always appended automatically so future-you can read why a
 # row exists without having to cross-ref the git log.
-NOTES_RAW="${NOTES:-Phase A baseline} | $COMMIT_SUBJECT"
-NOTES_CSV=$(echo "$NOTES_RAW" | tr ',' ';' | head -c 200)
+# EXTRA goes in the notes, always. Without it an A/B writes two rows that are
+# identical in every column a reader can see -- same machine, same demo, same
+# resolution, different fps -- and nothing says which leg was which. Measured
+# 2026-08-22: a gl_farsee A/B on mini-g4 produced exactly that pair, 40.90 and
+# 41.10, indistinguishable in the data. The mode is recorded for the same
+# reason: quake3 found six settings free WINDOWED and -9.7% fullscreen, so a
+# figure without its mode ranks settings but cannot say where a floor breaks.
+BENCH_COND="mode=$([ "$VID_FS" = 1 ] && echo fullscreen || echo windowed)"
+[ "${VID_DFS:-0}" = 1 ] && BENCH_COND="mode=desktopfullscreen"
+[ -n "${EXTRA:-}" ] && BENCH_COND="$BENCH_COND EXTRA=${EXTRA}"
+NOTES_RAW="${NOTES:-Phase A baseline} | $BENCH_COND | $COMMIT_SUBJECT"
+NOTES_CSV=$(echo "$NOTES_RAW" | tr ',' ';' | head -c 240)
 
 # CSV header (initialize once). Atomic via bash noclobber (set -C →
 # O_CREAT|O_EXCL), so two parallel bench.sh procs racing on a missing

@@ -448,6 +448,19 @@ Not failures, but analyses that concluded "no" and should not be re-derived:
   nothing without touching `baseq2/game.so` too. This port instead hooks the
   client temp-entity handlers in `cl_tempentities.c`.
 - **`demo3.dm2` does not exist in any retail pak.** See ADR 0009.
+- **MSAA 4x on an R200 G4 falls off a cliff and breaks the floor.** quicksilver
+  (733 MHz PPC 7450, Radeon 9000 Pro 64MB, 10.4.11), demo1 at 1024x768, 3 runs
+  each, benchmarks/results.csv 2026-08-22:
+
+      gl_msaa_samples 0    66.15 fps
+      gl_msaa_samples 2    57.15 fps   shipped, -13.6%
+      gl_msaa_samples 4    31.40 fps   -52.5%, under the 40 fps G4 floor
+
+  So the shipped 2x is the right trade and 4x is not a matter of taste: it puts
+  a G4 below its playability floor. The 2x to 4x step costs nearly three times
+  what 0x to 2x costs, which looks like the R200 leaving a fast resolve path
+  rather than linear sample scaling. Do not raise R200-class machines to 4x.
+  The G5's RV350 is a different chip and is not covered by this.
 
 ## Watch items with no recorded failure yet
 

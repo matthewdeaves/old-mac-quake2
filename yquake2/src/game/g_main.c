@@ -381,8 +381,45 @@ ExitLevel(void)
 	edict_t *ent;
 	char command[256];
 
-	Com_sprintf(command, sizeof(command), "gamemap \"%s\"\n", level.changemap);
-	gi.AddCommandString(command);
+	/* Never issue `gamemap ""`. Nothing good comes of that string: the engine
+	 * tries to load maps/.bsp, fails with ERR_DROP, runs ShutdownGame, and on a
+	 * dedicated server leaves a process that still holds its UDP port and
+	 * answers nothing. Reported on a live server, issue #13: a timelimit
+	 * rotation on a map outside sv_maplist produced exactly that, and every
+	 * layer above reported the server healthy for six minutes.
+	 *
+	 * changemap points into level.nextmap, which CreateTargetChangeLevel fills.
+	 * The path that produced an empty one has NOT been established, and this
+	 * does not pretend to fix it: it makes the failure impossible whichever
+	 * path gets here, which is worth having on its own for a value that is
+	 * never legitimately empty.
+	 *
+	 * Restarting the current level is the right fallback, and is what
+	 * EndDMLevel already does when a map has no target_changelevel and is not
+	 * in the rotation. If even mapname is empty there is nothing safe to load,
+	 * so issue nothing rather than a command certain to kill the game. */
+	if (!level.changemap || !level.changemap[0])
+	{
+		gi.dprintf("ExitLevel: empty changemap, ");
+
+		if (level.mapname[0])
+		{
+			gi.dprintf("restarting %s instead\n", level.mapname);
+			Com_sprintf(command, sizeof(command), "gamemap \"%s\"\n",
+					level.mapname);
+			gi.AddCommandString(command);
+		}
+		else
+		{
+			gi.dprintf("and no current map to fall back on, staying put\n");
+		}
+	}
+	else
+	{
+		Com_sprintf(command, sizeof(command), "gamemap \"%s\"\n", level.changemap);
+		gi.AddCommandString(command);
+	}
+
 	level.changemap = NULL;
 	level.exitintermission = 0;
 	level.intermissiontime = 0;

@@ -111,6 +111,11 @@ NUM_SHOTS=10
 echo "[screenshot] staging autoshot.cfg on $HOST ($NUM_SHOTS shots)"
 STAGE_CFG=$(mktemp)
 TMPD=$(mktemp -d)
+# Expanded NOW, not at signal time. The variable is assigned on the line above
+# and never reassigned, so both spellings behave identically here, and baking
+# the literal path in means an rm -rf trap cannot be redirected by a later
+# reassignment. Issue #22.
+# shellcheck disable=SC2064
 trap "rm -rf '$STAGE_CFG' '$TMPD'" EXIT
 
 {

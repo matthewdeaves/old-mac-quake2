@@ -19,7 +19,7 @@
 set -u
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$REPO_ROOT/yquake2"
+cd "$REPO_ROOT/yquake2" || exit 1
 
 MODE="${1:-all}"
 case "$MODE" in

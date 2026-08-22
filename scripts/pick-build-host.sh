@@ -55,6 +55,20 @@ SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=no)
 REPO_NAME="$(basename "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)")"
 ME="${USER:-unknown}@$(hostname -s 2>/dev/null || echo host):${REPO_NAME}"
 
+# ME identifies a REPO, not a claimant. Two sessions in the same repo on this
+# workstation produce a byte-identical ME, so release could not tell them apart.
+# Issue #7, and it matters here as much as in the bench picker because both
+# front-ends share ONE lock directory on the target: a loose release here can
+# drop a claim the bench picker made.
+#
+# A claim carries a nonce, written as claim=... and required back at release.
+# Unlike the bench picker there is no --run here, so every caller acquires in one
+# process and releases from a trap in another (quake2 build-fat.sh:11,16;
+# quake3 build.sh:10,17; quakespasm build-fat.sh:14,19). A pid would not survive
+# that, so the nonce is opt-in: export BENCH_LOCK_CLAIM around the pair to get a
+# strict release. Without it this falls back to the ME match, exactly as before.
+CLAIM="${BENCH_LOCK_CLAIM:-}"
+
 # Probe one host. Prints: "<age> <nprocs> <owner...>"  (age -1 = unlocked)
 # Non-zero exit means unreachable.
 probe() {
@@ -142,6 +156,10 @@ try_acquire() {
 	os="$(echo "$out" | awk '{print $3}')"
 	state="$(classify "$age" "$procs" "$os")"
 	usable "$state" || return 1
+	# Only stamp claim= when there is a real nonce; an empty one would read as
+	# "this lock has a nonce" at release and defeat the old-format fallback.
+	CLAIM_TAG=""
+	[ -n "$CLAIM" ] && CLAIM_TAG=" claim=$CLAIM"
 	# Reclaim a stale lock first, then take it atomically via mkdir. The reclaim
 	# itself goes through mv: only one claimant's mv of the stale dir succeeds,
 	# so two orchestrators retrying the same stale lock cannot both pass their
@@ -156,7 +174,7 @@ try_acquire() {
 			fi
 		fi
 		mkdir \"\$L\" 2>/dev/null || exit 1
-		echo '$ME $label' > \"\$L/owner\" 2>/dev/null
+		echo '$ME$CLAIM_TAG $label' > \"\$L/owner\" 2>/dev/null
 		date >> \"\$L/owner\" 2>/dev/null
 		exit 0
 	" >/dev/null 2>&1
@@ -180,9 +198,21 @@ cmd_acquire() {
 # stray --release can't yank a mini out from under another repo's running build.
 cmd_release() {
 	local h="$1"
+	local strict=""
+	[ -n "$CLAIM" ] && strict="claim=$CLAIM"
 	ssh "${SSH_OPTS[@]}" "$h" "
+		O=\"$LOCK/owner\"
 		if [ -d \"$LOCK\" ]; then
-			if grep -q '$ME' \"$LOCK/owner\" 2>/dev/null || [ \"${FORCE:-0}\" = 1 ]; then
+			ok=0
+			[ -n '$strict' ] && grep -q '$strict' \"\$O\" 2>/dev/null && ok=1
+			# A lock written before nonces existed carries no claim= at all, so
+			# fall back to identity for those. Drop once no pre-#7 picker is in
+			# service.
+			if [ \$ok -eq 0 ] && ! grep -q 'claim=' \"\$O\" 2>/dev/null; then
+				grep -q '$ME' \"\$O\" 2>/dev/null && ok=1
+			fi
+			[ \"${FORCE:-0}\" = 1 ] && ok=1
+			if [ \$ok -eq 1 ]; then
 				rm -rf \"$LOCK\"; echo released
 			else
 				echo 'not ours; leaving it' >&2; exit 1
@@ -205,7 +235,17 @@ case "${1:---pick}" in
 		h="${2:?usage: --acquire-host HOST [LABEL]}"
 		BUILD_HOSTS="$h" cmd_acquire "${3:-build}" ;;
 	--release)     cmd_release "${2:?usage: --release HOST}" ;;
-	--release-all) for h in $BUILD_HOSTS; do echo "$h: $(cmd_release "$h")"; done ;;
+	--release-all)
+		# Walks every candidate applying the same test. On the identity-only path
+		# that is one command that can drop a sibling session's claims, including
+		# claims the BENCH picker made, since both share one lock directory.
+		# Nothing in any repo calls this from code.
+		if [ -z "$CLAIM" ] && [ "${FORCE:-0}" != 1 ]; then
+			echo "pick-build-host: --release-all cannot tell two sessions in $REPO_NAME apart." >&2
+			echo "  Use FORCE=1 --release-all to override, or BENCH_LOCK_CLAIM to scope it." >&2
+			exit 2
+		fi
+		for h in $BUILD_HOSTS; do echo "$h: $(cmd_release "$h")"; done ;;
 	--pick)
 		for h in $BUILD_HOSTS; do
 			out="$(probe "$h")" || continue

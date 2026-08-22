@@ -115,6 +115,11 @@ esac
 
 # ---- stage the disk-image contents (same layout as deploy.sh) ------------
 STAGE=$(mktemp -d -t q2-dmg.XXXXXX)
+# Expanded NOW, not at signal time. The variable is assigned on the line above
+# and never reassigned, so both spellings behave identically here, and baking
+# the literal path in means an rm -rf trap cannot be redirected by a later
+# reassignment. Issue #22.
+# shellcheck disable=SC2064
 trap "rm -rf '$STAGE'" EXIT
 IMG="$STAGE/img"                       # becomes the .dmg root
 APP="$IMG/Quake2.app"

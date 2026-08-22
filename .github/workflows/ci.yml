@@ -38,6 +38,23 @@ jobs:
           done
           exit $fail
 
+  shellcheck:
+    # Warning level, not style. The style findings are dominated by deliberate
+    # portability choices for 10.3-10.7 and would drown the signal.
+    #
+    # Every warning-level finding was triaged in #22 and is either fixed or
+    # suppressed at the site with the reason. No blanket disables, and nothing
+    # is suppressed in scripts/source-stamp.sh: that file is byte-identical to
+    # old-mac-build-host's canonical copy, so a finding there is theirs to fix
+    # and reaches every port through the sync.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck at warning level
+        run: |
+          shellcheck --version
+          shellcheck -S warning scripts/*.sh tests/*.sh
+
   repo-invariants:
     # Each invariant encodes a bug this repo shipped, and the script proves its
     # own detectors against fixtures before trusting them. See tests/test-repo.sh.

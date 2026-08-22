@@ -43,10 +43,8 @@ fi
 
 if [ "$DRY_RUN" = "1" ]; then
   echo "=== DRY RUN — set DRY_RUN=0 to actually delete ==="
-  RM="echo would-rm"
 else
   echo "=== LIVE RUN — deleting for real ==="
-  RM="rm -rf"
 fi
 
 # Paths to remove. Quoted carefully because the parent path contains a space.
@@ -76,6 +74,10 @@ SYSTEM_CRUFT=(
 
 # Tier 3 — legacy documentation (we'll move these to docs/ rather than nuke).
 # Treat as a separate step; user can choose to keep or toss.
+# Deliberately not wired up: Tier 3 is skipped by default and its loop is
+# commented out below, so the list is staged for a manual decision rather than
+# unused. Issue #22.
+# shellcheck disable=SC2034
 LEGACY_DOCS=(
   "Commercial Exploitation"
   "QII License Information"

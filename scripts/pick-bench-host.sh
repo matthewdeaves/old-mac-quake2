@@ -121,6 +121,34 @@ expect_os() {
 REPO_NAME="$(basename "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)")"
 ME="${USER:-unknown}@$(hostname -s 2>/dev/null || echo host):${REPO_NAME}"
 
+# ME identifies a REPO, not a claimant, and that is not enough to release safely.
+# Two sessions in the same repo on this workstation produce a byte-identical ME,
+# so cmd_release could not tell them apart and either could drop the other's
+# lock with no error. Sessions here are restarted to control token spend, and a
+# restarted session briefly coexists with its predecessor in the same repo,
+# which is exactly that condition. Issue #7.
+#
+# So a claim also carries a nonce, written into the owner file as claim=... and
+# required back at release.
+#
+# It cannot simply be $$. Every build script in the four ports acquires in one
+# process and releases from a trap in ANOTHER:
+#     BUILD_HOST="$(pick-build-host.sh --acquire "quake2 build-fat")"
+#     trap '... --release "$BUILD_HOST"' EXIT
+# quake2 build-fat.sh:11,16 and build.sh:13,20; quake3 build-fat.sh:9,14,
+# build-gamedylibs.sh:7,14 and build.sh:10,17; quakespasm build-fat.sh:14,19 and
+# build.sh:12,21. A pid match would refuse every one of those releases, so the
+# lock would be held until the 90 minute reclaim on every build in the fleet.
+#
+# Hence: --run generates a nonce and uses it for both halves, because it is one
+# invocation and that is the case the trap-ordering bug actually bites. A caller
+# that splits acquire from release opts in by exporting BENCH_LOCK_CLAIM, and
+# without it falls back to the old ME match with a warning. Loose, but no worse
+# than it was, and no build in the fleet has to change to keep working.
+CLAIM="${BENCH_LOCK_CLAIM:-}"
+
+new_claim() { echo "$$.$(date +%s).${RANDOM:-0}"; }
+
 # Probe one host. Prints: "<age> <nprocs> <os> <owner...>"  (age -1 = unlocked,
 # age -2 = locked but age unknowable). Non-zero exit means unreachable.
 #
@@ -210,7 +238,11 @@ cmd_status() {
 
 # Try to claim $1. Returns 0 on success.
 try_acquire() {
-	local h="$1" label="$2" out age procs os state want
+	local h="$1" label="$2" out age procs os state want tag
+	# Only stamp claim= when there is a real nonce. An empty claim= would read as
+	# "this lock has a nonce" to cmd_release and defeat the old-format fallback.
+	tag=""
+	[ -n "$CLAIM" ] && tag=" claim=$CLAIM"
 	want="$(expect_os "$h")"
 	out="$(probe "$h")" || return 1
 	[ -z "$out" ] && return 1
@@ -245,7 +277,7 @@ try_acquire() {
 		fi
 		mkdir \"\$L\" 2>/dev/null || exit 1
 		date +%s > \"\$L/created\" 2>/dev/null
-		echo '$ME $label (bench)' > \"\$L/owner\" 2>/dev/null
+		echo '$ME$tag $label (bench)' > \"\$L/owner\" 2>/dev/null
 		date >> \"\$L/owner\" 2>/dev/null
 		exit 0
 	" >/dev/null 2>&1
@@ -271,9 +303,28 @@ cmd_acquire() {
 # cannot yank a machine out from under another repo's running bench.
 cmd_release() {
 	local h="$1"
+	local strict=""
+	[ -n "$CLAIM" ] && strict="claim=$CLAIM"
+	if [ -z "$strict" ] && [ "${FORCE:-0}" != 1 ]; then
+		echo "pick-bench-host: releasing $h on identity alone; this cannot tell two" >&2
+		echo "  sessions in $REPO_NAME apart. Export BENCH_LOCK_CLAIM to release strictly." >&2
+	fi
 	ssh "${SSH_OPTS[@]}" "$h" "
+		O=\"$LOCK/owner\"
 		if [ -d \"$LOCK\" ]; then
-			if grep -q '$ME' \"$LOCK/owner\" 2>/dev/null || [ \"${FORCE:-0}\" = 1 ]; then
+			ok=0
+			# Our own claim, by nonce. The only test that distinguishes two
+			# sessions in one repo.
+			[ -n '$strict' ] && grep -q '$strict' \"\$O\" 2>/dev/null && ok=1
+			# A lock written before nonces existed carries no claim= at all.
+			# Fall back to identity for those, so a picker rolled out mid-flight
+			# can still release the locks its predecessor left. Drop this once no
+			# pre-#7 picker is in service.
+			if [ \$ok -eq 0 ] && ! grep -q 'claim=' \"\$O\" 2>/dev/null; then
+				grep -q '$ME' \"\$O\" 2>/dev/null && ok=1
+			fi
+			[ \"${FORCE:-0}\" = 1 ] && ok=1
+			if [ \$ok -eq 1 ]; then
 				rm -rf \"$LOCK\"; echo released
 			else
 				echo 'not ours; leaving it' >&2; exit 1
@@ -298,6 +349,11 @@ cmd_run() {
 	shift 2
 	[ "${1:-}" = "--" ] && shift
 	[ "$#" -gt 0 ] || { echo "usage: --run HOST LABEL -- CMD [ARGS...]" >&2; return 2; }
+	# One invocation, one nonce, so the release below can only ever remove the
+	# lock this invocation created. This is the case issue #7 called live: a
+	# predecessor's EXIT trap firing after a successor in the same repo had
+	# claimed the same host.
+	[ -n "$CLAIM" ] || CLAIM="$(new_claim)"
 	cmd_acquire "$h" "$label" >/dev/null || return 1
 	trap 'cmd_release '"$h"' >/dev/null 2>&1' EXIT INT TERM
 	"$@"
@@ -313,7 +369,19 @@ case "${1:---status}" in
 	--run)         h="${2:?usage: --run HOST LABEL -- CMD ...}"; l="${3:-bench}"
 	               shift 3; cmd_run "$h" "$l" "$@" ;;
 	--release)     cmd_release "${2:?usage: --release HOST}" ;;
-	--release-all) for h in $BENCH_HOSTS; do echo "$h: $(cmd_release "$h")"; done ;;
+	--release-all)
+	               # Walks all fourteen hosts. On the identity-only path that is
+	               # one command that can drop every claim a sibling session in
+	               # this repo holds, across the whole fleet, silently. Nothing in
+	               # any repo calls it from code, so requiring an explicit
+	               # override costs nothing. A session that died without releasing
+	               # is already covered by the stale reclaim after STALE_SECS.
+	               if [ -z "$CLAIM" ] && [ "${FORCE:-0}" != 1 ]; then
+	                       echo "pick-bench-host: --release-all cannot tell two sessions in $REPO_NAME apart." >&2
+	                       echo "  Use FORCE=1 --release-all to override, or BENCH_LOCK_CLAIM to scope it." >&2
+	                       exit 2
+	               fi
+	               for h in $BENCH_HOSTS; do echo "$h: $(cmd_release "$h")"; done ;;
 	-h|--help)     sed -n '2,45p' "$0" ;;
 	*) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
 esac

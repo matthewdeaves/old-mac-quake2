@@ -135,6 +135,11 @@ fi
 # symlinks to SDL.framework slices cleanly without rsync flattening
 # them on the way out.
 STAGE=$(mktemp -d -t q2-deploy.XXXXXX)
+# Expanded NOW, not at signal time. The variable is assigned on the line above
+# and never reassigned, so both spellings behave identically here, and baking
+# the literal path in means an rm -rf trap cannot be redirected by a later
+# reassignment. Issue #22.
+# shellcheck disable=SC2064
 trap "rm -rf '$STAGE'" EXIT
 
 echo "[deploy] stage Quake2.app bundle"
@@ -351,6 +356,10 @@ ssh "$HOST" 'APP=~/Desktop/quake2/Quake2.app
 # (we saw this on the QuakeSpasm sister project with a 298 KB stale
 # icns left in place by --partial).
 LOCAL_BIN="$BUILD_DIR/quake2"
+# Single-quoted on purpose: this tilde is expanded by the REMOTE shell inside
+# the ssh command below, not here. Expanding it locally would send this Mac's
+# home directory to the target. Issue #22.
+# shellcheck disable=SC2088
 REMOTE_BIN_PATH='~/Desktop/quake2/Quake2.app/Contents/MacOS/quake2'
 LOCAL_BIN_MD5=$(md5sum "$LOCAL_BIN" | awk '{print $1}')
 REMOTE_BIN_MD5=$(ssh "$HOST" "if command -v md5 >/dev/null 2>&1; then

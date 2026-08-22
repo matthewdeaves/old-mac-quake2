@@ -24,6 +24,10 @@
 # depend on word-splitting, which sh and bash do and zsh does NOT: sourced from a
 # zsh shell the whole list collapses to one word, nothing is pruned, and the hash
 # silently covers build/ and fires on every bench run.
+# Read by the four call sites listed above, in files shellcheck parses
+# separately, so it cannot see the use. Not an export: the shared file takes
+# the list as an argument. Issue #22.
+# shellcheck disable=SC2034
 SOURCE_STAMP_EXCLUDES='.git
 *.o
 *.d

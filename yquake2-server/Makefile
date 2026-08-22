@@ -234,6 +234,19 @@ endif
 #   mostly best practice and not really necessary.
 override CFLAGS += -fno-strict-aliasing -fwrapv -fvisibility=hidden
 
+# EXTRA_CFLAGS / EXTRA_LDFLAGS: composable additions for callers.
+#
+# Added by this port, matching the hook the 5.11 tree carries, so
+# scripts/build-server-linux.sh can inject its hardening flags the same way
+# against either tree.
+#
+# It has to be a hook rather than the caller setting CFLAGS directly. Setting
+# CFLAGS in the environment does work here, because 8.70 uses `CFLAGS ?=`, but
+# it silently drops this Makefile's own -O2 -Wall -pipe -fomit-frame-pointer,
+# since `?=` does not apply once the variable has a value. Appending is what
+# the caller actually wants, and it cannot be got wrong.
+override CFLAGS += $(EXTRA_CFLAGS)
+
 # -MMD to generate header dependencies. Unsupported by
 #  the Clang shipped with OS X.
 ifneq ($(YQ2_OSTYPE), Darwin)
@@ -391,6 +404,9 @@ LDFLAGS ?= -L/usr/lib
 else ifeq ($(YQ2_OSTYPE),Darwin)
 LDFLAGS ?= -L/usr/local/lib -L/opt/homebrew/lib
 endif
+
+# See the EXTRA_CFLAGS note above: same reasoning, link side.
+override LDFLAGS += $(EXTRA_LDFLAGS)
 
 # Link address sanitizer if requested.
 ifdef ASAN

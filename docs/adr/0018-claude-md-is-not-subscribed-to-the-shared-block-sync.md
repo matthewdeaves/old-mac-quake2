@@ -74,3 +74,44 @@ the two differ, which the section says.
 
 Nothing here objects to the tool. It is well built, its report mode is safe, and
 a repo that wants the guarantee more than the specificity should adopt it.
+
+## Addendum, 2026-08-22, same evening
+
+Canonical acted on the second argument rather than disputing it. retro-agents
+`62e1419` CUTS the hardware and `BENCH_NO_LOCK` paragraphs from the shared block
+entirely, on the reasoning that shared text converges on the weakest claim and
+each repo should keep that material in its own words. Canonical is down to 39
+lines, and `grep` for `pick-bench-host` or `BENCH_NO_LOCK` in it now returns
+nothing.
+
+That weakens the convergence reason, honestly stated: the specific paragraphs
+this ADR measured are no longer in canonical to converge. The pressure is
+structural and still there for anything added later, but the scope is now much
+smaller and the header warns against it.
+
+The decision does not change, because the first reason is untouched: a synced
+region is unreviewed automatic overwrite of the file governing how sessions here
+behave.
+
+Recorded here rather than by editing the text above, which is what was believed
+and measured at the time.
+
+## Addendum, second: what canonical had wrong about US
+
+Cutting those paragraphs meant rewording them as ours, and both then turned out
+to be false for this repo. We would have inherited both.
+
+"The shared picker does not read `BENCH_NO_LOCK`" is wrong. `pick-bench-host.sh`
+honours it in `cmd_run` at `:374` and prints a warning at `:296`;
+`pick-build-host.sh` warns at `:187`.
+
+"Every script that drives a fleet machine re-execs under
+`scripts/pick-bench-host.sh --run`" is wrong here in a way that matters. Seven do.
+`build.sh` and `build-fat.sh` claim with `pick-build-host.sh --acquire` and an
+EXIT trap instead, because that picker has no `--run` mode at all (`:65`).
+`parallel-bench.sh` claims nothing itself and delegates per leg to `bench.sh`.
+`build-arm64.sh` and `build-server-linux.sh` touch no fleet machine.
+
+`CLAUDE.md` now says that, checked against the scripts. The general point stands
+on its own: the repo being written into is the only one that knows whether the
+text is true of it.

@@ -56,6 +56,15 @@ LoadWal(char *origname)
 
 	image = R_LoadPic(name, (byte *)mt + ofs, width, 0, height, 0, it_wall, 8);
 
+	/* Keep the wal's CONTENTS_* so the renderer can tell lava and slime from
+	 * water. Nothing else in the wal header survives R_LoadPic, and without
+	 * this the gl_caustics overlay has no way to know which liquid it is
+	 * drawing on. */
+	if (image && image != r_notexture)
+	{
+		image->contents = LittleLong(mt->contents);
+	}
+
 	ri.FS_FreeFile((void *)mt);
 
 	return image;

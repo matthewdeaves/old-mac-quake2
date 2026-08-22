@@ -326,7 +326,28 @@ R_EmitWaterPolys(msurface_t *fa)
 	 * focal light. Single-texture (no multitexture needed); the caller
 	 * (R_DrawAlphaSurfaces) already has GL_BLEND on, so we only swap the
 	 * blend func to additive and restore it + the colour afterwards. */
-	if (gl_caustics->value && r_caustictexture)
+	/* Caustics are a WATER effect, so keep them off lava and slime.
+	 *
+	 * R_EmitWaterPolys draws every SURF_DRAWTURB surface, and lava and slime
+	 * are warp surfaces too, so an ungated overlay paints its blue-white net
+	 * over molten lava as well. Reported from hardware on q2dm6 "Lava Tomb",
+	 * whose only liquid texture is e3u1/brlava: the lava read as a pale blue
+	 * water surface while still behaving as lava when you jumped in. Seen on
+	 * both Apple Silicon and the G3, because gl_caustics is 1 in the arm64
+	 * and yosemite profiles alike, so it was never architecture specific.
+	 *
+	 * Measured on q2dm6, the lava pool region: caustics on gives mean RGB
+	 * (67.6, 36.9, 39.7), a blue-shifted wash; off gives (71.7, 38.2, 31.3),
+	 * the orange the texture's own palette entries describe, which are
+	 * RGB(159,47,35) and (155,31,0) for its two commonest indices.
+	 *
+	 * Gated by EXCLUSION rather than by testing for CONTENTS_WATER, on
+	 * purpose. Plenty of maps leave the wal's contents field at 0 for water
+	 * and set it on the brush instead, and requiring the water bit would then
+	 * silently drop caustics from surfaces that have them today. Excluding
+	 * the two liquids that are visibly wrong changes nothing else. */
+	if (gl_caustics->value && r_caustictexture &&
+		!(fa->texinfo->image->contents & (CONTENTS_LAVA | CONTENTS_SLIME)))
 	{
 		float cscroll = r_newrefdef.time * 0.04;
 

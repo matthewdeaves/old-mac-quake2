@@ -212,6 +212,11 @@ typedef struct image_s
 	qboolean scrap;
 	qboolean has_alpha;
 
+	/* CONTENTS_* from the .wal header, 0 for anything not loaded from a wal.
+	 * Only the liquid bits are used, to tell lava and slime from water when
+	 * drawing the gl_caustics overlay. See R_EmitWaterPolys. */
+	int contents;
+
 	qboolean paletted;
 } image_t;
 

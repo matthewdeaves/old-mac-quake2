@@ -55,6 +55,12 @@
  #define CPUSTRING "i386"
 #elif defined __x86_64__
  #define CPUSTRING "amd64"
+#elif defined __aarch64__ || defined __arm64__
+ #define CPUSTRING "arm64"
+#elif defined __ppc64__
+ #define CPUSTRING "ppc64"
+#elif defined __ppc__ || defined __POWERPC__
+ #define CPUSTRING "ppc"
 #elif defined __sparc__
  #define CPUSTRING "sparc64"
 #elif defined __ia64__

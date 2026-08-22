@@ -102,6 +102,15 @@
  #define ARCH "i386"
 #elif defined(__x86_64__)
  #define ARCH "amd64"
+#elif defined(__aarch64__) || defined(__arm64__)
+ #define ARCH "arm64"
+#elif defined(__ppc64__)
+ #define ARCH "ppc64"
+#elif defined(__ppc__) || defined(__POWERPC__)
+ /* All three PowerPC slices are 32-bit -arch ppc and share one ABI, so one
+    string covers ppc750/ppc7400/ppc970. They must NOT share it with arm64:
+    that pairing crosses both endianness and word size. */
+ #define ARCH "ppc"
 #elif defined(__sparc__)
  #define ARCH "sparc64"
 #elif defined(__ia64__)

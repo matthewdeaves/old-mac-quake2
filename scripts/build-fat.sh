@@ -95,6 +95,16 @@ if [ "$HAVE_ARM64" = 1 ]; then
   mkdir -p "$REPO_ROOT/build/q2-arm64/baseq2"
   cp "$ARM64_DIR/quake2" "$ARM64_DIR/q2ded" "$ARM64_DIR/ref_gl.so" "$REPO_ROOT/build/q2-arm64/"
   cp "$ARM64_DIR/baseq2/game.so" "$REPO_ROOT/build/q2-arm64/baseq2/"
+  # Carry the stamp across too. arm64 is the ONLY slice staged by copying: the
+  # other five are built in place by build.sh, which writes SOURCE-STAMP into
+  # build/q2-<arch>/ itself. Copying only the four artifacts left the staged
+  # directory with no stamp, so the gate below read empty and refused EVERY
+  # six-slice build, current ones included - on the one slice the gate exists
+  # for. Not copied if absent: the gate's "no SOURCE-STAMP, rebuild it" is the
+  # right answer for an arm64 tree built before stamps existed.
+  if [ -f "$ARM64_DIR/SOURCE-STAMP" ]; then
+    cp "$ARM64_DIR/SOURCE-STAMP" "$REPO_ROOT/build/q2-arm64/SOURCE-STAMP"
+  fi
   ARCHES="$ARCHES arm64"
   echo "[build-fat] arm64 slice present: fusing SIX"
 else

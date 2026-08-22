@@ -92,6 +92,18 @@ into hard ones.
   its own `REPO_ROOT`, never the live one. The copy costs nothing: `build.sh`
   only needs `scripts/` and a writable `build/`.
 
+- **`git add -A scripts/` swept another session's files into a commit about
+  something else.** On 2026-08-22 old-mac-build-host synced both host pickers
+  into this working copy with `sync-build-lock.sh --write` while a shellcheck
+  triage was in progress here. `git add -A scripts .github` took all of it, so
+  `d25f2b81` carries 122 lines of picker changes under a message that describes
+  only shellcheck work, and it was pushed before anyone looked. The code was
+  good and is verified below, but the record was wrong and pushed history cannot
+  be rewritten. Nothing arbitrates working trees, only machines, so a sibling
+  repo can write into yours at any moment. Stage by name, or read `git status`
+  immediately before `git add`, and never use `-A` on a directory a sync
+  targets.
+
 - **A check that cannot read its input still prints a pass.** Three in one
   session on 2026-08-22, all confident-looking:
   `grep -rlE ... scripts | wc -l` reported `0` one-argument call sites while the

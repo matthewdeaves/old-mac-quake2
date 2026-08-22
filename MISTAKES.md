@@ -460,8 +460,8 @@ Not failures, but analyses that concluded "no" and should not be re-derived:
   client temp-entity handlers in `cl_tempentities.c`.
 - **`demo3.dm2` does not exist in any retail pak.** See ADR 0009.
 - **MSAA 4x on an R200 G4 falls off a cliff and breaks the floor.** quicksilver
-  (733 MHz PPC 7450, Radeon 9000 Pro 64MB, 10.4.11), demo1 at 1024x768, 3 runs
-  each, benchmarks/results.csv 2026-08-22:
+  (733 MHz PPC 7450, Radeon 9000 Pro 64MB, 10.4.11), demo1 at 1024x768,
+  FULLSCREEN, 3 runs each, benchmarks/results.csv 2026-08-22:
 
       gl_msaa_samples 0    66.15 fps
       gl_msaa_samples 2    57.15 fps   shipped, -13.6%
@@ -472,6 +472,15 @@ Not failures, but analyses that concluded "no" and should not be re-derived:
   what 0x to 2x costs, which looks like the R200 leaving a fast resolve path
   rather than linear sample scaling. Do not raise R200-class machines to 4x.
   The G5's RV350 is a different chip and is not covered by this.
+
+  The mode is stated because it is load-bearing. quake3 measured six settings
+  free on a G3 WINDOWED and then -9.7% fullscreen on the same machine, so a
+  windowed figure ranks settings but does not say where a floor breaks. These
+  are fullscreen: `bench.sh` defaults to `VID_FS=1` / `VID_DFS=0` and passes
+  both explicitly on the command line (`bench.sh:149-150`, `:289`), so a
+  leftover `config.cfg` cannot change the measured mode. Only `imac-g5`
+  deviates, and only to the native-resolution capture path or, with
+  `G5_WINDOWED=1`, to windowed. quicksilver is neither.
 
 ## Watch items with no recorded failure yet
 

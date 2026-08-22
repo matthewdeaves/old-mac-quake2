@@ -80,6 +80,29 @@ actually starting a new game; and when a change looks "harmless everywhere",
 check the machine with the least forgiving driver, which turns soft failures
 into hard ones.
 
+## Testing build scripts
+
+- **Stubbing the network does not make a build script safe to run.**
+  `scripts/build.sh:247` is `rm -rf "$REPO_ROOT/build/q2-$TARGET"`, and it runs
+  long before anything touches a mini. On 2026-08-22 a test run with `rsync` and
+  `ssh` stubbed on `PATH` reached it and deleted a real `ppc7400` slice; the
+  stubbed fetch then replaced nothing, leaving a `SOURCE-STAMP` with no binary
+  beside it. `build/q2-fat` was already fused so nothing shipped wrong, but the
+  intermediate had to be rebuilt. Run a build script against a COPIED tree with
+  its own `REPO_ROOT`, never the live one. The copy costs nothing: `build.sh`
+  only needs `scripts/` and a writable `build/`.
+
+- **A check that cannot read its input still prints a pass.** Three in one
+  session on 2026-08-22, all confident-looking:
+  `grep -rlE ... scripts | wc -l` reported `0` one-argument call sites while the
+  directory was unreadable; `for spec in "a b c"` under zsh did not word-split,
+  so six scripts were invoked under one garbage name and every case read
+  "skipped"; and `git show ... 2>&1 | shasum` hashed the error text into a
+  plausible `db132943...` when the real answer was `e3b0c442...`, sha256 of
+  empty. Redirect stderr separately, assert the input is readable and non-empty,
+  and prove a negative check still FIRES on a known-bad input before believing a
+  clean run.
+
 ## Video init and the fullscreen path
 
 **2026-05-31, per-machine config applied AFTER `CL_Init` triggered a

@@ -17,6 +17,38 @@ dyld install-name quirks.
 
 ## Build: packaging and deploy
 
+**2026-08-22, a staleness gate that caught the bug it was written for, and
+refused every good build.** `build-fat.sh` fused an arm64 slice built three
+hours before the source the other five came from, printed "fusing SIX" and
+exited 0. The content-hash gate added to stop that was exercised only against a
+reproduction of the stale slice, passed, and was shipped. It then refused a
+completely current six-slice build, twice, for two unrelated reasons: the
+staged arm64 directory never received a copy of its `SOURCE-STAMP`, and
+`build-arm64.sh` computed its stamp while its own temporary Makefile edit was
+still applied, so it recorded a tree state that the EXIT trap reverted moments
+later and that never exists at rest. Commits `ea922696`, `0b526e06`,
+`cabeae7e`; issue #17.
+
+*The lesson is about testing, not about hashes: a check that REFUSES bad input
+must be proved to PASS good input, and the passing direction is the one that
+gets skipped.* A gate that blocks legitimate work does not fail loudly, it gets
+switched off. Two corollaries worth keeping: a driver that mutates the source
+tree in order to build must compute its stamp BEFORE the mutation, checked
+against where the trap fires rather than where the write call sits; and a build
+output directory living inside the source tree must be excluded from the hash,
+or the hash of unchanged source moves depending on what was last built.
+
+**2026-08-22, `strings` reported three of six slices as having no architecture
+string at all.** Verifying that every slice of the fused `baseq2/game.so`
+self-identifies, the PowerPC slices came back empty while `amd64`, `i386` and
+`arm64` read correctly. Nothing was wrong with the binary. `strings` defaults to
+a four-character minimum and `ppc` is three, so it needs `-n 3`. *A verification
+tool returning nothing is not evidence that the property is absent.* This one is
+specifically dangerous because it produces a false NEGATIVE in exactly the check
+`docs/adr/0006` exists to make people run, and the reading looks plausible: the
+three PowerPC slices are also the three that genuinely did report `unknown`
+before the fix in `0647fbcb`.
+
 **2026-07-25, `-faltivec` silently un-stamped the ppc7400 cpusubtype.** Nearly
 shipped a fat no G3 could launch; caught before release. Root cause, blast
 radius and the assert-and-re-stamp fix: **ADR 0001**. The general lesson: a

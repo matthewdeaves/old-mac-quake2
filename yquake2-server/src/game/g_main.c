@@ -416,8 +416,37 @@ ExitLevel(void)
 	edict_t *ent;
 	char command[256];
 
-	Com_sprintf(command, sizeof(command), "gamemap \"%s\"\n", level.changemap);
-	gi.AddCommandString(command);
+	/* Never issue `gamemap ""`. The engine tries to load maps/.bsp, fails with
+	 * ERR_DROP, runs ShutdownGame, and on a dedicated server leaves a process
+	 * that still holds its UDP port and answers nothing while systemctl calls
+	 * it active. Reported and reproduced on a live server, issue #13, from a
+	 * timelimit rotation on a map outside sv_maplist.
+	 *
+	 * Still present in 8.70, so it is carried forward. The exact path that
+	 * leaves changemap empty is not established; this makes the failure
+	 * impossible whichever path reaches it, for a value that is never
+	 * legitimately empty. */
+	if (!level.changemap || !level.changemap[0])
+	{
+		gi.dprintf("ExitLevel: empty changemap, ");
+
+		if (level.mapname[0])
+		{
+			gi.dprintf("restarting %s instead\n", level.mapname);
+			Com_sprintf(command, sizeof(command), "gamemap \"%s\"\n",
+					level.mapname);
+			gi.AddCommandString(command);
+		}
+		else
+		{
+			gi.dprintf("and no current map to fall back on, staying put\n");
+		}
+	}
+	else
+	{
+		Com_sprintf(command, sizeof(command), "gamemap \"%s\"\n", level.changemap);
+		gi.AddCommandString(command);
+	}
 	level.changemap = NULL;
 	level.exitintermission = 0;
 	level.intermissiontime = 0;

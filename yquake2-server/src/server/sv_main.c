@@ -38,6 +38,8 @@ static cvar_t *sv_optimize_mp_loadtime;
 cvar_t *sv_paused;
 cvar_t *sv_timedemo;
 cvar_t *sv_enforcetime;
+cvar_t *sv_query_rate_burst;  /* unauthenticated queries per address per period */
+cvar_t *sv_query_rate_period; /* seconds each of those slots takes to drain */
 cvar_t *timeout; /* seconds without any message */
 cvar_t *zombietime; /* seconds to sink messages after disconnect */
 cvar_t *rcon_password; /* password for remote server commands */
@@ -624,6 +626,8 @@ SV_Init(void)
 	sv_paused = Cvar_Get("paused", "0", 0);
 	sv_timedemo = Cvar_Get("timedemo", "0", 0);
 	sv_enforcetime = Cvar_Get("sv_enforcetime", "0", 0);
+	sv_query_rate_burst = Cvar_Get("sv_query_rate_burst", "10", CVAR_ARCHIVE);
+	sv_query_rate_period = Cvar_Get("sv_query_rate_period", "1", CVAR_ARCHIVE);
 	allow_download = Cvar_Get("allow_download", "1", CVAR_ARCHIVE);
 	allow_download_players = Cvar_Get("allow_download_players", "0", CVAR_ARCHIVE);
 	allow_download_models = Cvar_Get("allow_download_models", "1", CVAR_ARCHIVE);

@@ -42,6 +42,21 @@ void setCustomCfgDir(const char* dir);
 int
 main(int argc, char **argv)
 {
+	/* Line buffer stdout before anything is printed.
+	 *
+	 * When stdout is a pipe rather than a tty, libc fully buffers it and holds
+	 * output until 4 KB accumulates. A dedicated server running normally never
+	 * produces 4 KB quickly, so `journalctl -u q2ded` shows only systemd's own
+	 * two lines: no banner, no "execing server.cfg", no errors at all.
+	 *
+	 * Upstream 8.70 does this on the WINDOWS path only, in
+	 * src/backends/windows/system.c. The Unix path has no setvbuf at all, so
+	 * the bug this port fixed in issue #11 is still present here and has to be
+	 * carried forward rather than dropped on the version bump.
+	 *
+	 * Free on a tty, where line buffering is already the default. */
+	setvbuf(stdout, NULL, _IOLBF, 0);
+
 	// register signal handler
 	registerHandler();
 

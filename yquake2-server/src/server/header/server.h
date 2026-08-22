@@ -196,6 +196,8 @@ extern server_static_t svs;                 /* persistant server info */
 extern server_t sv;                         /* local server */
 
 extern cvar_t *sv_paused;
+extern cvar_t *sv_query_rate_burst;
+extern cvar_t *sv_query_rate_period;
 extern cvar_t *maxclients;
 extern cvar_t *sv_noreload;                 /* don't reload level state when reentering */
 extern cvar_t *sv_airaccelerate;            /* don't reload level state when reentering */

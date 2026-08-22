@@ -119,9 +119,11 @@ sudo 1.6.x reject outright. `parallel-bench.sh` refuses to run both legs.
 
 ## Working alongside the other repos
 
-Five repos are worked on together: the four game ports and the private
-`retro-server-infra`, which runs the servers those ports build. A session may be
-open in each at once. Three rules keep them out of each other's way.
+Several repos are worked on together: the four game ports, the private
+`retro-server-infra`, which runs the servers those ports build,
+`old-mac-build-host`, which holds the shared build and bench scripts, and
+`retro-agents`. A session may be open in each at once. Three rules keep them out
+of each other's way.
 
 **Hardware is claimed, never assumed free.** Every script that deploys to,
 benches on, or otherwise drives a fleet machine re-execs itself under
@@ -131,15 +133,27 @@ with the build lock and visible to every repo, agent and workstation. Check
 `scripts/pick-bench-host.sh --status` before assuming a box is idle, and never
 work around a busy one. `BENCH_NO_LOCK=1` exists only for debugging the picker.
 
-**Cross-repo work goes through GitHub, not chat.** One board covers all five
-repos: <https://github.com/users/matthewdeaves/projects/8>. Columns are
-`Triage / Measuring / Ready / In progress / Blocked / Done`, with `Source` and
-`Evidence` fields. File cross-repo work as an issue and put it on the board:
+**Cross-repo work goes through GitHub, not chat.** One board covers every repo:
+<https://github.com/users/matthewdeaves/projects/8>. Columns are
+`Triage / Measuring / Ready / In progress / Blocked / Review / Done`, with
+`Source` and `Evidence` fields.
+
+**`Review` is the last column we move work to, never `Done`.** That also means
+commit messages say `Refs #N`, not `Closes` or `Fixes`: GitHub closes the issue
+on push, and a closed ticket sitting in `Review` reads as finished before anyone
+has reviewed it.
+
+File cross-repo work as an issue, WITHOUT `--project`, then put it on the board:
 
 ```sh
-gh issue create -R matthewdeaves/<repo> --project Retro \
+gh issue create -R matthewdeaves/<repo> \
   --label from:port,needs-measurement --title "..." --body "..."
+../retro-agents/bin/board-add.sh <repo>#<n>     # adds it AND sets Triage
 ```
+
+Not `--project Retro`: it does not land in `Triage` reliably, and filing alone
+does not put an issue on the board at all, so an unadded ticket is invisible
+rather than merely mis-filed.
 
 Labels, the same four in every repo: **`from:infra`** raised by the server side
 for a port to act on, **`from:port`** raised by a port for another repo,

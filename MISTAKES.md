@@ -92,6 +92,17 @@ into hard ones.
   its own `REPO_ROOT`, never the live one. The copy costs nothing: `build.sh`
   only needs `scripts/` and a writable `build/`.
 
+- **Backticks in a `git commit -m "..."` message RUN as commands.** On
+  2026-08-22 a commit message here quoted the filing recipe it was replacing,
+  inside backticks, inside a double-quoted `-m` string. The shell substituted it
+  before git ever saw it, so `gh issue create --project Retro` was EXECUTED
+  against this repo. Nothing was created only because `gh` refuses without
+  `--title` and `--body` when non-interactive. The commit still pushed, with the
+  quoted text silently deleted from the message, reading "It taught ,". Commit
+  messages here routinely quote shell, so this is live, not theoretical. Write
+  them with a quoted heredoc (`git commit -F - <<'MSG'`), which does not expand
+  anything. Never `-m` with backticks in it.
+
 - **`git add -A scripts/` swept another session's files into a commit about
   something else.** On 2026-08-22 old-mac-build-host synced both host pickers
   into this working copy with `sync-build-lock.sh --write` while a shellcheck

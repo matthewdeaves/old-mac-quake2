@@ -98,7 +98,22 @@ if [ "$TARGET" = "imac-g5" ]; then
   echo "[screenshot imac-g5] native-res same-mode CAPTURE (R300-safe; shots at native res)"
 fi
 
-mkdir -p "$REPO_ROOT/docs/screenshots"
+# Where the PNGs land. Defaults to the docs set that README.md and index.html
+# link. scripts/check-frames.sh points this at a temp dir so a verification
+# capture never touches the committed images.
+SHOT_DIR="${SHOT_DIR:-$REPO_ROOT/docs/screenshots}"
+
+# The docs set is ALSO the reference the visual check compares against, so
+# regenerating it silently moves the goalposts. check-frames.sh reads its
+# reference from git HEAD rather than the working tree, which is why that is
+# safe, but a refresh still has to be reviewed like any other change.
+if [ "$SHOT_DIR" = "$REPO_ROOT/docs/screenshots" ]; then
+  echo "[screenshot] NOTE: replacing docs/screenshots/${OUT_TAG}-*.png in the working"
+  echo "  tree. Those are the reference frames scripts/check-frames.sh compares"
+  echo "  against once committed. Review the diff before committing them."
+fi
+
+mkdir -p "$SHOT_DIR"
 
 # Schedule: 10 shots evenly spread across the first ~635 demo frames of
 # demo1.dm2 (which is 689 frames end-to-end). With timedemo 1 each wait
@@ -197,7 +212,7 @@ elif command -v gm      >/dev/null 2>&1; then CONV="gm convert"
 elif command -v convert >/dev/null 2>&1; then CONV="convert"
 else
   echo "[screenshot] no TGA→PNG converter — leaving .tga in place" >&2
-  cp "$TMPD"/*.tga "$REPO_ROOT/docs/screenshots/"
+  cp "$TMPD"/*.tga "$SHOT_DIR/"
   exit 0
 fi
 
@@ -205,10 +220,10 @@ echo "[screenshot] convert TGAs → PNGs ($CONV)"
 # Wipe any prior per-shot files for this OUT_TAG so a shorter run doesn't
 # leave stale shots from a previous longer run lying around. Note we wipe
 # OUT_TAG specifically — for demo2 runs that won't clobber demo1 shots.
-rm -f "$REPO_ROOT/docs/screenshots/${OUT_TAG}-"*.png
+rm -f "$SHOT_DIR/${OUT_TAG}-"*.png
 i=0
 for tga in $TGAS; do
-  OUT="$REPO_ROOT/docs/screenshots/${OUT_TAG}-$(printf "%02d" $i).png"
+  OUT="$SHOT_DIR/${OUT_TAG}-$(printf "%02d" $i).png"
   $CONV "$tga" "$OUT"
   echo "  $OUT"
   i=$((i+1))
@@ -221,14 +236,14 @@ done
 # Only do this for the canonical demo1 run, so multi-demo runs don't
 # keep overwriting it.
 if [ "$DEMO_BASE" = "demo1" ]; then
-  HERO="$REPO_ROOT/docs/screenshots/${TARGET}-06.png"
+  HERO="$SHOT_DIR/${TARGET}-06.png"
   if [ -f "$HERO" ]; then
-    cp "$HERO" "$REPO_ROOT/docs/screenshots/${TARGET}.png"
+    cp "$HERO" "$SHOT_DIR/${TARGET}.png"
   fi
 fi
 
 # Remove the staged autoshot.cfg so it doesn't sit in the user's baseq2/.
 ssh "$HOST" 'rm -f ~/Desktop/quake2/baseq2/autoshot.cfg' 2>/dev/null || true
 
-echo "[screenshot] OK — $(ls "$REPO_ROOT/docs/screenshots/${OUT_TAG}"-*.png 2>/dev/null | wc -l) PNGs"
-ls -la "$REPO_ROOT/docs/screenshots/${OUT_TAG}"*.png 2>&1 | head -15
+echo "[screenshot] OK — $(ls "$SHOT_DIR/${OUT_TAG}"-*.png 2>/dev/null | wc -l) PNGs"
+ls -la "$SHOT_DIR/${OUT_TAG}"*.png 2>&1 | head -15

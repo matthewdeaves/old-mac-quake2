@@ -20,6 +20,7 @@ scripts/make-dmg.sh                              # → dist/, hdiutil step on a 
 scripts/deploy-dmg.sh <machine>                  # install from the image, as a human does
 scripts/smoke-dmg.sh <machine>                   # production-config launch test
 scripts/bench.sh <machine> <demo> <WxH> [runs]
+scripts/check-frames.sh <machine> [--update]     # is the PICTURE still correct
 scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 container
 ```
 
@@ -81,6 +82,15 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
   display forever, and never an engine-load-only check. A clean demo does not
   clear a *gameplay* crash: also start a new game, on **base1**. Always
   `killall -TERM` before `-KILL`. `docs/adr/0009`
+- **A green check does not mean the picture is right.** `smoke-dmg.sh` asserts an
+  fps line exists, `bench.sh` measures speed, `tests/test-repo.sh` reads shell
+  text. Only `scripts/check-frames.sh` looks at an image. It matters because a
+  render bug can read as a WIN: AltiVec `R_LerpVerts` warped every alias model
+  on mini-g4 and the bench reported **+4.3% fps**, because the broken maths was
+  cheaper than the correct maths (`MISTAKES.md`, commit `55bfeb8`, reverted).
+  Frames are bit-identical across runs of one binary, so the noise floor is
+  zero. References live in `tests/frames/`, NOT `docs/screenshots/`, which is a
+  curated gallery that deletes frames for being ugly. Issue #26.
 - **Playability floors: G3 ≥ 20 fps, G4 ≥ ~40 fps** (was 60; the user preference
   is visuals over framerate). Above the floor, prefer a visual feature to
   framerate nobody needs. `docs/adr/0009`

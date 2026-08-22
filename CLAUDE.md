@@ -117,31 +117,57 @@ partitions; only one is booted at a time. Switch with
 `sudo /sbin/reboot </dev/null`, **not** `sudo -n`, which Tiger's and Panther's
 sudo 1.6.x reject outright. `parallel-bench.sh` refuses to run both legs.
 
+<!-- retro-shared-block: canonical copy lives in retro-agents/briefs/SHARED-BLOCK.md.
+     Do not edit this region in a port repo; it is overwritten by the sync.
+     Everything here must be true of EVERY repo it lands in. -->
+
 ## Working alongside the other repos
 
-Several repos are worked on together: the four game ports, the private
-`retro-server-infra`, which runs the servers those ports build,
-`old-mac-build-host`, which holds the shared build and bench scripts, and
-`retro-agents`. A session may be open in each at once. Three rules keep them out
-of each other's way.
+This repo is one of seven worked on together: four game ports, the private
+`retro-server-infra` which runs the servers, the private `old-mac-build-host`
+which owns the machines, and `retro-agents` which runs the sessions. One board
+covers all seven: <https://github.com/users/matthewdeaves/projects/8>.
 
 **Hardware is claimed, never assumed free.** Every script that deploys to,
-benches on, or otherwise drives a fleet machine re-execs itself under
+benches on or otherwise drives a fleet machine re-execs under
 `scripts/pick-bench-host.sh --run`, so the machine is claimed for the run and
-released however it ends. The lock is a directory on the target, so it is shared
-with the build lock and visible to every repo, agent and workstation. Check
-`scripts/pick-bench-host.sh --status` before assuming a box is idle, and never
-work around a busy one. `BENCH_NO_LOCK=1` exists only for debugging the picker.
+released however it ends. The lock is a directory on the target, shared with the
+build lock and visible to every repo and workstation. Check
+`pick-bench-host.sh --status` before assuming a box is idle and NEVER work around
+a busy one.
 
-**Cross-repo work goes through GitHub, not chat.** One board covers every repo:
-<https://github.com/users/matthewdeaves/projects/8>. Columns are
-`Triage / Measuring / Ready / In progress / Blocked / Review / Done`, with
-`Source` and `Evidence` fields.
+Some repos' own scripts honour `BENCH_NO_LOCK=1` to skip the claim, for debugging
+the picker itself. The shared picker does not read it; each script implements it
+locally, so it is an escape hatch nothing central audits. Do not use it to get
+past a machine someone else is holding.
 
-**`Review` is the last column we move work to, never `Done`.** That also means
-commit messages say `Refs #N`, not `Closes` or `Fixes`: GitHub closes the issue
-on push, and a closed ticket sitting in `Review` reads as finished before anyone
-has reviewed it.
+Nothing arbitrates WORKING TREES. Two sessions in one repo can collide silently,
+and a sync can write into your tree mid-task, so stage by name and never
+`git add -A`.
+
+**The board columns are gates, not labels:**
+
+    Triage -> Measuring -> Ready -> In progress -> Blocked -> Review -> Done
+
+`Triage` is the user's gate; only a human moves work out of it. `Measuring` means
+approved: work it. STOP AT `Review` — `Done` is the user's, not yours. Write
+`Refs #12` in commit messages, never `Closes` or `Fixes`, or GitHub closes the
+issue behind your back while the column still says Review.
+
+Filing an issue does NOT put it on the board and nothing sets a status on a new
+item, so it lands in no column at all and looks like work nobody raised. Run
+`retro-agents/bin/board-add.sh <repo>#<n>` after filing, every time.
+
+**The full rules are in `retro-agents/briefs/`, not here.** Every session is
+launched with them. This block is the short version for a human reading this repo
+cold; where the two differ, the briefs win.
+
+<!-- end retro-shared-block -->
+
+## Filing across repos, and what is ours
+
+The block above is synced and short. These are this repo's own, and they sit
+outside the markers because the sync overwrites everything between them.
 
 File cross-repo work as an issue, WITHOUT `--project`, then put it on the board:
 
@@ -151,9 +177,11 @@ gh issue create -R matthewdeaves/<repo> \
 ../retro-agents/bin/board-add.sh <repo>#<n>     # adds it AND sets Triage
 ```
 
-Not `--project Retro`: it does not land in `Triage` reliably, and filing alone
-does not put an issue on the board at all, so an unadded ticket is invisible
-rather than merely mis-filed.
+Not `--project Retro`: it adds the item with Status null, so the ticket is not
+in the wrong column, it is in NO column. Filing alone does not put an issue on
+the board at all.
+
+The board also carries `Source` and `Evidence` fields.
 
 Labels, the same four in every repo: **`from:infra`** raised by the server side
 for a port to act on, **`from:port`** raised by a port for another repo,

@@ -22,6 +22,27 @@
 
 set -euo pipefail
 HOST="${1:?usage: $0 <machine> [demo]}"
+
+# Claim this machine for the whole run. See scripts/pick-bench-host.sh.
+#
+# Re-exec under the picker rather than acquire-here-and-trap: bash traps REPLACE
+# rather than compose, so a release trap installed at the top of a script that
+# later sets its own trap is silently discarded, and the machine stays claimed
+# until the stale reclaim. `--run` makes the lock a property of the INVOCATION,
+# so it is released however this exits, and no caller has to remember to do it.
+#
+# The lock lives on the target, so it serialises across repos, agents and
+# workstations, not just this checkout. It also refuses a host booted into an OS
+# its alias does not name, which the multi-boot machines otherwise allow.
+#
+# RETRO_BENCH_LOCK guards against the re-exec recursing.
+# BENCH_NO_LOCK=1 skips the lock, for when the picker itself is what you are
+# debugging. It is not a way to get past a machine someone else is using.
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+if [ -z "${RETRO_BENCH_LOCK:-}" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
+	export RETRO_BENCH_LOCK="$HOST"
+	exec "$_PICK" --run "$HOST" "smoke-dmg" -- "$0" "$@"
+fi
 DEMO="${2:-demo1}"
 
 case "$HOST" in

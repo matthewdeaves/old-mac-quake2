@@ -142,12 +142,18 @@ try_acquire() {
 	os="$(echo "$out" | awk '{print $3}')"
 	state="$(classify "$age" "$procs" "$os")"
 	usable "$state" || return 1
-	# Reclaim a stale lock first, then take it atomically via mkdir.
+	# Reclaim a stale lock first, then take it atomically via mkdir. The reclaim
+	# itself goes through mv: only one claimant's mv of the stale dir succeeds,
+	# so two orchestrators retrying the same stale lock cannot both pass their
+	# age check, rm the other's fresh mkdir, and both build. stat-age-rm as three
+	# separate commands had exactly that interleaving.
 	ssh "${SSH_OPTS[@]}" "$h" "
 		L=$LOCK
 		if [ -d \"\$L\" ]; then
 			now=\`date +%s\`; m=\`stat -f %m \"\$L\" 2>/dev/null || echo \$now\`
-			if [ \`expr \$now - \$m\` -gt $STALE_SECS ]; then rm -rf \"\$L\"; fi
+			if [ \`expr \$now - \$m\` -gt $STALE_SECS ]; then
+				mv \"\$L\" \"\$L.reap.\$\$\" 2>/dev/null && rm -rf \"\$L.reap.\$\$\"
+			fi
 		fi
 		mkdir \"\$L\" 2>/dev/null || exit 1
 		echo '$ME $label' > \"\$L/owner\" 2>/dev/null
@@ -206,7 +212,10 @@ case "${1:---pick}" in
 			[ -z "$out" ] && continue
 			age="$(echo "$out" | awk '{print $1}')"
 			procs="$(echo "$out" | awk '{print $2}')"
-			usable "$(classify "$age" "$procs")" || continue
+			os="$(echo "$out" | awk '{print $3}')"
+			# os included: classify with it absent treats every OS as fine, so
+			# bare --pick was the one path that could hand out a wrong-OS host.
+			usable "$(classify "$age" "$procs" "$os")" || continue
 			echo "$h"; exit 0
 		done
 		echo "pick-build-host: no free Intel build host in '$BUILD_HOSTS'" >&2

@@ -1,0 +1,319 @@
+#!/usr/bin/env bash
+# pick-bench-host.sh - claim a BENCH/TEST Mac so two sessions cannot deploy to,
+# bench on, or reboot the same machine at once.
+#
+# ============================================================================
+# CANONICAL COPY. This file lives in old-mac-build-host, which owns the fleet,
+# and is distributed to the four game-port repos by scripts/sync-build-lock.sh.
+# Edit it HERE and re-run that script; do not edit the copies.
+# ============================================================================
+#
+# WHY THIS EXISTS, and why it is not pick-build-host.sh
+# ----------------------------------------------------
+# pick-build-host.sh arbitrates the two Intel Lion minis, which are
+# INTERCHANGEABLE: the caller wants "a" build host and does not care which.
+# Bench machines are the opposite. The whole point of benching on quicksilver
+# is that it is quicksilver. So there is no --pick and no candidate list to
+# choose from: you name the host you want, and you either get it or you do not.
+#
+# Everything else that made the build lock work applies unchanged: the lock is a
+# directory on the TARGET (/tmp/.retro-build-lock), so it is visible to every
+# repo, agent and workstation that can ssh in, and a host counts as busy if it
+# holds a fresh lock OR has real work running on it.
+#
+# THE LOCK PATH IS SHARED WITH pick-build-host.sh, DELIBERATELY.
+#   mini-intel and mini-intel2 are in BOTH pools: they cross-compile every slice
+#   AND they are deploy/bench targets. A second lock path would let a bench run
+#   and a build proceed on the same 2-core 2 GB machine, which ruins the build
+#   time and silently ruins the benchmark numbers, and neither side would see
+#   the other. One lock, two front-ends.
+#
+# usage:
+#   scripts/pick-bench-host.sh --status [HOST ...]   # table (default: whole fleet)
+#   scripts/pick-bench-host.sh --acquire HOST LABEL  # claim it, or fail
+#   scripts/pick-bench-host.sh --run HOST LABEL -- CMD ...   # claim, run, release
+#   scripts/pick-bench-host.sh --release HOST        # drop our claim
+#   scripts/pick-bench-host.sh --release-all         # drop our claims everywhere
+#
+# env:
+#   BENCH_HOSTS             fleet list for --status (default: all known aliases)
+#   BENCH_LOCK_WAIT         seconds to wait for the host on --acquire (default 0)
+#   BENCH_LOCK_STALE_SECS   age past which an idle lock is reclaimable
+#                           (default 5400 = 90m; a bench sweep is much shorter
+#                           than a build, so this is half the build lock's 3h)
+#   BENCH_SKIP_OS_CHECK=1   bypass the booted-OS check (see below; last resort)
+#
+# ---------------------------------------------------------------------------
+# TWO THINGS MEASURED ON THIS FLEET THAT THE BUILD LOCK GETS AWAY WITH
+# ---------------------------------------------------------------------------
+#
+# 1. THERE IS NO `stat` ON 10.3.9. Measured on yosemite 2026-08-22:
+#      stat -f %m /tmp  ->  command not found
+#    pick-build-host.sh reads a lock's age with `stat -f %m`, falling back to
+#    `echo $now` on failure. That fallback yields age 0, i.e. "just created", so
+#    a lock on the G3 would look FRESH forever and could never be reclaimed: one
+#    killed session would wedge the machine permanently. It never bit because
+#    that script only ever talks to Lion.
+#    So we do not stat anything. mkdir writes `created` inside the lock holding
+#    the epoch second, and age is now minus that. Works identically on 10.3
+#    through macOS 26. A lock with no `created` file was made by
+#    pick-build-host.sh, so we fall back to stat for it, and if that fails too
+#    we treat the age as unknown and refuse to reclaim, which is the safe way to
+#    be wrong.
+#
+# 2. StrictHostKeyChecking=no DEFEATS THE MULTI-BOOT GUARD.
+#    The G3, the dual G5 and the quad G5 each serve several aliases on ONE IP
+#    (yosemite/yosemite-tiger, g5-panther/g5-tiger/g5-desktop,
+#    quad-tiger/quad-leopard). Only one partition is booted at a time. What
+#    makes the wrong alias fail is the HOST KEY not matching, and nothing else.
+#    Measured 2026-08-22, quad booted into Leopard:
+#      ssh quad-tiger                        -> HOST IDENTIFICATION HAS CHANGED
+#      ssh -o StrictHostKeyChecking=no quad-tiger -> connects, reports 10.5.8
+#    pick-build-host.sh sets StrictHostKeyChecking=no. Copying that here would
+#    make `--acquire quad-tiger` succeed against a Leopard-booted quad and hand
+#    back a host that labels every benchmark row "tiger" while running Leopard.
+#    We use accept-new instead: a first-time key is accepted so a new machine
+#    still onboards without a prompt, a CHANGED key is refused.
+#
+#    accept-new only protects an alias whose key is already recorded, so we also
+#    check the booted OS positively against EXPECT_OS below. Belt and braces,
+#    because the cost of getting this wrong is a plausible-looking CSV row.
+# ---------------------------------------------------------------------------
+
+set -uo pipefail
+
+LOCK=/tmp/.retro-build-lock
+STALE_SECS="${BENCH_LOCK_STALE_SECS:-5400}"
+WAIT_SECS="${BENCH_LOCK_WAIT:-0}"
+
+# accept-new, never `no`. See note 2 above.
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new)
+
+# Every bench/test target. The two minis appear because they are deploy targets
+# as well as build hosts; the shared lock path is what keeps those two roles
+# from colliding.
+BENCH_HOSTS="${BENCH_HOSTS:-yosemite yosemite-tiger sawtooth quicksilver mini-g4 imac-g5 g5-panther g5-tiger g5-desktop quad-tiger quad-leopard mini-sl mini-intel mini-intel2}"
+
+# Expected booted OS per alias, major.minor. An alias that is NOT in this table
+# is accepted with no OS check, so adding a machine does not require editing
+# this first. Sources: README fleet matrix, each port's bench.sh header, and
+# sw_vers measured across the fleet 2026-08-22.
+expect_os() {
+	case "$1" in
+		yosemite|g3-panther)             echo 10.3 ;;
+		yosemite-tiger|g3-tiger)         echo 10.4 ;;
+		sawtooth|g4-sawtooth)            echo 10.4 ;;
+		quicksilver|g4-quicksilver)      echo 10.4 ;;
+		mini-g4|g4-mini)                 echo 10.4 ;;
+		imac-g5|g5-imac)                 echo 10.5 ;;
+		g5-panther)                      echo 10.3 ;;
+		g5-tiger)                        echo 10.4 ;;
+		g5-desktop|g5-leopard)           echo 10.5 ;;
+		quad-tiger|g5quad-tiger)         echo 10.4 ;;
+		quad-leopard|g5quad-leopard)     echo 10.5 ;;
+		mini-sl|snow-build1)             echo 10.6 ;;
+		mini-intel|lion-build1)          echo 10.7 ;;
+		mini-intel2|lion-build2)         echo 10.7 ;;
+		*)                               echo "" ;;
+	esac
+}
+
+REPO_NAME="$(basename "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)")"
+ME="${USER:-unknown}@$(hostname -s 2>/dev/null || echo host):${REPO_NAME}"
+
+# Probe one host. Prints: "<age> <nprocs> <os> <owner...>"  (age -1 = unlocked,
+# age -2 = locked but age unknowable). Non-zero exit means unreachable.
+#
+# The process regex covers three kinds of work, because any of them means the
+# machine is in use and must not be deployed over or rebooted:
+#   the four game engines, benching or being played, by every name they run
+#     under (Half-Life runs as xash3d.bin behind the xash3d launcher);
+#   a deploy in flight (hdiutil attached, ditto copying a bundle);
+#   a compile, since the two minis are build hosts too and pick-build-host.sh
+#     may have started one.
+# Our own probe line always contains "grep", so it is dropped.
+probe() {
+	ssh "${SSH_OPTS[@]}" "$1" '
+		L=/tmp/.retro-build-lock
+		if [ -d "$L" ]; then
+			now=`date +%s`
+			if [ -r "$L/created" ]; then
+				m=`cat "$L/created" 2>/dev/null`
+			else
+				m=`stat -f %m "$L" 2>/dev/null`
+			fi
+			case "$m" in
+				""|*[!0-9]*) age=-2 ;;
+				*)           age=`expr $now - $m` ;;
+			esac
+			owner=`cat "$L/owner" 2>/dev/null | tr "\n" " "`
+		else
+			age=-1; owner=""
+		fi
+		n=`ps ax -o command= 2>/dev/null \
+			| grep -E "(^|[ /])(xash3d|xash3d\.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm)|(^|[ /])(hdiutil|ditto)|(^|[ /])(g?make|waf|cc1|cc1plus|clang|collect2|ninja)" \
+			| grep -vE "grep|makewhatis" | wc -l | tr -d " "`
+		os=`sw_vers -productVersion 2>/dev/null || echo unknown`
+		echo "$age $n $os $owner"
+	' 2>/dev/null
+}
+
+# free | stale | busy | unknown | wrong-os
+#
+# age -2 (locked, age unknowable) classifies as busy, never stale: refusing to
+# reclaim a lock we cannot date is the safe way to be wrong. It costs a wait;
+# the other way costs two sessions on one machine.
+classify() {
+	local age="$1" procs="$2" os="${3:-}" want="${4:-}"
+	if [ -n "$want" ] && [ "${BENCH_SKIP_OS_CHECK:-0}" != 1 ]; then
+		case "$os" in
+			"$want"|"$want".*) : ;;
+			*) echo wrong-os; return ;;
+		esac
+	fi
+	case "$age"   in ''|*[!0-9-]*) echo unknown; return ;; esac
+	case "$procs" in ''|*[!0-9]*)  echo unknown; return ;; esac
+	if [ "$age" = -1 ]; then
+		[ "$procs" -gt 0 ] && echo busy || echo free
+	elif [ "$age" -lt 0 ]; then
+		echo busy
+	elif [ "$age" -gt "$STALE_SECS" ] && [ "$procs" -eq 0 ]; then
+		echo stale
+	else
+		echo busy
+	fi
+}
+
+usable() { [ "$1" = free ] || [ "$1" = stale ]; }
+
+cmd_status() {
+	local hosts="$*"
+	[ -z "$hosts" ] && hosts="$BENCH_HOSTS"
+	printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' HOST STATE OS WANT LOCK-AGE PROCS OWNER
+	for h in $hosts; do
+		local out age procs os owner state want
+		want="$(expect_os "$h")"
+		if ! out="$(probe "$h")" || [ -z "$out" ]; then
+			printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' "$h" unreachable - "${want:--}" - - -
+			continue
+		fi
+		age="$(echo "$out" | awk '{print $1}')"
+		procs="$(echo "$out" | awk '{print $2}')"
+		os="$(echo "$out" | awk '{print $3}')"
+		owner="$(echo "$out" | cut -d' ' -f4-)"
+		state="$(classify "$age" "$procs" "$os" "$want")"
+		case "$age" in ''|*[!0-9-]*) age=- ;; *) [ "$age" -lt 0 ] && age=- ;; esac
+		printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' \
+			"$h" "$state" "${os:--}" "${want:--}" "$age" "$procs" "${owner:--}"
+	done
+}
+
+# Try to claim $1. Returns 0 on success.
+try_acquire() {
+	local h="$1" label="$2" out age procs os state want
+	want="$(expect_os "$h")"
+	out="$(probe "$h")" || return 1
+	[ -z "$out" ] && return 1
+	age="$(echo "$out" | awk '{print $1}')"
+	procs="$(echo "$out" | awk '{print $2}')"
+	os="$(echo "$out" | awk '{print $3}')"
+	state="$(classify "$age" "$procs" "$os" "$want")"
+	if [ "$state" = wrong-os ]; then
+		echo "pick-bench-host: $h is booted into $os, expected $want.*" >&2
+		echo "  These aliases share one IP and one OS boots at a time. Either bless" >&2
+		echo "  and reboot into the partition you want, or bench the booted one." >&2
+		echo "  (BENCH_SKIP_OS_CHECK=1 overrides, and will mislabel your results.)" >&2
+		return 2
+	fi
+	usable "$state" || return 1
+	# Reclaim a stale lock via mv, so only one claimant's reclaim can succeed and
+	# two retriers cannot both pass the age check and both proceed. Then mkdir,
+	# which is the atomic part. `created` is written FIRST so a lock is never
+	# visible without its timestamp.
+	ssh "${SSH_OPTS[@]}" "$h" "
+		L=$LOCK
+		if [ -d \"\$L\" ]; then
+			now=\`date +%s\`
+			if [ -r \"\$L/created\" ]; then m=\`cat \"\$L/created\" 2>/dev/null\`
+			else m=\`stat -f %m \"\$L\" 2>/dev/null\`; fi
+			case \"\$m\" in
+				''|*[!0-9]*) : ;;
+				*) if [ \`expr \$now - \$m\` -gt $STALE_SECS ]; then
+					mv \"\$L\" \"\$L.reap.\$\$\" 2>/dev/null && rm -rf \"\$L.reap.\$\$\"
+				   fi ;;
+			esac
+		fi
+		mkdir \"\$L\" 2>/dev/null || exit 1
+		date +%s > \"\$L/created\" 2>/dev/null
+		echo '$ME $label (bench)' > \"\$L/owner\" 2>/dev/null
+		date >> \"\$L/owner\" 2>/dev/null
+		exit 0
+	" >/dev/null 2>&1
+}
+
+cmd_acquire() {
+	local h="${1:?usage: --acquire HOST [LABEL]}" label="${2:-bench}"
+	local deadline=$(( $(date +%s) + WAIT_SECS )) rc
+	while :; do
+		try_acquire "$h" "$label"; rc=$?
+		[ $rc -eq 0 ] && { echo "$h"; return 0; }
+		# wrong-os is not something waiting will fix.
+		[ $rc -eq 2 ] && return 1
+		[ "$(date +%s)" -ge "$deadline" ] && break
+		sleep 10
+	done
+	echo "pick-bench-host: $h is not available" >&2
+	echo "  (see: scripts/pick-bench-host.sh --status $h)" >&2
+	return 1
+}
+
+# Refuses to drop someone else's lock unless FORCE=1, so a stray --release
+# cannot yank a machine out from under another repo's running bench.
+cmd_release() {
+	local h="$1"
+	ssh "${SSH_OPTS[@]}" "$h" "
+		if [ -d \"$LOCK\" ]; then
+			if grep -q '$ME' \"$LOCK/owner\" 2>/dev/null || [ \"${FORCE:-0}\" = 1 ]; then
+				rm -rf \"$LOCK\"; echo released
+			else
+				echo 'not ours; leaving it' >&2; exit 1
+			fi
+		else
+			echo 'no lock held'
+		fi
+	" 2>&1
+}
+
+# Claim $1, run the rest, release it however that ends.
+#
+# WHY THIS EXISTS rather than an --acquire plus a trap in every caller: seven of
+# the fleet scripts already install their own `trap ... EXIT`, and bash traps
+# REPLACE rather than compose. A release trap added at the top of one of those
+# scripts is silently discarded the moment the script installs its own, and the
+# machine stays claimed until the 90 minute stale reclaim. Making the lock the
+# property of the INVOCATION removes that whole class of mistake: the caller
+# never has to remember to release, and cannot clobber the release by accident.
+cmd_run() {
+	local h="$1" label="$2" rc
+	shift 2
+	[ "${1:-}" = "--" ] && shift
+	[ "$#" -gt 0 ] || { echo "usage: --run HOST LABEL -- CMD [ARGS...]" >&2; return 2; }
+	cmd_acquire "$h" "$label" >/dev/null || return 1
+	trap 'cmd_release '"$h"' >/dev/null 2>&1' EXIT INT TERM
+	"$@"
+	rc=$?
+	trap - EXIT INT TERM
+	cmd_release "$h" >/dev/null 2>&1
+	return $rc
+}
+
+case "${1:---status}" in
+	--status)      shift; cmd_status "$@" ;;
+	--acquire)     cmd_acquire "${2:?usage: --acquire HOST [LABEL]}" "${3:-bench}" ;;
+	--run)         h="${2:?usage: --run HOST LABEL -- CMD ...}"; l="${3:-bench}"
+	               shift 3; cmd_run "$h" "$l" "$@" ;;
+	--release)     cmd_release "${2:?usage: --release HOST}" ;;
+	--release-all) for h in $BENCH_HOSTS; do echo "$h: $(cmd_release "$h")"; done ;;
+	-h|--help)     sed -n '2,45p' "$0" ;;
+	*) echo "unknown option: $1 (try --help)" >&2; exit 2 ;;
+esac

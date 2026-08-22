@@ -41,6 +41,12 @@ cd "$REPO_ROOT"
 # (QuakeSpasm/Q3/Half-Life) takes the box between slices. An explicit BUILD_HOST
 # from the caller always wins.
 if [ -z "${BUILD_HOST:-}" ]; then
+  # Strict release. Without a nonce the picker can only match user@host:repo,
+  # which every session in this repo shares, so a sibling session's --release
+  # would silently drop this build's lock -- the case build-host#7 was filed
+  # for. Exported, not local, because the EXIT trap below runs --release in a
+  # SEPARATE process and has to present the same claim this acquire made.
+  export BENCH_LOCK_CLAIM="${BENCH_LOCK_CLAIM:-$$.$(date +%s).${RANDOM:-0}}"
   BUILD_HOST="$(BUILD_LOCK_WAIT="${BUILD_LOCK_WAIT:-900}" \
     "$REPO_ROOT/scripts/pick-build-host.sh" --acquire "quake2 build-fat")" || {
     echo "[build-fat] no free Intel build host; see scripts/pick-build-host.sh --status" >&2

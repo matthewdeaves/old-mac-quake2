@@ -33,6 +33,12 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # standalone build.sh run.
 BUILD_HOST_CLAIMED=0
 if [ -z "${BUILD_HOST:-}" ]; then
+  # Strict release. Without a nonce the picker can only match user@host:repo,
+  # which every session in this repo shares, so a sibling session's --release
+  # would silently drop this build's lock -- the case build-host#7 was filed
+  # for. Exported, not local, because the EXIT trap below runs --release in a
+  # SEPARATE process and has to present the same claim this acquire made.
+  export BENCH_LOCK_CLAIM="${BENCH_LOCK_CLAIM:-$$.$(date +%s).${RANDOM:-0}}"
   BUILD_HOST="$(BUILD_LOCK_WAIT="${BUILD_LOCK_WAIT:-900}" \
     "$REPO_ROOT/scripts/pick-build-host.sh" --acquire "quake2 build.sh $TARGET")" || {
     echo "build.sh: no free Intel build host; see scripts/pick-build-host.sh --status" >&2

@@ -36,7 +36,7 @@
 # pre:   build/q2-fat present (scripts/build-fat.sh; built here if missing)
 # post:  dist/Quake2-OldMac-<version>.dmg
 #
-# One .dmg installs on every supported Mac — the fat binary's four slices
+# One .dmg installs on every supported Mac — the fat binary's six slices
 # (ppc750 / ppc7400 / ppc970 / x86_64) + the CFBundle per-arch & per-machine
 # autoexec layers mean one disk image serves G3 Panther through modern Intel.
 

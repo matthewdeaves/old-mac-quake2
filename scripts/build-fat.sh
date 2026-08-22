@@ -27,6 +27,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=scripts/source-stamp.sh
+. "$(dirname "$0")/source-stamp.sh"
 cd "$REPO_ROOT"
 
 # Pin ONE Intel build host for the whole fat build and claim it up front, so all
@@ -42,7 +44,7 @@ if [ -z "${BUILD_HOST:-}" ]; then
   export BUILD_HOST
   # Absolute path: the trap must still resolve if anything ever cd's away.
   trap '"$REPO_ROOT/scripts/pick-build-host.sh" --release "$BUILD_HOST" >/dev/null 2>&1; true' EXIT
-  echo "[build-fat] claimed build host: $BUILD_HOST (held for all four slices + lipo)"
+  echo "[build-fat] claimed build host: $BUILD_HOST (held for all five mini-built slices + lipo)"
 else
   export BUILD_HOST
   echo "[build-fat] using caller-supplied build host: $BUILD_HOST"
@@ -109,6 +111,43 @@ fi
 # on the SAME mini that built the slices. Assert rather than re-defaulting: a second
 # "${BUILD_HOST:-mini-intel}" here could silently fuse on a different box than the
 # one the slices were staged to.
+# ---- refuse to fuse slices built from different source ----------------
+#
+# The bug this exists for: the arm64 check above tests that the files EXIST. It
+# does not test that they are CURRENT. arm64 is the only slice no mini can build,
+# so it is produced separately and is the only slice a fat build never rebuilds.
+# On 2026-08-22 this fused an arm64 slice three hours older than the source every
+# other slice came from, printed "fusing SIX", and exited OK. lipo -archs was
+# correct, the slice count was correct, and one slice was missing the fix. #17
+#
+# Existence, mtime, commit id and commit-id-plus-dirty were all ruled out first;
+# scripts/source-stamp.sh records why. This compares content.
+WANT_STAMP="$( source_stamp_compute "$REPO_ROOT" )"
+echo "[build-fat] source stamp $( echo "$WANT_STAMP" | cut -c1-12 )"
+STAMP_BAD=0
+for arch in $ARCHES; do
+  got="$( source_stamp_read "$REPO_ROOT/build/q2-$arch" )"
+  if [ -z "$got" ]; then
+    echo "[build-fat] !! build/q2-$arch has no SOURCE-STAMP" >&2
+    echo "[build-fat]    rebuild it; it predates the stamp or was staged by hand" >&2
+    STAMP_BAD=1
+  elif [ "$got" != "$WANT_STAMP" ]; then
+    echo "[build-fat] !! build/q2-$arch was built from $( echo "$got" | cut -c1-12 )" >&2
+    echo "[build-fat]    the tree is now      $( echo "$WANT_STAMP" | cut -c1-12 )" >&2
+    if [ "$arch" = arm64 ]; then
+      echo "[build-fat]    re-run scripts/build-arm64.sh on this Mac, then fuse again" >&2
+    else
+      echo "[build-fat]    re-run scripts/build.sh $arch, then fuse again" >&2
+    fi
+    STAMP_BAD=1
+  fi
+done
+if [ "$STAMP_BAD" = 1 ]; then
+  echo "[build-fat] refusing to fuse: not every slice was built from this source" >&2
+  exit 1
+fi
+echo "[build-fat] all $( set -- $ARCHES; echo $# ) slices built from the same source"
+
 : "${BUILD_HOST:?internal error: build host should have been pinned above}"
 echo "[build-fat] lipo -create on $BUILD_HOST ($ARCHES)"
 ssh "$BUILD_HOST" 'mkdir -p /tmp/q2-fat-stage && rm -rf /tmp/q2-fat-stage/*'
@@ -160,4 +199,10 @@ if command -v lipo >/dev/null 2>&1; then
   done
   echo "[build-fat] all four products carry: $WANT_SET"
 fi
+# Carry the agreed stamp into the fused output. Up to here it lived only in the
+# per-slice staging dirs, so once build/q2-fat existed nothing in it said what it
+# came from and make-dmg.sh had to take the build on trust. The value written is
+# the one every slice was just verified against.
+source_stamp_write "$REPO_ROOT/build/q2-fat" "$WANT_STAMP"
+echo "[build-fat] fat stamped $( echo "$WANT_STAMP" | cut -c1-12 )"
 echo "[build-fat] OK"

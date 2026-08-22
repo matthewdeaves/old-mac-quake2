@@ -29,6 +29,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=scripts/source-stamp.sh
+. "$(dirname "$0")/source-stamp.sh"
 OUT="$REPO_ROOT/build/arm64"
 VMIN="${Q2_ARM64_MIN:-11.0}"
 PREFIX="${Q2_ARM64_PREFIX:-$HOME/.cache/oldmac-q2-arm64}"
@@ -160,10 +162,18 @@ for f in "$OUT/release/quake2" "$OUT/release/q2ded" "$OUT/release/ref_gl.so" \
 done
 
 # The client must reference the framework by the same install name the other
-# four slices use, or dyld looks for a file that is not there.
+# five slices use, or dyld looks for a file that is not there.
 otool -L "$OUT/release/quake2" | grep -q '@executable_path/SDL.framework/Versions/A/SDL' || {
   echo "build-arm64.sh: client does not reference @executable_path/SDL.framework/..." >&2
   otool -L "$OUT/release/quake2" | sed 's/^/    /' >&2; exit 1; }
+
+# This driver compiles IN PLACE, with no rsync to a build host, so there is no
+# transferred file set to hash. It stamps the same local tree the Lion slices
+# stamp, which is why the stamp is defined over the source and not over the
+# transfer. arm64 is the only slice a fat build never rebuilds, so this stamp is
+# the one that actually matters. See issue #17.
+source_stamp_write "$OUT/release" "$(source_stamp_compute "$REPO_ROOT")"
+echo "==> source stamp $(source_stamp_read "$OUT/release" | cut -c1-12)"
 
 echo "==> done -> build/arm64/release/"
 echo "    quake2 q2ded ref_gl.so baseq2/game.so libSDL2-2.0.0.dylib"

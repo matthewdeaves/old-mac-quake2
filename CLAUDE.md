@@ -27,11 +27,12 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
 
 ## Facts
 
-- **Four slices, graded by CPU subtype alone.** `ppc750` (G3, min 10.3),
+- **Six slices, graded by CPU subtype alone.** `ppc750` (G3, min 10.3),
   `ppc7400` (all G4s, min 10.3), `ppc970` (G5, min **10.5**, a real floor),
-  `x86_64` (min 10.6). The OS plays no part in dyld's choice, so a machine gets
-  its slice whether or not it can run it. **No `i386` slice and no `arm64`
-  slice.** `docs/adr/0001`, `0003`
+  `x86_64` (min 10.6), `i386` (min 10.4, never tested on hardware), `arm64`
+  (min 11.0, optional: without it the fat is five). The OS plays no part in
+  dyld's choice, so a machine gets its slice whether or not it can run it.
+  `docs/adr/0001`, `0014`, `0015`
 - **`-faltivec` silently defeats `-mcpu=7400`'s cpusubtype stamping**, and a
   generic `ppc (ALL)` member in the fat makes the binary refuse to exec on a G3
   under Tiger or Leopard while Panther accepts it. `build.sh` asserts and
@@ -43,10 +44,11 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
   `ref_gl.so`. There is no gl1/gl3 split and no renderer-selection cvar; that is
   upstream only. Any doc claiming otherwise is describing upstream, not this
   tree. `docs/adr/0002`
-- **All four slices cross-compile on an Intel Lion mini** (`mini-intel` or
-  `mini-intel2`, interchangeable). Ask `scripts/pick-build-host.sh`, never
-  hardcode: the claim is a lock ON the host, so it sees builds other repos and
-  agents started. `docs/adr/0005`
+- **Five slices cross-compile on an Intel Lion mini** (`mini-intel` or
+  `mini-intel2`, interchangeable); `arm64` cannot, and is built on the
+  orchestration Mac by `scripts/build-arm64.sh`. Ask
+  `scripts/pick-build-host.sh`, never hardcode: the claim is a lock ON the
+  host, so it sees builds other repos and agents started. `docs/adr/0005`
 - **Never run two PPC builds on the same mini.** They share one `-arch ppc`
   object tree and race the `.o` files into the wrong CPU-subtype stamp. Two
   builds on different minis are the point of the second box. `docs/adr/0005`
@@ -160,4 +162,6 @@ where it runs is not.
   0003 arm64 is a separate question, 0004 the fat SDL framework, 0005 build
   hosts and DMG packaging, 0006 verification, 0007 config layering, 0008 the G5
   fullscreen hazard, 0009 smoke tests and benchmarks, 0010 per-machine A/B,
-  0011 the Linux server, 0012 code not content
+  0011 the Linux server, 0012 code not content, 0013 the GL 1.4 gate, 0014 the
+  engine is arm64-clean, 0015 the arm64 slice ships sdl12-compat, 0016 the
+  server's newer engine, 0017 the savegame arch guard

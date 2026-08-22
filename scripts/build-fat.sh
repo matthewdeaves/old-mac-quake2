@@ -31,6 +31,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/source-stamp.sh
 . "$(dirname "$0")/source-stamp.sh"
+# The exclude list is a PARAMETER of the shared file, supplied per repo.
+# shellcheck source=scripts/source-stamp-excludes.sh
+. "$(dirname "$0")/source-stamp-excludes.sh"
 cd "$REPO_ROOT"
 
 # Pin ONE Intel build host for the whole fat build and claim it up front, so all
@@ -134,7 +137,7 @@ fi
 #
 # Existence, mtime, commit id and commit-id-plus-dirty were all ruled out first;
 # scripts/source-stamp.sh records why. This compares content.
-WANT_STAMP="$( source_stamp_compute "$REPO_ROOT" )"
+WANT_STAMP="$( source_stamp_compute "$REPO_ROOT" "$SOURCE_STAMP_EXCLUDES" )"
 echo "[build-fat] source stamp $( echo "$WANT_STAMP" | cut -c1-12 )"
 STAMP_BAD=0
 for arch in $ARCHES; do

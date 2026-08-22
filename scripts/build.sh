@@ -16,6 +16,9 @@ set -euo pipefail
 
 # shellcheck source=scripts/source-stamp.sh
 . "$(dirname "$0")/source-stamp.sh"
+# The exclude list is a PARAMETER of the shared file, supplied per repo.
+# shellcheck source=scripts/source-stamp-excludes.sh
+. "$(dirname "$0")/source-stamp-excludes.sh"
 
 TARGET="${1:?usage: $0 <g3|g4|g5|lion|i386>}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -187,13 +190,13 @@ echo "[build] sync sources Ubuntu → $BUILD_HOST:$REMOTE_PATH/"
 #   - reference/: 46 MB of source we only need on workstation for cherry-picks
 #   - build/, benchmarks/: workstation-only output
 #   - prereqs/: vendored installers, sister-project artifact
-# The exclude list lives in scripts/source-stamp.sh and is read from there, not
+# The exclude list lives in scripts/source-stamp-excludes.sh and is passed in, not
 # repeated here. The source stamp hashes exactly the set this rsync sends, so the
 # two must not drift: a file this excludes cannot affect the build, and a file it
 # sends must change the stamp. See issue #17.
 # shellcheck disable=SC2046
 rsync -a --partial --inplace --delete \
-  $(source_stamp_rsync_excludes) \
+  $(source_stamp_rsync_excludes "$SOURCE_STAMP_EXCLUDES") \
   -e 'ssh -o ServerAliveInterval=15' \
   "$REPO_ROOT/" "$BUILD_HOST:$REMOTE_PATH/" | tail -3
 
@@ -251,7 +254,7 @@ rsync -a -e 'ssh -o ServerAliveInterval=15' \
 # Record what this slice was built FROM, next to the slice itself. build-fat.sh
 # refuses to fuse slices whose stamps disagree. Written after the fetch so it
 # only ever describes artifacts that actually arrived.
-source_stamp_write "$REPO_ROOT/build/q2-$TARGET" "$(source_stamp_compute "$REPO_ROOT")"
+source_stamp_write "$REPO_ROOT/build/q2-$TARGET" "$(source_stamp_compute "$REPO_ROOT" "$SOURCE_STAMP_EXCLUDES")"
 echo "[build] source stamp $(source_stamp_read "$REPO_ROOT/build/q2-$TARGET" | cut -c1-12)"
 
 # ---- cpusubtype assertion + re-stamp ---------------------------------

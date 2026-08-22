@@ -31,6 +31,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=scripts/source-stamp.sh
 . "$(dirname "$0")/source-stamp.sh"
+# The exclude list is a PARAMETER of the shared file, supplied per repo.
+# shellcheck source=scripts/source-stamp-excludes.sh
+. "$(dirname "$0")/source-stamp-excludes.sh"
 OUT="$REPO_ROOT/build/arm64"
 VMIN="${Q2_ARM64_MIN:-11.0}"
 PREFIX="${Q2_ARM64_PREFIX:-$HOME/.cache/oldmac-q2-arm64}"
@@ -134,7 +137,7 @@ echo "==> [3/4] building quake2, q2ded, ref_gl.so, game.so (arm64, macOS $VMIN)"
 # refused every six-slice build. Measured 2026-08-22: tree at rest 8e643192b2b9,
 # tree with the sed applied 9896723a7cbd, and 9896723a7cbd is exactly what this
 # line recorded. See issue #17.
-SRC_STAMP="$(source_stamp_compute "$REPO_ROOT")"
+SRC_STAMP="$(source_stamp_compute "$REPO_ROOT" "$SOURCE_STAMP_EXCLUDES")"
 
 MK="$REPO_ROOT/yquake2/Makefile"
 cp "$MK" "$OUT/.Makefile.orig"

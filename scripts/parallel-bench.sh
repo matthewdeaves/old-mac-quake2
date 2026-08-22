@@ -142,15 +142,23 @@ export DEMOS RESES RUNS
 
 echo "[parallel-bench] mode=$LABEL  legs=${ACTIVE_LEGS[*]}  demos=$DEMOS  reses=$RESES  runs=$RUNS"
 
-# Pre-flight: stale-process kill on every active machine in parallel.
-# TERM-grace-KILL pattern — Tiger's Quartz LUT can get stuck if Q2 is
-# hard-killed mid-fullscreen, same gotcha as the QuakeSpasm sister.
-echo "[parallel-bench] pre-flight: clearing stale quake2 processes"
-for LEG in "${ACTIVE_LEGS[@]}"; do
-  ssh -o ConnectTimeout=5 "$LEG" 'if killall -TERM quake2 2>/dev/null; then sleep 2; fi
-    killall -KILL quake2 2>/dev/null || true' &
-done
-wait
+# There is deliberately NO pre-flight stale-process kill here.
+#
+# There used to be: a loop that sshed to all eight legs at once and ran
+# TERM-grace-KILL on quake2. It ran before anything was claimed, so it did not
+# merely share a busy machine, it terminated the timedemo of whoever held the
+# lock. They got back a short or missing fps line rather than an error, which is
+# the hardest kind of result to notice is wrong. See issue #18.
+#
+# Deleting it costs nothing. bench.sh:275-277 already runs the same
+# TERM-grace-KILL immediately before every single run, and does it while holding
+# the lock on that machine. The pre-flight was doing a second time, unclaimed,
+# what the claimed path does anyway.
+#
+# The reachability probe above is left unclaimed on purpose: `ssh <leg> true`
+# starts nothing and changes nothing, and claiming a box to ask whether it
+# answers would queue behind whoever is using it and defeat the point of a
+# liveness check.
 
 # Launch each leg as a background full-bench-style matrix sweep over
 # its own subprocess. Each call to bench.sh writes its row directly to

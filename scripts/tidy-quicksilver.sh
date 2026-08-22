@@ -19,6 +19,26 @@ DRY_RUN="${DRY_RUN:-1}"
 HOST="${HOST:-quicksilver}"
 Q2DIR="${Q2DIR:-/Users/mini/Desktop/Quake 2}"
 
+# Claim the machine for the whole run. Same re-exec pattern as bench.sh:103-107,
+# and for the same reason: bash traps REPLACE rather than compose, so a release
+# trap installed here would be silently discarded by any trap set later and the
+# box would stay claimed until the stale reclaim. `--run` makes the lock a
+# property of the invocation, so it is released however this exits.
+#
+# This script sshes to a named machine and runs `rm -rf` on it. It did that
+# without claiming anything, so it could delete files under a session that held
+# the lock and was mid-deploy or mid-bench. Of the three gaps in issue #18 this
+# is the one with no recovery.
+#
+# The DRY_RUN default does not make the claim optional. A dry run still sshes to
+# the box, and the point of the lock is that nobody else has to reason about
+# what our connection is doing there.
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+if [ -z "${RETRO_BENCH_LOCK:-}" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
+	export RETRO_BENCH_LOCK="$HOST"
+	exec "$_PICK" --run "$HOST" "tidy" -- "$0" "$@"
+fi
+
 if [ "$DRY_RUN" = "1" ]; then
   echo "=== DRY RUN — set DRY_RUN=0 to actually delete ==="
   RM="echo would-rm"

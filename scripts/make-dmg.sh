@@ -50,11 +50,37 @@ VERSION="${1:-$(git rev-parse --short HEAD)}"
 # set explicitly, auto-pick the first REACHABLE Tiger box so a powered-off
 # quicksilver doesn't break the default — both write Panther-mountable images.
 if [ -z "${DMG_HOST:-}" ]; then
+  # Ask the picker, do not probe. This used to ssh each candidate in turn and
+  # take the first that ANSWERED, which is a second picker living in this repo
+  # and it graded on the wrong property: reachable is not free. It would happily
+  # select a box another session was mid-bench on. Issue #18.
   for cand in quicksilver mini-g4; do
-    if ssh -o ConnectTimeout=6 -o BatchMode=yes "$cand" true 2>/dev/null; then DMG_HOST="$cand"; break; fi
+    if [ "$("$REPO_ROOT/scripts/pick-bench-host.sh" --status "$cand" 2>/dev/null | awk 'NR>1{print $2}')" = free ]; then
+      DMG_HOST="$cand"; break
+    fi
   done
-  DMG_HOST="${DMG_HOST:-quicksilver}"
-  echo "[make-dmg] DMG_HOST not set — using reachable Tiger host: $DMG_HOST"
+  if [ -z "${DMG_HOST:-}" ]; then
+    echo "[make-dmg] no free Tiger G4 (quicksilver, mini-g4)" >&2
+    echo "[make-dmg] see: scripts/pick-bench-host.sh --status quicksilver mini-g4" >&2
+    exit 1
+  fi
+  echo "[make-dmg] DMG_HOST not set — picker says free: $DMG_HOST"
+fi
+
+# Claim it for the whole packaging run. Same re-exec pattern as bench.sh:103-107;
+# `--run` ties the lock to the invocation so it is released however this exits.
+#
+# This drives a Tiger G4 over ssh and rsync at ten call sites and held none of
+# them under a claim. Packaging is long, so it was the gap most likely to be
+# sitting on a box someone else wanted. Issue #18.
+#
+# --status above is advisory and can go stale between the check and the claim.
+# That is fine: the claim below is the authority, and losing that race fails
+# loudly here rather than proceeding onto a machine someone else holds.
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+if [ -z "${RETRO_BENCH_LOCK:-}" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
+	export RETRO_BENCH_LOCK="$DMG_HOST" DMG_HOST
+	exec "$_PICK" --run "$DMG_HOST" "make-dmg" -- "$0" "$@"
 fi
 VOLNAME="Quake2 OldMac $VERSION"
 OUT="$REPO_ROOT/dist/Quake2-OldMac-$VERSION.dmg"

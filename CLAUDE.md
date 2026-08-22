@@ -117,10 +117,6 @@ partitions; only one is booted at a time. Switch with
 `sudo /sbin/reboot </dev/null`, **not** `sudo -n`, which Tiger's and Panther's
 sudo 1.6.x reject outright. `parallel-bench.sh` refuses to run both legs.
 
-<!-- retro-shared-block: canonical copy lives in retro-agents/briefs/SHARED-BLOCK.md.
-     Do not edit this region in a port repo; it is overwritten by the sync.
-     Everything here must be true of EVERY repo it lands in. -->
-
 ## Working alongside the other repos
 
 This repo is one of seven worked on together: four game ports, the private
@@ -159,15 +155,13 @@ item, so it lands in no column at all and looks like work nobody raised. Run
 `retro-agents/bin/board-add.sh <repo>#<n>` after filing, every time.
 
 **The full rules are in `retro-agents/briefs/`, not here.** Every session is
-launched with them. This block is the short version for a human reading this repo
+launched with them. This is the short version for a human reading this repo
 cold; where the two differ, the briefs win.
 
-<!-- end retro-shared-block -->
+This section is maintained BY HAND and is deliberately not subscribed to
+`old-mac-build-host`'s block sync. See `docs/adr/0018`.
 
-## Filing across repos, and what is ours
-
-The block above is synced and short. These are this repo's own, and they sit
-outside the markers because the sync overwrites everything between them.
+## Filing across repos
 
 File cross-repo work as an issue, WITHOUT `--project`, then put it on the board:
 
@@ -219,4 +213,5 @@ where it runs is not.
   fullscreen hazard, 0009 smoke tests and benchmarks, 0010 per-machine A/B,
   0011 the Linux server, 0012 code not content, 0013 the GL 1.4 gate, 0014 the
   engine is arm64-clean, 0015 the arm64 slice ships sdl12-compat, 0016 the
-  server's newer engine, 0017 the savegame arch guard
+  server's newer engine, 0017 the savegame arch guard, 0018 CLAUDE.md is not
+  subscribed to the shared block sync

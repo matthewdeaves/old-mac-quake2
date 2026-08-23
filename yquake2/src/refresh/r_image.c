@@ -1286,14 +1286,9 @@ R_FreeUnusedImages(void)
 	{
 		r_caustictexture->registration_sequence = registration_sequence;
 	}
-	if (r_bloomscreentexture)
-	{
-		r_bloomscreentexture->registration_sequence = registration_sequence;
-	}
-	if (r_bloomeffecttexture)
-	{
-		r_bloomeffecttexture->registration_sequence = registration_sequence;
-	}
+	/* Bloom's two textures are not image_t (TEXNUM_BLOOMSCREEN/EFFECT,
+	 * r_bloom.c) — nothing to protect here, they have no
+	 * registration_sequence and are never in gltextures[]. */
 
 	for (i = 0, image = gltextures; i < numgltextures; i++, image++)
 	{

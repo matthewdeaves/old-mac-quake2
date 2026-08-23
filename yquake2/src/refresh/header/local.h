@@ -80,6 +80,13 @@
 #define TEXNUM_SCRAPS 1152
 #define TEXNUM_IMAGES 1153
 #define MAX_GLTEXTURES 1024
+/* yquake2-ppc — bloom's two render targets. Fixed manual texnums, one past
+ * the TEXNUM_IMAGES range (1153..1153+MAX_GLTEXTURES-1 = 2176), created
+ * straight via qglTexImage2D (r_bloom.c) rather than through R_LoadPic /
+ * gltextures[], which caps any upload at 256x256 and does not fit a
+ * screen-resolution render target. See MISTAKES.md. */
+#define TEXNUM_BLOOMSCREEN 2177
+#define TEXNUM_BLOOMEFFECT 2178
 #define MAX_SCRAPS 1
 #define BLOCK_WIDTH 128
 #define BLOCK_HEIGHT 128
@@ -253,8 +260,10 @@ extern image_t *r_notexture;
 extern image_t *r_particletexture;
 extern image_t *r_shelltexture;   /* yquake2-ppc — sphere-map glow for RF_SHELL (gl_glows) */
 extern image_t *r_caustictexture; /* yquake2-ppc — animated caustic overlay for water surfaces (gl_caustics) */
-extern image_t *r_bloomscreentexture;  /* yquake2-ppc — bloom back-buffer copy */
-extern image_t *r_bloomeffecttexture;  /* yquake2-ppc — bloom downsample/blur accumulator */
+/* yquake2-ppc — bloom's render targets are NOT image_t: TEXNUM_BLOOMSCREEN /
+ * TEXNUM_BLOOMEFFECT above are fixed manual texnums created straight via
+ * qglTexImage2D, so there is no registration_sequence lifetime to protect
+ * and no gltextures[] slot to leak. */
 extern entity_t *currententity;
 extern model_t *currentmodel;
 extern int r_visframecount;

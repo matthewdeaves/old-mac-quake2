@@ -250,6 +250,26 @@ ever makes sense on the iMac; (b) **do not use `R_LoadPic` / `it_pic` for a
 render target**, a redo needs a dedicated full-size texture created straight
 via `qglTexImage2D` so `glCopyTexSubImage2D` has a matching destination.
 
+**2026-08-23, issue #33: (b) fixed, (a) still stands.** The 256x256 cap turned
+out to be `R_Upload32` (`r_image.c`), which clamps ANY texture upload
+regardless of type — it silently shrank the actual GL storage for the
+screen-res capture texture while `r_bloom.c` kept using the uncapped
+dimensions for its `glCopyTexSubImage2D` calls. Redone as two fixed manual
+texnums (`TEXNUM_BLOOMSCREEN`/`TEXNUM_BLOOMEFFECT`, `header/local.h`) created
+straight via `qglTexImage2D`, bypassing `R_LoadPic` entirely — this engine
+never calls `glGenTextures`, it manually assigns small integer texnums, so a
+redo must stay in that same manual-id space rather than mixing in
+driver-assigned names. Verified visually (screenshot.sh, gl_bloom forced on,
+mini-intel): full scene renders correctly with visible bloom, no black box,
+no corrupted corner. Point (a) is unchanged and confirmed worse than
+expected: mini-intel (GMA 950, Lion) now renders bloom CORRECTLY at
+94.0 → 53.85 fps, **-43%**, exploratory bench only (not in results.csv — see
+`bench.sh`'s `BENCH_CSV`). Fillrate cost is inherent to a full-resolution
+`glCopyTexSubImage2D` in GL1 fixed-function with no FBO; there is no cheap way
+to make the CAPTURE step itself sub-resolution (GL doesn't downsample during
+a copy, and a second low-res render pass defeats the purpose). Still shipped
+disabled everywhere; G5/imac-2019/Apple Silicon headroom is untested.
+
 **2026-05-29, procedural/effect textures get freed on map change unless
 protected (latent).** `gl_glows` and `gl_caustics` build a procedural texture
 once at `R_Init` and stash the `image_t*` in a global, like `r_particletexture`.

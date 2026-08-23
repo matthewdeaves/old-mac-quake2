@@ -42,8 +42,14 @@ cvar_t *gl_bloom_alpha;      /* composite intensity */
 cvar_t *gl_bloom_darken;     /* bright-pass strength (multiply passes) */
 cvar_t *gl_bloom_size;       /* effect-texture size (pow2, 64..512) */
 
-image_t *r_bloomscreentexture;  /* pow2 >= view, raw back-buffer copy */
-image_t *r_bloomeffecttexture;  /* BLOOM_SIZE^2, downsampled + blurred */
+/* TEXNUM_BLOOMSCREEN (pow2 >= view, raw back-buffer copy) and
+ * TEXNUM_BLOOMEFFECT (BLOOM_SIZE^2, downsampled + blurred) are fixed manual
+ * texnums, not image_t — see header/local.h. Created straight via
+ * qglTexImage2D below, at their real requested size: R_LoadPic/R_Upload32
+ * caps any upload at 256x256, which silently truncated the screen-res
+ * capture texture while this file kept using the uncapped dimensions for
+ * glCopyTexSubImage2D, so the capture wrote past the real texture and the
+ * driver dropped it — bloom read back as a black box. See MISTAKES.md. */
 
 static int screen_tex_w, screen_tex_h; /* pow2 dims of the screen texture */
 static int BLOOM_SIZE;                  /* effect-texture edge (pow2) */
@@ -69,9 +75,6 @@ R_Bloom_RoundUpPow2(int v)
 void
 R_InitBloomTextures(void)
 {
-	byte *data;
-	int size;
-
 	bloom_inited = false;
 
 	if (!gl_bloom->value)
@@ -105,20 +108,29 @@ R_InitBloomTextures(void)
 		return; /* window too small — leave disabled */
 	}
 
-	size = screen_tex_w * screen_tex_h * 4;
-	data = malloc(size);
-	if (!data)
-	{
-		return;
-	}
-	memset(data, 0, size);
-	r_bloomscreentexture = R_LoadPic("***bloomscreen***", data,
-			screen_tex_w, 0, screen_tex_h, 0, it_pic, 32);
+	/* Dedicated render targets at their EXACT size — see the comment at the
+	 * top of this file for why not R_LoadPic. NULL data: both are written
+	 * by glCopyTexSubImage2D before ever being read (R_Bloom() captures
+	 * into TEXNUM_BLOOMSCREEN first thing, and downsamples that into
+	 * TEXNUM_BLOOMEFFECT immediately after), so uninitialised storage is
+	 * never sampled. Re-entrant: a later vid_restart / resolution change
+	 * just re-specifies the same two fixed texnums via glTexImage2D, which
+	 * discards and reallocates GL's storage — no separate free step. */
+	R_Bind(TEXNUM_BLOOMSCREEN);
+	qglTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, screen_tex_w, screen_tex_h, 0,
+			GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-	memset(data, 0, BLOOM_SIZE * BLOOM_SIZE * 4);
-	r_bloomeffecttexture = R_LoadPic("***bloomeffect***", data,
-			BLOOM_SIZE, 0, BLOOM_SIZE, 0, it_pic, 32);
-	free(data);
+	R_Bind(TEXNUM_BLOOMEFFECT);
+	qglTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, BLOOM_SIZE, BLOOM_SIZE, 0,
+			GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+	qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
 	bloom_inited = true;
 }
@@ -155,7 +167,7 @@ R_Bloom(void)
 		return;
 	}
 
-	if (!bloom_inited || !r_bloomeffecttexture || !r_bloomscreentexture)
+	if (!bloom_inited)
 	{
 		R_InitBloomTextures();
 		if (!bloom_inited)
@@ -192,7 +204,7 @@ R_Bloom(void)
 	qglLoadIdentity();
 
 	/* 1. capture the rendered view into the screen texture (1:1) */
-	R_Bind(r_bloomscreentexture->texnum);
+	R_Bind(TEXNUM_BLOOMSCREEN);
 	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, v_x, v_y, v_w, v_h);
 
 	/* 2. downsample: render the captured view into the BLOOM_SIZE corner,
@@ -207,10 +219,10 @@ R_Bloom(void)
 	R_TexEnv(GL_MODULATE);
 	qglDisable(GL_BLEND);
 	qglColor4f(1, 1, 1, 1);
-	R_Bind(r_bloomscreentexture->texnum);
+	R_Bind(TEXNUM_BLOOMSCREEN);
 	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, scr_tcw, scr_tch);
 
-	R_Bind(r_bloomeffecttexture->texnum);
+	R_Bind(TEXNUM_BLOOMEFFECT);
 	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
 
 	qglEnable(GL_BLEND);
@@ -220,7 +232,7 @@ R_Bloom(void)
 	if (gl_bloom_darken->value)
 	{
 		qglBlendFunc(GL_DST_COLOR, GL_ZERO);
-		R_Bind(r_bloomeffecttexture->texnum);
+		R_Bind(TEXNUM_BLOOMEFFECT);
 		for (i = 0; i < (int)gl_bloom_darken->value; i++)
 		{
 			qglColor4f(1, 1, 1, 1);
@@ -233,7 +245,7 @@ R_Bloom(void)
 	 *    the accumulator between axes. */
 	blur = 1.0f;
 	qglBlendFunc(GL_ONE, GL_ONE);
-	R_Bind(r_bloomeffecttexture->texnum);
+	R_Bind(TEXNUM_BLOOMEFFECT);
 
 	qglColor4f(0.5f, 0.5f, 0.5f, 1.0f); /* base re-add */
 	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, 1.0f, 1.0f);
@@ -245,7 +257,7 @@ R_Bloom(void)
 	}
 	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
 
-	R_Bind(r_bloomeffecttexture->texnum);
+	R_Bind(TEXNUM_BLOOMEFFECT);
 	qglColor4f(0.5f, 0.5f, 0.5f, 1.0f);
 	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, 1.0f, 1.0f);
 	for (i = 1; i <= 4; i++)
@@ -274,7 +286,7 @@ R_Bloom(void)
 	qglDisable(GL_BLEND);
 	R_TexEnv(GL_REPLACE);
 	qglColor4f(1, 1, 1, 1);
-	R_Bind(r_bloomscreentexture->texnum);
+	R_Bind(TEXNUM_BLOOMSCREEN);
 	R_Bloom_Quad(r_newrefdef.x, r_newrefdef.y,
 			r_newrefdef.width, r_newrefdef.height, scr_tcw, scr_tch);
 
@@ -282,7 +294,7 @@ R_Bloom(void)
 	qglEnable(GL_BLEND);
 	R_TexEnv(GL_MODULATE);
 	qglBlendFunc(GL_ONE, GL_ONE);
-	R_Bind(r_bloomeffecttexture->texnum);
+	R_Bind(TEXNUM_BLOOMEFFECT);
 	{
 		float a = gl_bloom_alpha->value;
 		qglColor4f(a, a, a, 1.0f);

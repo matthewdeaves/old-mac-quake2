@@ -166,6 +166,12 @@ new_claim() { echo "$$.$(date +%s).${RANDOM:-0}"; }
 #     may have started one.
 # Our own probe line always contains "grep", so it is dropped.
 probe() {
+	# $2, optional: a file to receive ssh's stderr. Default /dev/null preserves
+	# the old behaviour for try_acquire, which only cares whether it worked.
+	# cmd_status passes a real file, because the REASON a probe failed is the
+	# thing issue #14 is about: without it a timeout, an auth failure and a
+	# powered-off machine are one indistinguishable word.
+	local errsink="${2:-/dev/null}"
 	ssh "${SSH_OPTS[@]}" "$1" '
 		L=/tmp/.retro-build-lock
 		if [ -d "$L" ]; then
@@ -188,7 +194,36 @@ probe() {
 			| grep -vE "grep|makewhatis" | wc -l | tr -d " "`
 		os=`sw_vers -productVersion 2>/dev/null || echo unknown`
 		echo "$age $n $os $owner"
-	' 2>/dev/null
+	' 2>"$errsink"
+}
+
+# Why did a probe fail? Reads ssh's stderr and returns ONE word.
+#
+# Issue #14: --status printed `unreachable` for every failure, so a machine that
+# was switched off on purpose, one too loaded to answer in 8s, and one we simply
+# cannot authenticate to all read identically. On 2026-08-23 two sessions read a
+# five-hour `unreachable` window and both concluded the wrong thing; the fleet
+# had been shut down deliberately. The instrument could not express the answer.
+#
+# The distinction that matters most is refused/no-route versus timeout. A refused
+# connection is an ANSWER -- something is there and declining -- and a timeout is
+# the absence of one, which on this fleet usually means the machine is busy. Busy
+# is exactly when writing to a machine does damage, and it used to present as
+# nothing-here.
+why_probe_failed() {
+	local err="" f="$1"
+	[ -r "$f" ] && err="$(cat "$f" 2>/dev/null)"
+	case "$err" in
+		*"Connection refused"*)                       echo refused ;;
+		*"No route to host"*|*"Host is down"*|*"Network is unreachable"*) echo off ;;
+		*"Connection timed out"*|*"Operation timed out"*|*"timed out"*)   echo timeout ;;
+		*"Permission denied"*|*"Too many authentication failures"*|*"No supported authentication"*) echo auth ;;
+		*"Could not resolve"*|*"Name or service not known"*|*"nodename nor servname"*) echo dns ;;
+		*"Unable to negotiate"*|*"no matching"*)      echo crypto ;;
+		*"REMOTE HOST IDENTIFICATION HAS CHANGED"*|*"Host key verification failed"*) echo hostkey ;;
+		"")                                           echo unreachable ;;
+		*)                                            echo unreachable ;;
+	esac
 }
 
 # free | stale | busy | unknown | wrong-os
@@ -223,12 +258,31 @@ cmd_status() {
 	local hosts="$*"
 	[ -z "$hosts" ] && hosts="$BENCH_HOSTS"
 	printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' HOST STATE OS WANT LOCK-AGE PROCS OWNER
+	local errf
+	errf="$(mktemp "${TMPDIR:-/tmp}/pick-bench-probe.XXXXXX")" || errf=/dev/null
 	for h in $hosts; do
-		local out age procs os owner state want
+		local out age procs os owner state want why
 		want="$(expect_os "$h")"
-		if ! out="$(probe "$h")" || [ -z "$out" ]; then
-			printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' "$h" unreachable - "${want:--}" - - -
-			continue
+		if ! out="$(probe "$h" "$errf")" || [ -z "$out" ]; then
+			why="$(why_probe_failed "$errf")"
+			# Retry ONLY a timeout. A refused connection, an auth failure and a
+			# dead name are answers already, and re-asking costs another 8s per
+			# host across 14 hosts to learn nothing. A timeout is the one case
+			# where the machine may simply have been too busy to answer, which
+			# is the case #14 measured: mini-intel answered 7 of 9 probes while
+			# under a bench, and the two failures were consecutive.
+			if [ "$why" = timeout ]; then
+				if ! out="$(probe "$h" "$errf")" || [ -z "$out" ]; then
+					why="$(why_probe_failed "$errf")"
+					[ "$why" = unreachable ] && why=timeout
+				fi
+			fi
+			if [ -z "${out:-}" ]; then
+				[ "${BENCH_PROBE_VERBOSE:-0}" = 1 ] && \
+					printf 'probe %s: %s\n' "$h" "$(tr '\n' ' ' < "$errf")" >&2
+				printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' "$h" "$why" - "${want:--}" - - -
+				continue
+			fi
 		fi
 		age="$(echo "$out" | awk '{print $1}')"
 		procs="$(echo "$out" | awk '{print $2}')"
@@ -239,6 +293,7 @@ cmd_status() {
 		printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' \
 			"$h" "$state" "${os:--}" "${want:--}" "$age" "$procs" "${owner:--}"
 	done
+	[ "$errf" = /dev/null ] || rm -f "$errf"
 }
 
 # Try to claim $1. Returns 0 on success.

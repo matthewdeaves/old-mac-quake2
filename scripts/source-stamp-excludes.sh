@@ -20,6 +20,17 @@
 # tree moved depending on whether an arm64 build had run. Build output must never
 # be part of "what the source is".
 #
+# .claude/ is Claude Code session state, not source: commands and skills under
+# it ARE git-tracked, but scheduled_tasks.lock and settings.local.json are
+# gitignored (.gitignore) and live inside $REPO_ROOT, so source_stamp_compute
+# walks the real filesystem and hashes them regardless of .gitignore — that
+# list is separate from this one and this check does not consult it. Same
+# failure mode as yquake2/release/ above (something inside the tree moving the
+# hash without the engine source changing), just triggered by session
+# bookkeeping: a ScheduleWakeup between an arm64 build and a fat build moves
+# scheduled_tasks.lock's mtime and refuses a same-commit slice as stale. Found
+# and fixed first in the sibling old-mac-quakespasm repo, same gap here.
+#
 # Newline-separated, NOT space-separated. Reading it with `for e in $VAR` would
 # depend on word-splitting, which sh and bash do and zsh does NOT: sourced from a
 # zsh shell the whole list collapses to one word, nothing is pruned, and the hash
@@ -35,4 +46,5 @@ build/
 benchmarks/
 prereqs/
 yquake2/release/
-reference/'
+reference/
+.claude/'

@@ -29,3 +29,8 @@ Old-Mac-Quake2-*.zip
 .venv/
 .game-data/
 dist/
+
+# Claude Code session state, not source (commands/skills under .claude/ ARE
+# git-tracked; only this per-session bookkeeping is not).
+.claude/scheduled_tasks.lock
+.claude/settings.local.json

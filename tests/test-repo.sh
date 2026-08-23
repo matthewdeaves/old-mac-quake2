@@ -39,6 +39,29 @@ detect_emptiness_lock_guard () {
 	grep -rlE '\[[[:space:]]+-z[[:space:]]+"\$\{RETRO_BENCH_LOCK:?-?\}"' "$1" 2>/dev/null
 }
 
+# Issue #28. deploy.sh removed a stale ~/Desktop/quake2/baseq2/autoexec.cfg but
+# deploy-dmg.sh did not, so the DMG path -- the one releases actually go out on
+# -- could leave an orphan behind. FS_ExecAutoexec (yquake2 filesystem.c:1569)
+# reads $fs_basedir/baseq2/autoexec.cfg and basedir is `.` here, so that file is
+# queued AFTER the bundle layers finish in Com_Init and overrides the shipped
+# per-machine overlay. The machine then runs something other than the product,
+# and any bench taken on it prices a config the user does not have. Nothing
+# errors; it is invisible until someone looks. Any script that installs into the
+# deploy tree must remove it.
+detect_install_without_cfg_cleanup () {
+	local f hits=""
+	for f in "$1"/*.sh; do
+		[ -f "$f" ] || continue
+		if grep -qE 'mkdir -p "\$DEST/baseq2"|"\$STAGE/" "\$HOST:Desktop/quake2/"' "$f"; then
+			if ! grep -qE 'rm -f .*baseq2/autoexec\.cfg' "$f"; then
+				hits="$hits $f"
+			fi
+		fi
+	done
+	[ -n "$hits" ] || return 1
+	printf '%s\n' $hits
+}
+
 # --- self-test -------------------------------------------------------------
 selftest () {
 	local name="$1" fn="$2" bad="$3" good="$4"
@@ -65,6 +88,10 @@ selftest "one-arg source_stamp_compute" detect_one_arg_compute \
 selftest "emptiness lock guard" detect_emptiness_lock_guard \
 	'if [ -z "${RETRO_BENCH_LOCK:-}" ] && [ -x "$_PICK" ]; then' \
 	'if [ "${RETRO_BENCH_LOCK:-}" != "$TARGET" ] && [ -x "$_PICK" ]; then'
+selftest "install without cfg cleanup" detect_install_without_cfg_cleanup \
+	'mkdir -p "$DEST/baseq2"' \
+	'mkdir -p "$DEST/baseq2"
+rm -f "$DEST/baseq2/autoexec.cfg"'
 
 # --- the input must actually be there --------------------------------------
 echo
@@ -106,6 +133,15 @@ elif hits=$(detect_emptiness_lock_guard "$SCRIPTS"); then
 	printf '        %s\n' $hits
 else
 	pass "every bench-lock guard compares against its target"
+fi
+
+if [ "$INPUT_OK" = 0 ]; then
+	:
+elif hits=$(detect_install_without_cfg_cleanup "$SCRIPTS"); then
+	fail "installs into the deploy tree but leaves a stale baseq2/autoexec.cfg (issue #28):"
+	printf '        %s\n' $hits
+else
+	pass "every deploy path clears a stale baseq2/autoexec.cfg"
 fi
 
 echo

@@ -82,6 +82,20 @@ hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$HOME/Desktop/$DMG_BASE" 
 
 mkdir -p "$DEST/baseq2"
 
+# Migration, same as deploy.sh:254-260 — an earlier scheme staged the
+# per-machine cfg to baseq2/autoexec.cfg. It now ships inside
+# Quake2.app/Contents/Resources/. FS_ExecAutoexec (filesystem.c:1569) reads
+# $fs_basedir/baseq2/autoexec.cfg, and basedir is `.` here, so a leftover
+# resolves and is queued AFTER the bundle layers finish in Com_Init — it
+# would override the shipped overlay on a machine nobody would think to
+# check. The disk image never ships one (make-dmg.sh:193 stages only
+# game.so into baseq2/), so removing it here can only remove an orphan.
+rm -f "$DEST/baseq2/autoexec.cfg"
+if [ -e "$DEST/baseq2/autoexec.cfg" ]; then
+  echo "  FATAL: could not remove stale baseq2/autoexec.cfg" >&2; exit 7
+fi
+echo "  [config] no stale baseq2/autoexec.cfg (shipped cfg is the bundle's)"
+
 # md5 helper (portable Panther→Lion: `md5` on macOS prints "MD5 (f) = HASH").
 _md5() { md5 "$1" 2>/dev/null | awk '{print $NF}'; }
 

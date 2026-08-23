@@ -132,6 +132,12 @@ was kept: `SDL_GL_SWAP_CONTROL` is now set to 0 explicitly when
 `gl_swapinterval` is 0 (previously only set when 1), so the OS default cannot
 kick in unpredictably across reboots.
 
+**Closed 2026-08-23, issue #34**: re-took issue #7's three legs immediately
+after a fresh reboot (median of 3 runs each, demo1 1024x768). Shipped
+baseline (stencil ON, MSAA 2x) 41.10 fps cold vs 41.10 warm — identical. MSAA
+off 70.30 vs 70.20. Stencil off 57.60 vs 57.60. The #7 decision was not a
+thermal-throttling artifact.
+
 ## Consequences
 
 - Every benchmark row needs its conditions attached; a bare fps number is not a

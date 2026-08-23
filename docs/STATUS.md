@@ -86,8 +86,9 @@ fuzzing and fixed (ADR 0011). Documentation consolidated into `docs/adr/`.
   are still on the invalid `res=1` figures; re-bench when either is next
   powered up (both off as of 2026-08-23).
 - Bloom redo with a dedicated render target and a sub-resolution budget
-  (MISTAKES.md has the constraints).
-- GL1 gamma correction, 5.11 has none on the GL path.
-- Re-bench mini-g4 cold (ADR 0009, thermal).
+  (MISTAKES.md has the constraints). Issue #33.
+- GL1 gamma correction, 5.11 has none on the GL path (fixed-function has no
+  linear-space blending to correct; the hardware gamma ramp via SDL_SetGamma
+  already works).
 - Both fleet framerate rows marked stale in `README.md`: sawtooth and imac-2019
   have not been benched since the stencil rollout.

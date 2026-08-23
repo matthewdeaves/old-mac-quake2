@@ -120,6 +120,12 @@ TMP=$(mktemp)
 scp -q "$HOST:.yq2/baseq2/qconsole.log" "$TMP" 2>/dev/null || { echo "[smoke $HOST] FAIL: no qconsole.log (engine never wrote one)"; rm -f "$TMP"; exit 1; }
 
 FPS_LINE=$(grep -E 'frames.*seconds.*fps' "$TMP" 2>/dev/null | tail -1 || true)
+# SDL 1.2 could not give us a fullscreen mode. On a Mac with no display attached
+# there are NO fullscreen modes at any size -- measured on mini-intel2
+# 2026-08-23, which refused 640x400 as well as its 1280x1024 desktop. That is a
+# property of the HOST, not of the build, and reporting it as a crash condemns a
+# good binary. See issue #27.
+NOMODE_LINE=$(grep -E 'SetVideoMode failed|No video mode large enough' "$TMP" 2>/dev/null | tail -1 || true)
 MODE_LINE=$(grep -E 'setting mode' "$TMP" 2>/dev/null | tail -1 || true)
 DESKTOP_LINE=$(grep -E 'Desktop is' "$TMP" 2>/dev/null | tail -1 || true)
 REND_LINE=$(grep -E 'GL_RENDERER' "$TMP" 2>/dev/null | tail -1 || true)
@@ -133,6 +139,23 @@ echo "[smoke $HOST] result   : ${FPS_LINE:-<NO FPS LINE>}"
 if [ -n "$FPS_LINE" ]; then
   echo "[smoke $HOST] PASS — world rendered to completion on the production path"
   exit 0
+elif [ -n "$NOMODE_LINE" ]; then
+  # NOT a pass. The build is unverified here and the message must never read as
+  # success -- a check that quietly downgrades is how "lsregister inconclusive"
+  # survived on a healthy box in a sister repo. Distinct exit code so a caller
+  # can tell this apart from both outcomes.
+  echo "[smoke $HOST] NOT TESTED — this host offers no fullscreen video mode:" >&2
+  echo "  $NOMODE_LINE" >&2
+  echo "  The build was NOT verified on $HOST. This is almost always a Mac with" >&2
+  echo "  no display attached; it is not evidence the binary is bad, and it is" >&2
+  echo "  not evidence it is good either." >&2
+  echo "  To verify by hand, windowed, on the host:" >&2
+  echo "    cd ~/Desktop/quake2 && ./Quake2.app/Contents/MacOS/quake2 \\" >&2
+  echo "      +set vid_fullscreen 0 +set s_initsound 0 +set logfile 2 \\" >&2
+  echo "      +set timedemo 1 +demomap demo1.dm2" >&2
+  echo "  then look for an 'N frames, N seconds: N fps' line in" >&2
+  echo "  ~/.yq2/baseq2/qconsole.log" >&2
+  exit 3
 else
   echo "[smoke $HOST] FAIL — no fps line; the production launch did not render a demo (crash or hang)" >&2
   exit 1

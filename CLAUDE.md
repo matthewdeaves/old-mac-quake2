@@ -26,6 +26,20 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
 
 `BUILD_HOST=` pins a mini, `DMG_HOST=` the packaging box.
 
+**Smoke and the imac-g5 bench run via Jenkins now, not by hand** (user
+policy 2026-08-23, `retro-agents/briefs/_shared.md`): jobs
+`smoke-quake2-<machine>` (every smoke-capable node) and
+`bench-quake2-imac-g5` are proven equivalents of the scripts above (same
+scripts, same lock; `BENCH_CSV`/`BENCH_RAW_DIR` redirected so tracked
+results are untouched). Invoke:
+
+```sh
+ssh u25 'PW=$(cat ~/jenkins/home/secrets/initialAdminPassword); java -jar ~/jenkins/jenkins-cli.jar -s http://10.188.1.19:8080 -auth admin:$PW build smoke-quake2-<machine> -p FLEET_HOST=<machine> -s -v'
+```
+
+Benches on other machines still use `bench.sh` directly until their jobs
+are proven.
+
 ## Facts
 
 - **Six slices, graded by CPU subtype alone.** `ppc750` (G3, min 10.3),

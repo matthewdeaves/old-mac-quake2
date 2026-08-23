@@ -140,8 +140,12 @@ static uint16_t watch_disc_port;         /* service port (network byte order) */
 static int watch_disc_until;             /* cls.realtime deadline to give up a fruitless browse */
 
 /* How long to keep browsing before giving up, to spare CPU when no companion
-   is on the LAN. Re-armed at launch and at the start of every new game/map. */
-#define WATCHLINK_DISCOVERY_MS 30000
+   is on the LAN. Re-armed at launch and at the start of every new game/map.
+   The companion app isn't released yet, so every "auto" run today is
+   guaranteed to find nothing -- only the negative case was ever slow, a real
+   companion resolves near-instantly once one exists. Cut from 30s to match
+   quakespasm's cl_watchlink.c (old-mac-quakespasm, same fix, same reason). */
+#define WATCHLINK_DISCOVERY_MS 3000
 #ifdef WATCHLINK_HAVE_ADDRINFO
 static DNSServiceRef watch_addr_ref;     /* IPv4 address of the host (10.5+) */
 #endif

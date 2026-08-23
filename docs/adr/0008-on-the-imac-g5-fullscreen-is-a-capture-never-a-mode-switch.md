@@ -49,9 +49,13 @@ SDL 1.2 has no built-in desktop fullscreen, so it was added:
   (`exit 3`), defaults to native-resolution capture, and offers `G5_WINDOWED=1`
   for safe windowed iteration. Both vid cvars are set explicitly on the command
   line so a leftover archived value cannot change the measured mode.
-- **`screenshot.sh`** does the same. **`parallel-bench.sh`** benches the G5 leg
-  at native 1440x900 rather than the shared 1024x768 / 640x480 sweep, which it
-  would refuse.
+- **`screenshot.sh`** does the same, and defaults every target to the safe
+  capture path — only machines with a confirmed non-R300 GPU opt into the
+  mode-switch. `GLimp_ForceDesktopFullscreen()` also covers `PowerMac7,3`
+  (the g5-desktop/g5-panther/g5-tiger tower, measured ATY,RV351, same R300
+  family). Issue #31. **`parallel-bench.sh`** benches the G5 leg at native
+  1440x900 rather than the shared 1024x768 / 640x480 sweep, which it would
+  refuse.
 - The `misc.c` machine map routes all three iMac G5 model IDs to the overlay as
   a safety entry (ADR 0007).
 

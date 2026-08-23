@@ -92,10 +92,15 @@ GLimp_ForceDesktopFullscreen(void)
 		cached = 0;
 		if (sysctlbyname("hw.model", model, &len, NULL, 0) == 0)
 		{
-			/* iMac G5 family: PowerMac8,1 / 8,2 (ALS) / 12,1 (iSight). */
+			/* iMac G5 family: PowerMac8,1 / 8,2 (ALS) / 12,1 (iSight).
+			 * PowerMac7,3: Power Mac G5 dual 2.7 tower (g5-desktop /
+			 * g5-panther / g5-tiger, one box, three partitions) — measured
+			 * ATY,RV351, same R300 family as the iMac G5's Radeon 9600.
+			 * Issue #31. */
 			if (!strcmp(model, "PowerMac8,2") ||
 					!strcmp(model, "PowerMac8,1") ||
-					!strcmp(model, "PowerMac12,1"))
+					!strcmp(model, "PowerMac12,1") ||
+					!strcmp(model, "PowerMac7,3"))
 			{
 				cached = 1;
 			}

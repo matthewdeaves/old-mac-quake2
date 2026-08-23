@@ -85,18 +85,27 @@ case "$TARGET" in
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac
 
-# Video mode for the capture session. All boxes default to a 1024x768
-# mode-switch fullscreen for consistent shot dimensions — EXCEPT the iMac
-# G5, whose ATI R300 / Leopard driver hard-hangs the whole OS on a
-# non-native mode switch (needs the physical power button). On the G5 we
-# force the native same-mode CAPTURE (vid_desktopfullscreen 1); width/height
-# are then ignored and shots come out at the panel's native res.
-# See ~/Desktop/imac-g5-leopard-port-notes.md.
-SS_FS=1; SS_DFS=0; SS_W=1024; SS_H=768
-if [ "$TARGET" = "imac-g5" ]; then
-  SS_DFS=1
-  echo "[screenshot imac-g5] native-res same-mode CAPTURE (R300-safe; shots at native res)"
-fi
+# Video mode for the capture session. A non-native fullscreen mode SWITCH
+# hard-hangs the whole OS (physical power button only) on an ATI R300-family
+# GPU under Tiger/Leopard — confirmed on the iMac G5's Radeon 9600 and
+# g5-desktop's RV351 (issue #31), and R300-family GPUs are shared across the
+# g5-panther/g5-tiger/g5-desktop partitions (same box) and unconfirmed on
+# quad-leopard/quad-tiger. So the SAFE path — native same-mode CAPTURE
+# (vid_desktopfullscreen 1), width/height ignored, shots at the panel's
+# native res — is the DEFAULT, and the 1024x768 mode-switch is opt-in, only
+# for machines with a confirmed non-R300 GPU. Adding a new target to the
+# case above does NOT need touching this: it stays on the safe path unless
+# added below. See ADR 0008 and ~/Desktop/imac-g5-leopard-port-notes.md.
+SS_FS=1; SS_DFS=1; SS_W=1024; SS_H=768
+case "$TARGET" in
+  yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|mini-intel|imac-2019)
+    # Rage 128, GeForce2 MX, Radeon 9000/9200, Intel GMA950, AMD — none R300.
+    SS_DFS=0
+    ;;
+  *)
+    echo "[screenshot $TARGET] native-res same-mode CAPTURE (R300-safe or unconfirmed GPU; shots at native res)"
+    ;;
+esac
 
 # Where the PNGs land. Defaults to the docs set that README.md and index.html
 # link. scripts/check-frames.sh points this at a temp dir so a verification

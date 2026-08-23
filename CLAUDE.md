@@ -37,6 +37,13 @@ results are untouched). Invoke:
 ssh u25 'PW=$(cat ~/jenkins/home/secrets/initialAdminPassword); java -jar ~/jenkins/jenkins-cli.jar -s http://10.188.1.19:8080 -auth admin:$PW build smoke-quake2-<machine> -p FLEET_HOST=<machine> -s -v'
 ```
 
+`release-fanout-quake2` is also proven: deploy-dmg + smoke-dmg across a
+machine list (`FLEET_HOST` = space-separated list; default covers the
+smoke-capable machines), skipping busy/off machines rather than failing.
+It needs a DMG already in `dist/` — it does not build one. Use it for
+release-candidate rollout instead of looping `deploy-dmg.sh` /
+`smoke-dmg.sh` by hand.
+
 Benches on other machines still use `bench.sh` directly until their jobs
 are proven.
 

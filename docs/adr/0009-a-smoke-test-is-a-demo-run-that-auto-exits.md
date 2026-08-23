@@ -108,8 +108,10 @@ shadows cost ~15% and clear the floor" decisions on all three G4s. The real
 mini-g4 figure at 1024x768 is **38.8 fps**.
 
 `bench.sh` now rejects a malformed resolution instead of quietly benching
-nonsense. **Re-taking those stencil decisions is issue #7 and is still open**;
-treat any 2026-06-06 G4 stencil figure as unverified (ADR 0010).
+nonsense. **Re-taking those stencil decisions was issue #7, closed 2026-08-23**:
+mini-g4's real-resolution figure is 41.1 fps, above the floor, kept ON. Treat
+any 2026-06-06 G4 stencil figure as unverified regardless (ADR 0010);
+sawtooth and quicksilver still owe the same re-take.
 
 ## Machine state can move between runs, and it is not always the code
 

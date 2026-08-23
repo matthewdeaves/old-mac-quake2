@@ -45,6 +45,9 @@
 #                the narrated decision it supports (old-mac-build-host#15: an
 #                automated caller with nobody curating a commit per row
 #                should point this at a gitignored path instead).
+#   BENCH_RAW_DIR override the raw qconsole.log directory. Default
+#                benchmarks/raw/ is ALSO git-tracked (old-mac-build-host#28);
+#                redirect this alongside BENCH_CSV, not just the CSV alone.
 #
 # CSV columns (results.csv):
 #   timestamp     UTC ISO-8601, captured at row-write time
@@ -208,13 +211,15 @@ fi
 COMMIT="${COMMIT:-$(git -C "$REPO_ROOT" rev-parse --short HEAD)}"
 COMMIT_SUBJECT=$(git -C "$REPO_ROOT" log -1 --format=%s "$COMMIT" 2>/dev/null | tr ',' ';' | head -c 80)
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-RAW_DIR="$REPO_ROOT/benchmarks/raw"
-# BENCH_CSV overrides the output path. Default is the git-tracked historical
-# record, where every row is committed alongside the narrated decision it
+# BENCH_CSV/BENCH_RAW_DIR override the output paths. Both default to the
+# git-tracked historical record (benchmarks/results.csv, benchmarks/raw/),
+# where every row and log is committed alongside the narrated decision it
 # supports (never a bare number, see MISTAKES.md). An automated caller (e.g.
-# a Jenkins bench job) that has no human curating a commit per row should
-# point this at a gitignored path instead, not append to results.csv
-# directly.
+# a Jenkins bench job) that has no human curating a commit per run should
+# point BOTH at a gitignored path instead — old-mac-build-host#28 caught
+# BENCH_CSV alone still leaving qconsole.log copies in the tracked
+# benchmarks/raw/.
+RAW_DIR="${BENCH_RAW_DIR:-$REPO_ROOT/benchmarks/raw}"
 CSV="${BENCH_CSV:-$REPO_ROOT/benchmarks/results.csv}"
 mkdir -p "$RAW_DIR" "$(dirname "$CSV")"
 

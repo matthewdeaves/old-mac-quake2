@@ -79,7 +79,12 @@ fuzzing and fixed (ADR 0011). Documentation consolidated into `docs/adr/`.
 
 ## Open
 
-- **Issue #7**, re-take the G4 stencil-shadow decision on real resolutions.
+- **Issue #7**, resolved for mini-g4: real-resolution stencil cost is 29%
+  (41.1 vs 57.6 fps demo1 1024x768), machine is fill-bound, and the floor is
+  settled as the raw bench number (`old-mac-build-host#22`) — 41.1 clears the
+  ~40 fps floor, kept ON, no config change needed. sawtooth and quicksilver
+  are still on the invalid `res=1` figures; re-bench when either is next
+  powered up (both off as of 2026-08-23).
 - Bloom redo with a dedicated render target and a sub-resolution budget
   (MISTAKES.md has the constraints).
 - GL1 gamma correction, 5.11 has none on the GL path.

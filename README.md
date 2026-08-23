@@ -86,7 +86,7 @@ median of runs 2 & 3:
 |---|---:|---:|
 | Mac mini Intel (Lion / GMA 950) | 207.9 | 92.6 |
 | Sawtooth (G4 / GeForce2 MX) † | 72.9 | 65.5 |
-| Mac mini G4 (Radeon 9200) | 73.9 | 38.8 |
+| Mac mini G4 (Radeon 9200) | 77.0 | 41.1 |
 | Quicksilver (G4 / Radeon 9000) | 67.0 | 57.6 |
 | Yosemite (G3 / Panther / Rage 128) | 50.4 | 25.5 |
 | Yosemite (G3 / Tiger / Rage 128) | 49.1 | 25.8 |

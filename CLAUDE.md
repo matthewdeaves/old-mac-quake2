@@ -92,7 +92,9 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
   zero. References live in `tests/frames/`, NOT `docs/screenshots/`, which is a
   curated gallery that deletes frames for being ugly. Issue #26.
 - **Playability floors: G3 ≥ 20 fps, G4 ≥ ~40 fps** (was 60; the user preference
-  is visuals over framerate). Above the floor, prefer a visual feature to
+  is visuals over framerate). **A floor is the raw bench number** (`bench.sh`
+  runs vsync off), not what a player sees with vsync on — settled by the user,
+  `old-mac-build-host#22`, 2026-08-23. Above the floor, prefer a visual feature to
   framerate nobody needs. `docs/adr/0009`
 - **Every per-machine default is an A/B on that machine**, never inferred from
   GPU class. `docs/adr/0010`

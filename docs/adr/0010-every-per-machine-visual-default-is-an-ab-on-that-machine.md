@@ -64,8 +64,15 @@ Corollaries that have each been paid for:
 **Those figures came from the run that recorded `res=1` and therefore rendered
 1x1 pixels** (ADR 0009). The 60% regression above is the only G4 stencil
 measurement taken at a real resolution, and it predates the AltiVec work, so it
-may no longer hold either. **Re-taking this decision is issue #7 and is open.**
-Do not quote the 2026-06-06 numbers as current.
+may no longer hold either. Do not quote the 2026-06-06 numbers as current.
+
+**Re-taken 2026-08-21/23, issue #7, mini-g4 only.** Real-resolution cost is
+29% (41.1 vs 57.6 fps demo1 1024x768), not the invalid ~15%. mini-g4 is
+fill-bound, not feature-bound: individual visual toggles move nothing, only
+resolution does. The floor is defined as the raw bench number
+(`old-mac-build-host#22`), and 41.1 clears the ~40 fps G4 floor, so
+`gl_stencilshadow` stays ON. quicksilver and sawtooth still owe this re-bench;
+both were powered off as of 2026-08-23.
 
 ## Reference points
 

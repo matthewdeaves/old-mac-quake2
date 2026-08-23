@@ -451,6 +451,7 @@ Qcommon_Init(int argc, char **argv)
 		char model[64];
 		size_t mlen = sizeof(model);
 		size_t i;
+		int mapped = 0;
 
 		/*
 		 * Layer 0: shared default control scheme (WASD + mouse-look,
@@ -501,9 +502,30 @@ Qcommon_Init(int argc, char **argv)
 				if (strcmp(model, q2_machine_map[i].model) == 0)
 				{
 					Q2_ExecConfigFromBundle(q2_machine_map[i].cfg);
+					mapped = 1;
 					break;
 				}
 			}
+		}
+
+		/*
+		 * UNMAPPED hardware (issue #32): no per-machine overlay matched,
+		 * so this Mac is running the conservative Layer-1 baseline alone —
+		 * which on the PPC arches leaves the cheap per-frame surface
+		 * effects (gl_glows / gl_trans_lighting / gl_caustics) OFF because
+		 * a generic GPU can't be assumed capable from CPU arch alone. The
+		 * GPU CAN be identified, but only after the GL context exists,
+		 * which is long after this point. So: queue a marker cvar the
+		 * renderer reads back in R_Init after GL_RENDERER is known, where
+		 * it nudges those effect cvars on for recognised-capable GPU
+		 * families (r_main.c). Queued through Cbuf like the cfg layers so
+		 * a cmdline +set (early commands, below) still overrides it.
+		 * Mapped machines never set this, so their hand-benched overlay
+		 * values always stand (ADR 0010).
+		 */
+		if (!mapped)
+		{
+			Cbuf_AddText("set q2_autotier 1\n");
 		}
 	}
 #endif

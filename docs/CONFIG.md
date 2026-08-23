@@ -29,6 +29,7 @@ Files: `scripts/bundle/autoexec-*.cfg`,
 | `gl_bloom` (+ `_alpha` `_darken` `_size`) | fixed-function light bloom | **0 everywhere, WIP, broken on the GL1 path, see MISTAKES.md** |
 | `vid_desktopfullscreen` | native-res same-mode fullscreen capture | on iMac-class (`ppc970` baseline + `imac-g5`); off elsewhere. **The only R300/Leopard-safe fullscreen, ADR 0008** |
 | `watch_host` `watch_port` `watch_rate` `watch_events` | UDP player-state feed | off (`watch_host` empty). See `docs/WATCHLINK.md` |
+| `q2_autotier` | marker, not a knob: `misc.c` sets it to 1 when `hw.model` matched no per-machine overlay; `R_Init` then reads `GL_RENDERER` and enables `gl_glows`/`gl_trans_lighting`/`gl_caustics` on known-capable GPU families (Radeon, GeForce; Rage 128 gets the latter two). Unrecognised GPUs keep the conservative baseline. Never touches video-mode cvars. Issue #32 | 0 on every mapped machine |
 
 Stock cvars carrying per-machine values: `gl_picmip`, `gl_round_down`,
 `gl_texturemode`, `gl_shadows`, `gl_stencilshadow`, `gl_dynamic`,

@@ -1384,6 +1384,55 @@ R_Init(void *hinstance, void *hWnd)
 	Q_strlcpy(vendor_buffer, gl_config.vendor_string, sizeof(vendor_buffer));
 	Q_strlwr(vendor_buffer);
 
+	/*
+	 * Capability tier for UNMAPPED hardware (issue #32). q2_autotier is
+	 * set to 1 by common/misc.c only when the Apple autoexec layers ran
+	 * and hw.model matched no per-machine overlay — hardware nobody has
+	 * hand-tuned. The per-arch baselines err toward "runs at all" and
+	 * ship the cheap per-frame surface effects off, because CPU arch
+	 * alone can't promise a capable GPU. Here the GL context exists and
+	 * the renderer string is authoritative, so recognised-capable GPU
+	 * families get those effects turned on. Rules:
+	 *  - NEVER touch a video-mode cvar here (vid_fullscreen, gl_mode,
+	 *    gl_msaa_samples, ...): a post-init change to one triggers the
+	 *    refresh-DLL reload that is fatal on the Rage 128 (misc.c).
+	 *  - Only cvars read per-frame with their own draw-time capability
+	 *    gates: gl_glows (core texgen), gl_trans_lighting (multitex,
+	 *    checked at draw), gl_caustics (additive pass). A wrong family
+	 *    match degrades to a no-op or an fps cost, never a crash.
+	 *  - An UNRECOGNISED renderer string gets no nudge at all — it keeps
+	 *    the conservative baseline. That is the safe branch.
+	 * Family evidence: Radeon 9000/9200/9600 measured ~free for all
+	 * three (autoexec-quicksilver / mini-g4 / imac-g5); every Radeon is
+	 * at least R100-class with multitex + texgen. GeForce has multitex +
+	 * texgen across the family back to the GF2 MX. Rage 128 measured
+	 * free for trans_lighting + caustics on yosemite, but glows is
+	 * untested on that driver, so it stays off there. The marker is
+	 * cleared after applying so an in-session vid_restart doesn't
+	 * re-clobber a value the player changed at the console.
+	 */
+	if (ri.Cvar_Get("q2_autotier", "0", 0)->value)
+	{
+		if (strstr(renderer_buffer, "radeon") ||
+			strstr(renderer_buffer, "geforce"))
+		{
+			ri.Cvar_Set("gl_glows", "1");
+			ri.Cvar_Set("gl_trans_lighting", "1");
+			ri.Cvar_Set("gl_caustics", "1");
+			ri.Con_Printf(PRINT_ALL,
+				"...unmapped machine, capable GPU family: enabling glows, trans_lighting, caustics\n");
+		}
+		else if (strstr(renderer_buffer, "rage 128"))
+		{
+			ri.Cvar_Set("gl_trans_lighting", "1");
+			ri.Cvar_Set("gl_caustics", "1");
+			ri.Con_Printf(PRINT_ALL,
+				"...unmapped machine, Rage 128: enabling trans_lighting, caustics\n");
+		}
+
+		ri.Cvar_Set("q2_autotier", "0");
+	}
+
 	ri.Cvar_Set("scr_drawall", "0");
 	gl_config.allow_cds = true;
 

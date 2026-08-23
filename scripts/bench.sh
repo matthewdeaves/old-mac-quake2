@@ -40,6 +40,11 @@
 #                Sanity-check any A/B before believing it: run one leg with a
 #                cvar that MUST move the frame rate, and confirm it does. Not
 #                gl_picmip, which needs a vid_restart to take effect.
+#   BENCH_CSV    override the output CSV path. Default benchmarks/results.csv
+#                is git-tracked and every row is meant to be committed with
+#                the narrated decision it supports (old-mac-build-host#15: an
+#                automated caller with nobody curating a commit per row
+#                should point this at a gitignored path instead).
 #
 # CSV columns (results.csv):
 #   timestamp     UTC ISO-8601, captured at row-write time
@@ -204,8 +209,14 @@ COMMIT="${COMMIT:-$(git -C "$REPO_ROOT" rev-parse --short HEAD)}"
 COMMIT_SUBJECT=$(git -C "$REPO_ROOT" log -1 --format=%s "$COMMIT" 2>/dev/null | tr ',' ';' | head -c 80)
 TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 RAW_DIR="$REPO_ROOT/benchmarks/raw"
-CSV="$REPO_ROOT/benchmarks/results.csv"
-mkdir -p "$RAW_DIR"
+# BENCH_CSV overrides the output path. Default is the git-tracked historical
+# record, where every row is committed alongside the narrated decision it
+# supports (never a bare number, see MISTAKES.md). An automated caller (e.g.
+# a Jenkins bench job) that has no human curating a commit per row should
+# point this at a gitignored path instead, not append to results.csv
+# directly.
+CSV="${BENCH_CSV:-$REPO_ROOT/benchmarks/results.csv}"
+mkdir -p "$RAW_DIR" "$(dirname "$CSV")"
 
 # Per-machine hardware/OS metadata. Hardcoded rather than detected on
 # every run because (a) these machines are immutable retro hardware,

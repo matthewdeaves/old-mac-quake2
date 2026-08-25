@@ -1,0 +1,29 @@
+# Build artifacts and compiled objects
+*.o
+*.obj
+*.a
+*.dylib
+*.so
+*.dSYM/
+*.dmg
+*.app/
+*.pak
+*.pk3
+*.wad
+*.zip
+*.tar.*
+*.tgz
+
+# Output directories & build trees
+/build/
+/build-*/
+/dist/
+/pkg/
+/tmp/
+*.log
+
+# System & editor files
+.DS_Store
+*.swp
+*.tmp
+.prompt-*.next

@@ -92,7 +92,7 @@ SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-n
 # Every bench/test target. The two minis appear because they are deploy targets
 # as well as build hosts; the shared lock path is what keeps those two roles
 # from colliding.
-BENCH_HOSTS="${BENCH_HOSTS:-yosemite yosemite-tiger sawtooth quicksilver mini-g4 imac-g5 g5-panther g5-tiger g5-desktop quad-tiger quad-leopard mini-sl mini-intel mini-intel2}"
+BENCH_HOSTS="${BENCH_HOSTS:-yosemite yosemite-tiger sawtooth quicksilver mini-g4 imac-g5 g5-panther g5-tiger g5-desktop quad-tiger quad-leopard mini-sl mini-intel mini-intel2 imac-2019}"
 
 # Expected booted OS per alias, major.minor. An alias that is NOT in this table
 # is accepted with no OS check, so adding a machine does not require editing
@@ -114,6 +114,7 @@ expect_os() {
 		mini-sl|snow-build1)             echo 10.6 ;;
 		mini-intel|lion-build1)          echo 10.7 ;;
 		mini-intel2|lion-build2)         echo 10.7 ;;
+		imac-2019|imac|sequoia-build)    echo 15.7 ;;
 		*)                               echo "" ;;
 	esac
 }

@@ -77,12 +77,12 @@ been withdrawn, see ADR 0003**.
 amplification, and a remote buffer overflow in `Cmd_TokenizeString` found by
 fuzzing and fixed (ADR 0011). Documentation consolidated into `docs/adr/`.
 
-**v2.8.0** (2026-08-27), Universal 6-slice release:
+**v2.8.1** (2026-08-27), Universal 6-slice release:
 - Six-slice fat binary: `ppc750`, `ppc7400`, `ppc970`, `x86_64`, `i386`, `arm64`.
+- Modern macOS AppKit compatibility: enabled regular activation policy and layer-backed window surface observation for macOS 10.14+ (Mojave through macOS 15 Sequoia) without breaking 10.3/10.4 PPC builds (issue #26).
 - Bloom renderer overhaul with dedicated render targets (`qglTexImage2D`) replacing `R_LoadPic/it_pic` (issue #33).
 - GPU-family capability tier for unmapped machines with automatic feature scaling (issue #32).
 - Resolved stencil shadow configuration across G4 and sawtooth profiles (issues #7, #25, #34).
-- Modern macOS AppKit compatibility: enabled regular activation policy and layer-backed window surface observation for macOS 10.14+ (Mojave through macOS 15 Sequoia) without breaking 10.3/10.4 PPC builds (issue #26).
 - Linux dedicated server 8.70 with rate-limiting and security hardening for x86_64 and aarch64.
 
 ## Open

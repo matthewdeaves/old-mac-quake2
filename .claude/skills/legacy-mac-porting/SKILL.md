@@ -5,7 +5,7 @@ description: Use when porting, compiling, benchmarking, or debugging vintage Mac
 
 # Vintage Mac OS X Porting & Cross-Compilation Reference
 
-Use this guide when diagnosing compiler errors, endianness bugs, AltiVec crashes, or OpenGL rendering artifacts on Mac OS X 10.3–10.7.
+Use this guide when diagnosing compiler errors, endianness bugs, AltiVec crashes, or OpenGL rendering artifacts on Mac OS X 10.3-10.7.
 
 ## 1. PowerPC Architecture Classes & CPU Slices
 
@@ -16,7 +16,7 @@ Use this guide when diagnosing compiler errors, endianness bugs, AltiVec crashes
 | `ppc970` | PowerPC G5 | `imac-g5`, `g5-desktop` (Dual 2.7) | **YES** | 64-bit capable, run as 32-bit Mach-O on 10.4/10.5. |
 | `i386` | Intel 32-bit | `mini-intel`, `mini-intel2` (Lion 10.7.5) | SSE2 | Core 2 Duo / Core Duo. |
 | `x86_64` | Intel 64-bit | `mini-sl` (Snow Leopard 10.6.8) | SSE3/SSE4 | GeForce 9400M / 64-bit Intel. |
-| `arm64` | Apple Silicon | Modern macOS 11–15+ | NEON | Host workstation native slice. |
+| `arm64` | Apple Silicon | Modern macOS 11-15+ | NEON | Host workstation native slice. |
 
 ## 2. Endianness Rules (`__BIG_ENDIAN__` vs `__LITTLE_ENDIAN__`)
 

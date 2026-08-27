@@ -29,7 +29,7 @@ It is not a weaker message, it is a cheaper one.
 
 WHEN YOU RETRACT, RETRACT THE CLAIM ONLY. Do not invent reasons for the
 retraction you have not checked. The pane-reading retraction was correct and gave
-three reasons, two of which were themselves unverified — one contradicted by a
+three reasons, two of which were themselves unverified -- one contradicted by a
 command the manager had run twenty minutes earlier. A wrong reason attached to a
 right retraction is a new unverified claim, and it is harder to catch because the
 conclusion is sound.

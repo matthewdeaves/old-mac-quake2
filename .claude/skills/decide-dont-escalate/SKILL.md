@@ -1,6 +1,6 @@
 ---
 name: decide-dont-escalate
-description: Use when about to write "that is the user's call", "waiting on them", or "I'll ask" — and when a session asks you to choose between options.
+description: Use when about to write "that is the user's call", "waiting on them", or "I'll ask" -- and when a session asks you to choose between options.
 ---
 
 # Decide it, own it, say it is reversible

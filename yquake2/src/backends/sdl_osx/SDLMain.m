@@ -361,6 +361,16 @@ static void CustomApplicationMain (int argc, char **argv)
     }
 #endif /* SDL_USE_CPS */
 	
+    /* On macOS 10.9+, ensure the app is a regular foreground GUI application */
+    SEL selSetActPolicy = sel_registerName("setActivationPolicy:");
+    if ([NSApp respondsToSelector:selSetActPolicy])
+    {
+        typedef BOOL (*SetPolicyImp)(id, SEL, long);
+        SetPolicyImp imp = (SetPolicyImp)[NSApp methodForSelector:selSetActPolicy];
+        if (imp)
+            imp(NSApp, selSetActPolicy, 0); /* NSApplicationActivationPolicyRegular */
+    }
+
     /* Set up the menubar */
     [NSApp setMainMenu:[[NSMenu alloc] init]];
     setApplicationMenu();
@@ -369,6 +379,20 @@ static void CustomApplicationMain (int argc, char **argv)
     /* Create SDLMain and make it the app delegate */
     sdlMain = [[SDLMain alloc] init];
     [NSApp setDelegate:sdlMain];
+
+    /* Observe window events to ensure layer-backed OpenGL surface on macOS 10.14+ */
+    [[NSNotificationCenter defaultCenter] addObserver:sdlMain
+                                             selector:@selector(windowDidChange:)
+                                                 name:NSWindowDidBecomeKeyNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:sdlMain
+                                             selector:@selector(windowDidChange:)
+                                                 name:NSWindowDidBecomeMainNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:sdlMain
+                                             selector:@selector(windowDidChange:)
+                                                 name:NSWindowDidUpdateNotification
+                                               object:nil];
     
     /* Start the main event loop */
     [NSApp run];
@@ -459,6 +483,47 @@ static void CustomApplicationMain (int argc, char **argv)
 	
     /* We're done, thank you for playing */
     exit(status);
+}
+
+- (void)windowDidChange:(NSNotification *)note
+{
+    id obj = [note object];
+    if ([obj isKindOfClass:[NSWindow class]])
+    {
+        NSWindow *w = (NSWindow *)obj;
+        NSView *v = [w contentView];
+        if (v)
+        {
+            SEL selWantsLayer = sel_registerName("setWantsLayer:");
+            if ([v respondsToSelector:selWantsLayer])
+            {
+                typedef void (*SetBoolImp)(id, SEL, BOOL);
+                SetBoolImp imp = (SetBoolImp)[v methodForSelector:selWantsLayer];
+                if (imp)
+                    imp(v, selWantsLayer, YES);
+            }
+            SEL selBestRes = sel_registerName("setWantsBestResolutionOpenGLSurface:");
+            if ([v respondsToSelector:selBestRes])
+            {
+                typedef void (*SetBoolImp)(id, SEL, BOOL);
+                SetBoolImp imp = (SetBoolImp)[v methodForSelector:selBestRes];
+                if (imp)
+                    imp(v, selBestRes, NO);
+            }
+        }
+        if ([w respondsToSelector:@selector(setOpaque:)])
+            [w setOpaque:YES];
+        if ([w respondsToSelector:@selector(setViewsNeedDisplay:)])
+            [w setViewsNeedDisplay:YES];
+    }
+    SEL selActivate = sel_registerName("activateIgnoringOtherApps:");
+    if ([NSApp respondsToSelector:selActivate])
+    {
+        typedef void (*SetBoolImp)(id, SEL, BOOL);
+        SetBoolImp imp = (SetBoolImp)[NSApp methodForSelector:selActivate];
+        if (imp)
+            imp(NSApp, selActivate, YES);
+    }
 }
 @end
 

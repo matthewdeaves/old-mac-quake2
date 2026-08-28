@@ -65,10 +65,32 @@ if ! flock -w 600 9; then
   exit 1
 fi
 
+# imac-2019 hosts its own GCC14 PPC cross-compiler, with SDKs and a
+# compiler binary at different paths than the Lion minis: /Developer is
+# read-only there (sealed system volume, Sequoia — confirmed, not a
+# permissions fix), so the SDKs copied over live under ~/SDKs instead of
+# /Developer/SDKs, and the compiler is
+# ~/gcc14-ppc/bin/powerpc-apple-darwin8-gcc, not Apple's /usr/bin/gcc-4.0.
+# GCC14 also searches its own include-fixed directory before -isysroot,
+# which silently shadows the SDK's real headers the moment a source file
+# includes <sys/types.h> (found via quakespasm#37; g4/g5 only, since g3
+# doesn't need the extra compiler-header -isystem this works around
+# either — see the g4/g5 blocks below). -nostdinc plus an explicit
+# -isystem list routes around it. Issue #40.
+if [ "$BUILD_HOST" = "imac-2019" ]; then
+  PPC_CC="/Users/mini/gcc14-ppc/bin/powerpc-apple-darwin8-gcc"
+  PPC_SDK_BASE="/Users/mini/SDKs"
+  PPC_GCC14_INCLUDE="/Users/mini/gcc14-ppc/lib/gcc/powerpc-apple-darwin8/14.2.0/include"
+else
+  PPC_CC="/usr/bin/gcc-4.0"
+  PPC_SDK_BASE="/Developer/SDKs"
+  PPC_GCC14_INCLUDE=""
+fi
+
 case "$TARGET" in
   g3)
-    CC=/usr/bin/gcc-4.0
-    SDK=/Developer/SDKs/MacOSX10.3.9.sdk
+    CC="$PPC_CC"
+    SDK="$PPC_SDK_BASE/MacOSX10.3.9.sdk"
     VMIN=10.3
     # Everything the Makefile injects into both CFLAGS and LDFLAGS rides
     # along via $(OSX_ARCH), since OSX_ARCH is referenced (not assigned)
@@ -85,7 +107,12 @@ case "$TARGET" in
     # That would block target-specific `LDFLAGS += -lz`/`-framework SDL`
     # appends in the Makefile (command-line vars have higher precedence
     # than Makefile assignments unless `override` is used).
-    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=750 -O3 -F../MacOSX -Wl,-w"
+    # -fcommon: see the g4 block below for why (GCC10+'s -fno-common
+    # default vs. this code's legacy tentative-definition globals). g3
+    # didn't hit it in testing but costs nothing here (Apple's gcc-4.0
+    # already defaults to -fcommon) and keeps all three PPC targets
+    # consistent against whichever compiler actually builds them.
+    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=750 -O3 -fcommon -F../MacOSX -Wl,-w"
     ;;
   g4)
     # Built against the 10.3.9 SDK at min-10.3, NOT 10.4u/min-10.4 (issue #1).
@@ -94,8 +121,8 @@ case "$TARGET" in
     # no fallback to the min-10.3 ppc750 one. Building it at 10.3 is what makes
     # that machine work; AltiVec codegen is independent of the SDK, so the
     # Tiger G4s lose nothing (A/B benched, see docs/STATUS.md).
-    CC=/usr/bin/gcc-4.0
-    SDK=/Developer/SDKs/MacOSX10.3.9.sdk
+    CC="$PPC_CC"
+    SDK="$PPC_SDK_BASE/MacOSX10.3.9.sdk"
     VMIN=10.3
     # -faltivec: enables Apple's context-sensitive `vector` keyword, which
     # r_mesh.c's AltiVec lerp path needs. Required against the 10.3.9 SDK and
@@ -103,9 +130,25 @@ case "$TARGET" in
     # -mcpu=7400's cpusubtype stamping, leaving a generic `ppc (ALL)` slice
     # that the Tiger/Leopard kernel mis-grades on a G3. The post-fetch
     # assert-and-re-stamp block below is what catches that; do not remove it.
-    # -isystem <gcc-4.0 include>: r_mesh.c includes <altivec.h>, which is a
-    # COMPILER header, not an SDK one — -isysroot hides it.
-    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=7400 -faltivec -maltivec -mabi=altivec -mtune=7450 -O3 -isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include -F../MacOSX -Wl,-w"
+    # -isystem <gcc include>: r_mesh.c includes <altivec.h>, which is a
+    # COMPILER header, not an SDK one — -isysroot hides it. On imac-2019,
+    # GCC14 also needs -nostdinc + the SDK's usr/include listed explicitly,
+    # or its own include-fixed dir shadows the SDK's real sys/types.h the
+    # moment anything includes it (quakespasm#37). -nostdinc also disables
+    # the SDK's implicit Frameworks search, so add that back explicitly
+    # (needed for <OpenGL/gl.h> etc. in ref_gl.so) or it silently breaks
+    # instead. -fcommon: GCC10+ defaults to -fno-common, which turns this
+    # 25-year-old code's legacy tentative-definition globals (multiple
+    # translation units both declaring e.g. `cvar_t *vid_fullscreen`) into
+    # a hard duplicate-symbol link error instead of the old silent merge.
+    # Apple's gcc-4.0 already defaults to -fcommon, so this is a no-op
+    # there — only load-bearing on imac-2019's GCC14.
+    if [ "$BUILD_HOST" = "imac-2019" ]; then
+      GCC_ALTIVEC_INC="-nostdinc -isystem $PPC_GCC14_INCLUDE -isystem $SDK/usr/include -F$SDK/System/Library/Frameworks"
+    else
+      GCC_ALTIVEC_INC="-isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include"
+    fi
+    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=7400 -faltivec -maltivec -mabi=altivec -mtune=7450 -O3 -fcommon $GCC_ALTIVEC_INC -F../MacOSX -Wl,-w"
     ;;
   g5)
     # iMac G5 (PowerMac8,2, single 970FX @ 2.0 GHz) family. The 970 has
@@ -143,10 +186,17 @@ case "$TARGET" in
     # under Tiger. See issue #42 for the one remaining piece: the vendored
     # SDL.framework's own ppc970 slice (ADR 0004) still needs its
     # Leopard-only Carbon symbol dealt with before this actually ships.
-    CC=/usr/bin/gcc-4.0
-    SDK=/Developer/SDKs/MacOSX10.3.9.sdk
+    CC="$PPC_CC"
+    SDK="$PPC_SDK_BASE/MacOSX10.3.9.sdk"
     VMIN=10.3
-    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=970 -faltivec -maltivec -mabi=altivec -O3 -DQ2_ARCH_PPC970 -isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include -F../MacOSX -Wl,-w"
+    # Same imac-2019 GCC14 workarounds as g4 above (include-fixed shadow,
+    # -nostdinc's Frameworks-search side effect, -fno-common default).
+    if [ "$BUILD_HOST" = "imac-2019" ]; then
+      GCC_ALTIVEC_INC="-nostdinc -isystem $PPC_GCC14_INCLUDE -isystem $SDK/usr/include -F$SDK/System/Library/Frameworks"
+    else
+      GCC_ALTIVEC_INC="-isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include"
+    fi
+    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=970 -faltivec -maltivec -mabi=altivec -O3 -fcommon -DQ2_ARCH_PPC970 $GCC_ALTIVEC_INC -F../MacOSX -Wl,-w"
     ;;
   lion)
     # Native x86_64 on Lion. Use clang for modern C support. No -isysroot

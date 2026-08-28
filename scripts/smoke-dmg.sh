@@ -86,27 +86,36 @@ if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
 fi
 
 echo "[smoke $HOST] launching installed Quake2.app with PRODUCTION config (as a human would), demo=$DEMO"
-# NB: production launch — no -noarchautoexec, no vid/res override. +set timedemo
-# is an early command; +demomap is a late command (runs after the bundle config
-# + CL_Init), so the demo plays in the machine's production fullscreen mode.
+# NB: production launch — no -noarchautoexec, no vid/res override.
 # TERM-before-KILL always: SIGTERM lets SDL restore the captured display — a
 # hard KILL black-screens the R300/Leopard G5 (see memory/smoke-test-method.md).
 #
-# Launched via `open --args`, the LaunchServices path a real double-click
-# takes, not a direct exec from inside the install dir. A direct exec's cwd
-# is already the app's own directory, which is exactly what masked issue #35:
-# CLI/ssh smoke passed while a real Finder double-click span forever with no
-# window, because SDLMain.m's own chdir-to-bundle-parent only fires when
-# LaunchServices passes a "-psn_..." argument, which it stopped doing around
-# 10.9. `open --args` reproduces the real gap instead of hiding it.
+# Launched via bare `open`, the LaunchServices path a real double-click takes,
+# with NO argv at all — not even `--args`, which Panther/Tiger's `open`
+# rejects outright (measured on g5-desktop/quad-leopard: "unrecognized option
+# `--args'") and whose `-n` it doesn't even parse as a flag (measured on
+# mini-g4: "No such file: /Users/mini/-n"). A direct exec's cwd is already
+# the app's own directory, which is exactly what masked issue #35: CLI/ssh
+# smoke passed while a real Finder double-click spun forever with no window,
+# because SDLMain.m's own chdir-to-bundle-parent only fires when
+# LaunchServices passes a "-psn_..." argument, which it stopped doing
+# around 10.9.
+#
+# Since argv is off the table, the timedemo/demomap/logfile commands that
+# make the run auto-exit go into a TEMPORARY baseq2/autoexec.cfg instead —
+# FS_ExecAutoexec (filesystem.c) runs it after the bundle config layers, same
+# as a real one would. Removed unconditionally after the run: issue #28 is
+# exactly about a leftover baseq2/autoexec.cfg silently overriding every
+# later launch, and this script must not be the thing that leaves one.
 ssh "$HOST" "
   if killall -TERM quake2 2>/dev/null; then sleep 2; fi
   killall -KILL quake2 2>/dev/null || true
   sleep 1
   [ -d ~/Desktop/quake2/Quake2.app ] || { echo 'NO_INSTALL'; exit 9; }
   rm -f ~/.yq2/baseq2/qconsole.log
-  open -n ~/Desktop/quake2/Quake2.app --args -nolauncher \\
-    +set logfile 2 +set timedemo 1 +demomap $DEMO.dm2
+  printf 'set logfile 2\\nset timedemo 1\\ndemomap $DEMO.dm2\\n' > ~/Desktop/quake2/baseq2/autoexec.cfg
+  trap 'rm -f ~/Desktop/quake2/baseq2/autoexec.cfg' EXIT
+  open ~/Desktop/quake2/Quake2.app
   j=0
   while [ \$j -lt $TIMEOUT ]; do
     if [ -f ~/.yq2/baseq2/qconsole.log ] && \\

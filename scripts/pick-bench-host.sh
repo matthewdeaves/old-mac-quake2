@@ -78,6 +78,19 @@
 #    accept-new only protects an alias whose key is already recorded, so we also
 #    check the booted OS positively against EXPECT_OS below. Belt and braces,
 #    because the cost of getting this wrong is a plausible-looking CSV row.
+#
+# 3. ONE HOST NEEDS NO SSH AT ALL: `workstation`, the arm64 Apple Silicon Mac
+#    THIS SCRIPT ITSELF OFTEN RUNS ON. Every other host is a fleet Mac reached
+#    over the network; this one is local, so ssh-to-self would need a working
+#    sshd and a hostkey dance against a machine already trusted implicitly.
+#    LOCAL_ALIASES below names it, and run_remote() dispatches to a plain `sh
+#    -c` instead of ssh for a host in that set -- same lock directory, same
+#    probe script, same classify()/stale rules, just no transport. Added
+#    build-host#32: the workstation is also the fleet controller for up to
+#    a dozen resident tmux sessions across the port repos, so the claim is
+#    READ-ONLY against `ps ax` and never signals another process -- it can
+#    refuse to run because something else looks busy, but it cannot be the
+#    thing that disrupts a sibling session.
 # ---------------------------------------------------------------------------
 
 set -uo pipefail
@@ -91,8 +104,21 @@ SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-n
 
 # Every bench/test target. The two minis appear because they are deploy targets
 # as well as build hosts; the shared lock path is what keeps those two roles
-# from colliding.
-BENCH_HOSTS="${BENCH_HOSTS:-yosemite yosemite-tiger sawtooth quicksilver mini-g4 imac-g5 g5-panther g5-tiger g5-desktop quad-tiger quad-leopard mini-sl mini-intel mini-intel2 imac-2019}"
+# from colliding. `workstation` is the arm64 Apple Silicon Mac -- see note 3
+# above and LOCAL_ALIASES below: it is claimed and released the same way as
+# every other host, just without ssh.
+BENCH_HOSTS="${BENCH_HOSTS:-yosemite yosemite-tiger sawtooth quicksilver mini-g4 imac-g5 g5-panther g5-tiger g5-desktop quad-tiger quad-leopard mini-sl mini-intel mini-intel2 imac-2019 workstation}"
+
+# Hosts reached by local exec instead of ssh: this machine talking to itself.
+# Space-separated, matched as a whole word so "workstation" cannot accidentally
+# prefix-match some future "workstation2".
+LOCAL_ALIASES="${LOCAL_ALIASES:-workstation}"
+is_local_host() {
+	case " $LOCAL_ALIASES " in
+		*" $1 "*) return 0 ;;
+		*)        return 1 ;;
+	esac
+}
 
 # Expected booted OS per alias, major.minor. An alias that is NOT in this table
 # is accepted with no OS check, so adding a machine does not require editing
@@ -115,6 +141,7 @@ expect_os() {
 		mini-intel|lion-build1)          echo 10.7 ;;
 		mini-intel2|lion-build2)         echo 10.7 ;;
 		imac-2019|imac|sequoia-build)    echo 15.7 ;;
+		workstation)                     echo 26 ;;
 		*)                               echo "" ;;
 	esac
 }
@@ -155,6 +182,30 @@ CLAIM="${BENCH_LOCK_CLAIM:-}"
 
 new_claim() { echo "$$.$(date +%s).${RANDOM:-0}"; }
 
+# Run a lock-manipulating shell fragment on $1: over ssh normally, or as a
+# local `sh -c` for a host in LOCAL_ALIASES. $2 is the script; $3 (optional)
+# says what to do with stderr -- "&1" merges it into stdout (cmd_release wants
+# combined output back), a path captures it to a file (cmd_status wants the
+# REASON a probe failed), empty leaves it on the caller's stderr. Same
+# signature either way, so probe/try_acquire/cmd_release do not need to know
+# which transport they got.
+run_remote() {
+	local h="$1" script="$2" errsink="${3:-}"
+	if is_local_host "$h"; then
+		case "$errsink" in
+			"")   sh -c "$script" ;;
+			"&1") sh -c "$script" 2>&1 ;;
+			*)    sh -c "$script" 2>"$errsink" ;;
+		esac
+	else
+		case "$errsink" in
+			"")   ssh "${SSH_OPTS[@]}" "$h" "$script" ;;
+			"&1") ssh "${SSH_OPTS[@]}" "$h" "$script" 2>&1 ;;
+			*)    ssh "${SSH_OPTS[@]}" "$h" "$script" 2>"$errsink" ;;
+		esac
+	fi
+}
+
 # Probe one host. Prints: "<age> <nprocs> <os> <owner...>"  (age -1 = unlocked,
 # age -2 = locked but age unknowable). Non-zero exit means unreachable.
 #
@@ -173,7 +224,7 @@ probe() {
 	# thing issue #14 is about: without it a timeout, an auth failure and a
 	# powered-off machine are one indistinguishable word.
 	local errsink="${2:-/dev/null}"
-	ssh "${SSH_OPTS[@]}" "$1" '
+	run_remote "$1" '
 		L=/tmp/.retro-build-lock
 		if [ -d "$L" ]; then
 			now=`date +%s`
@@ -191,11 +242,11 @@ probe() {
 			age=-1; owner=""
 		fi
 		n=`ps ax -o command= 2>/dev/null \
-			| grep -E "(^|[ /])(xash3d|xash3d\.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm)|(^|[ /])(hdiutil|ditto)|(^|[ /])(g?make|waf|cc1|cc1plus|clang|collect2|ninja)" \
-			| grep -vE "grep|makewhatis" | wc -l | tr -d " "`
+			| grep -E "(^|[ /])(xash3d|xash3d\.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm)($|[ /])|(^|[ /])(hdiutil|ditto)($|[ /])|(^|[ /])(g?make|waf|cc1|cc1plus|clang|collect2|ninja)($|[ /])" \
+			| grep -vE "grep|makewhatis|pick-build-host\.sh|pick-bench-host\.sh" | wc -l | tr -d " "`
 		os=`sw_vers -productVersion 2>/dev/null || echo unknown`
 		echo "$age $n $os $owner"
-	' 2>"$errsink"
+	' "$errsink"
 }
 
 # Why did a probe fail? Reads ssh's stderr and returns ONE word.
@@ -323,7 +374,7 @@ try_acquire() {
 	# two retriers cannot both pass the age check and both proceed. Then mkdir,
 	# which is the atomic part. `created` is written FIRST so a lock is never
 	# visible without its timestamp.
-	ssh "${SSH_OPTS[@]}" "$h" "
+	run_remote "$h" "
 		L=$LOCK
 		if [ -d \"\$L\" ]; then
 			now=\`date +%s\`
@@ -375,7 +426,7 @@ cmd_release() {
 		echo "pick-bench-host: releasing $h on identity alone; this cannot tell two" >&2
 		echo "  sessions in $REPO_NAME apart. Export BENCH_LOCK_CLAIM to release strictly." >&2
 	fi
-	ssh "${SSH_OPTS[@]}" "$h" "
+	run_remote "$h" "
 		O=\"$LOCK/owner\"
 		if [ -d \"$LOCK\" ]; then
 			ok=0
@@ -398,7 +449,7 @@ cmd_release() {
 		else
 			echo 'no lock held'
 		fi
-	" 2>&1
+	" "&1"
 }
 
 # Claim $1, run the rest, release it however that ends.

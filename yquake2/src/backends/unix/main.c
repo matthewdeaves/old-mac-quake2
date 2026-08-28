@@ -38,12 +38,25 @@
 #include <SDL/SDL.h>
 #endif
 
-/* arm64 ONLY. PowerPC and Intel link a real SDL 1.2, whose SDLMain.m already
- * does this chdir, so they need none of it; and the 10.3/10.4 SDKs declare
- * _NSGetExecutablePath with an `unsigned long *` second argument rather than
- * `uint32_t *`, and have no PATH_MAX in scope here, so compiling it there just
- * breaks the PowerPC build for no gain. */
-#if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
+/* arm64 and Intel (x86_64/i386) only, never PowerPC. PowerPC's 10.3/10.4 SDKs
+ * declare _NSGetExecutablePath with an `unsigned long *` second argument
+ * rather than `uint32_t *`, and have no PATH_MAX in scope here, so compiling
+ * it there just breaks the PowerPC build for no gain. PowerPC and Intel both
+ * link a real SDL 1.2, whose SDLMain.m has its own chdir, gated on gFinderLaunch
+ * -- which SDLMain.m sets only when argv[1] starts with "-psn", the process-
+ * serial-number argument LaunchServices stopped passing somewhere around
+ * 10.9. PowerPC's Panther/Tiger LaunchServices still passes it, so that path
+ * still works there, but a modern Finder/`open` launch on Intel (measured on
+ * imac-2019, 15.7 Sequoia: `open` returns 0, the process runs, but
+ * VID_LoadRefresh's basedir "." resolves against whatever cwd LaunchServices
+ * gave the process -- not the app bundle -- so dlopen("./ref_gl.so", ...)
+ * fails, every entry in the renderer export table `re` stays NULL, and the
+ * engine spins at 100% CPU with no window ever created) never sets
+ * gFinderLaunch, so the chdir SDLMain.m thinks it did never happens. Doing it
+ * here instead, unconditionally and independent of gFinderLaunch, fixes every
+ * launch path on every OS the Intel slices actually ship on. Issue #35. */
+#if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__) || \
+                           defined(__x86_64__) || defined(__i386__))
 #include <mach-o/dyld.h>
 #include <limits.h>
 #include <libgen.h>
@@ -149,7 +162,8 @@ main(int argc, char **argv)
 	 */
 	setvbuf(stdout, NULL, _IOLBF, 0);
 
-#if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__))
+#if defined(__APPLE__) && (defined(__aarch64__) || defined(__arm64__) || \
+                           defined(__x86_64__) || defined(__i386__))
 	OSX_ChdirToBundleParent();
 #endif
 

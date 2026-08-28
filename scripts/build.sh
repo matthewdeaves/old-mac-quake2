@@ -108,11 +108,11 @@ case "$TARGET" in
     OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=7400 -faltivec -maltivec -mabi=altivec -mtune=7450 -O3 -isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include -F../MacOSX -Wl,-w"
     ;;
   g5)
-    # iMac G5 (PowerMac8,2, single 970FX @ 2.0 GHz) on Leopard 10.5.8.
-    # The 970 has AltiVec (so the __VEC__ code paths apply, same as g4) but
-    # a deep, heavily out-of-order pipeline with different AltiVec latencies
-    # than the 7450 — so it gets its own -mcpu=970 scheduling pass against
-    # the 10.5 SDK rather than reusing the g4 slice.
+    # iMac G5 (PowerMac8,2, single 970FX @ 2.0 GHz) family. The 970 has
+    # AltiVec (so the __VEC__ code paths apply, same as g4) but a deep,
+    # heavily out-of-order pipeline with different AltiVec latencies than
+    # the 7450 — so it gets its own -mcpu=970 scheduling pass rather than
+    # reusing the g4 slice.
     #
     # `-arch ppc -mcpu=970` stamps cpusubtype ppc970 (Apple gcc propagates
     # -mcpu into the Mach-O subtype, the same mechanism that gives g4 its
@@ -126,12 +126,27 @@ case "$TARGET" in
     # gives misc.c a hook to load the generic-G5 autoexec baseline
     # (autoexec-ppc970) FIRST, before the __VEC__ → ppc7400 branch.
     #
-    # 32-bit ABI (-arch ppc, not ppc64): Leopard runs the 32-bit slice fine
-    # and we have no need for 64-bit GPRs here.
+    # 32-bit ABI (-arch ppc, not ppc64): every supported OS runs the 32-bit
+    # slice fine and we have no need for 64-bit GPRs here.
+    #
+    # SDK/floor: was pinned to the 10.5 SDK / min-10.5 (ADR 0001, "not a
+    # testing gap"). Re-investigated 2026-08-29 at the user's direction
+    # (issue #42) and that pin does not hold up: built clean against the
+    # SAME 10.3.9 SDK the g3/g4 slices already use, with the identical
+    # -faltivec / -isystem <gcc-4.0 include> fix g4 needs for r_mesh.c's
+    # AltiVec `vector` keyword (see the g4 case above — -faltivec has the
+    # same cpusubtype side effect there; the assert-and-re-stamp block below
+    # already covers ppc970, proven on this exact rebuild). Verified end to
+    # end on real g5-tiger hardware (10.4.11): the engine cleared the dyld
+    # refusal that blocked every below-10.5 G5 before, ran past cfg loading
+    # into sound init — further than this port had ever gotten on a G5
+    # under Tiger. See issue #42 for the one remaining piece: the vendored
+    # SDL.framework's own ppc970 slice (ADR 0004) still needs its
+    # Leopard-only Carbon symbol dealt with before this actually ships.
     CC=/usr/bin/gcc-4.0
-    SDK=/Developer/SDKs/MacOSX10.5.sdk
-    VMIN=10.5
-    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=970 -maltivec -mabi=altivec -O3 -DQ2_ARCH_PPC970 -F../MacOSX -Wl,-w"
+    SDK=/Developer/SDKs/MacOSX10.3.9.sdk
+    VMIN=10.3
+    OSX_ARCH="-arch ppc -isysroot $SDK -mmacosx-version-min=$VMIN -mcpu=970 -faltivec -maltivec -mabi=altivec -O3 -DQ2_ARCH_PPC970 -isystem /usr/lib/gcc/powerpc-apple-darwin10/4.0.1/include -F../MacOSX -Wl,-w"
     ;;
   lion)
     # Native x86_64 on Lion. Use clang for modern C support. No -isysroot

@@ -463,18 +463,38 @@ cmd_release() {
 				# Issue #38, live twice on 2026-08-28 (an unattended timedemo
 				# on imac-2019, Quake2 and Aleph One running at once on
 				# mini-g4): a release must not leave a game running behind
-				# it. TERM first, escalate to KILL only if it survives --
-				# never a bare KILL, which is what the OS logs as an unclean
-				# exit and is the likely cause of the separate
-				# reopen-windows-dialog complaint blocking headless QA.
+				# it. TERM ONLY, no escalation. old-mac-quake3-3f caught this
+				# BEFORE it shipped, quoting their own measured hardware
+				# hazard (docs/adr/0009, scripts/CLAUDE.md there):
+				# `killall -KILL` on a rendering fullscreen engine sticks it
+				# in uninterruptible GPU-driver exit (ps state E) and hangs
+				# the WHOLE WindowServer until a physical reboot -- measured
+				# on the Rage128/GeForce2/Radeon9200/9600 driver generation
+				# this fleet's vintage PowerPC hosts actually run. This
+				# picker has no per-host safe/unsafe list and is shared
+				# across every architecture in the fleet, so there is no
+				# escalation this file can safely perform on its own -- a
+				# survivor gets a loud warning instead, matching
+				# smoke-dmg.sh's own precedent of reboot-and-verify rather
+				# than KILL for exactly this case. Recovering a wedged host
+				# needs a targeted, host-aware reboot, which is out of scope
+				# for a release call and belongs in a bench script that
+				# already knows which hosts are safe to force.
 				pids=\$(ps ax -o pid,command= 2>/dev/null | grep -E \"$GAME_PROC_REGEX\" | grep -vE 'grep|makewhatis' | awk '{print \$1}')
 				if [ -n \"\$pids\" ]; then
 					echo \"pick-bench-host: quitting lingering game process(es) on release: \$pids\" >&2
 					kill -TERM \$pids 2>/dev/null
 					sleep 3
+					survivors=\"\"
 					for pid in \$pids; do
-						kill -0 \"\$pid\" 2>/dev/null && kill -KILL \"\$pid\" 2>/dev/null
+						kill -0 \"\$pid\" 2>/dev/null && survivors=\"\$survivors \$pid\"
 					done
+					if [ -n \"\$survivors\" ]; then
+						echo \"pick-bench-host: WARNING: process(es)\$survivors ignored TERM and were left running.\" >&2
+						echo \"  NOT sending KILL: on this fleet's vintage GPU hardware that can wedge the\" >&2
+						echo \"  whole WindowServer until a physical reboot. Investigate and quit by hand,\" >&2
+						echo \"  or use a host-aware reboot recovery if the host is known safe to force.\" >&2
+					fi
 				fi
 			else
 				echo 'not ours; leaving it' >&2; exit 1

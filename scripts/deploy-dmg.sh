@@ -65,6 +65,7 @@ LCL_MD5=$(md5sum "$DMG" | cut -d' ' -f1)
 RMT_MD5=$(ssh "$HOST" "md5 'Desktop/$DMG_BASE' | awk '{print \$NF}'")
 [ "$LCL_MD5" = "$RMT_MD5" ] || { echo "[deploy-dmg $HOST] FATAL: scp corrupted the DMG ($LCL_MD5 != $RMT_MD5)" >&2; exit 1; }
 echo "[deploy-dmg $HOST] DMG on Desktop verified intact ($RMT_MD5)"
+scp -q "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:Desktop/clear-launch-quarantine.sh"
 
 echo "[deploy-dmg $HOST] mount + install into ~/Desktop/quake2/ (preserving game data)"
 ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
@@ -139,6 +140,14 @@ copy_verified "$MNT/baseq2/game.so"  "$DEST/baseq2/game.so"  || exit 7
 [ -f "$MNT/q2ded" ] && { copy_verified "$MNT/q2ded" "$DEST/q2ded" || exit 7; }
 echo "  [verify] installed binaries match the image byte-for-byte ✅"
 
+# Strip com.apple.quarantine and re-register with LaunchServices. `ditto`
+# above PRESERVES quarantine from whatever carried it on the DMG (a real
+# human's browser-downloaded release DMG does), and a readme telling a
+# person to run `xattr -dr` by hand is not a fix — issue #35/#34. Local step
+# on the target, not piped over ssh (see the script's own header).
+[ -x "$HOME/Desktop/clear-launch-quarantine.sh" ] && \
+  sh "$HOME/Desktop/clear-launch-quarantine.sh" "$DEST/Quake2.app"
+
 # detach — retry until the slow-disk flush completes; only THEN rmdir the now-
 # empty mountpoint (rmdir can't touch mounted contents, so it's safe).
 detached=no
@@ -163,6 +172,7 @@ echo "installed:"
 ls -la "$DEST" | awk '{print "  "$NF}' | grep -vE '^\s+\.$|^\s+\.\.$' | grep -v '^  $' || true
 echo "app binary archs:"
 file "$DEST/Quake2.app/Contents/MacOS/quake2" 2>/dev/null | sed 's/.*: //' || true
+rm -f "$HOME/Desktop/clear-launch-quarantine.sh"
 REMOTE_EOF
 
 echo "[deploy-dmg $HOST] done — installed from $DMG_BASE"

@@ -413,3 +413,13 @@ ssh "$DMG_HOST" "rm -rf '$REMOTE'" 2>/dev/null || true
 
 echo "[make-dmg] OK — $OUT (contents verified byte-identical to source)"
 ls -lh "$OUT"
+
+# Only ever one latest release in dist/ (user decision, 2026-08-28, answering
+# old-mac-quake3#22: "for now its fine so long as all repos only ever have 1
+# latest release"). Prune every other Quake2-OldMac-*.dmg now that this one is
+# built and verified — never before, so a failed build never deletes the last
+# known-good candidate.
+for old in "$REPO_ROOT"/dist/Quake2-OldMac-*.dmg; do
+  [ -e "$old" ] || continue
+  [ "$old" = "$OUT" ] || { rm -f "$old" && echo "[make-dmg] pruned old candidate $(basename "$old")"; }
+done

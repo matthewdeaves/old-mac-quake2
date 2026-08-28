@@ -99,6 +99,23 @@ LOCK=/tmp/.retro-build-lock
 STALE_SECS="${BENCH_LOCK_STALE_SECS:-5400}"
 WAIT_SECS="${BENCH_LOCK_WAIT:-0}"
 
+# Every engine name this fleet ships, by every name it runs under. Shared
+# between probe()'s busy-detection and cmd_release's lingering-game check
+# (issue #38) so the two cannot drift apart -- a name missing here both
+# undercounts "busy" AND lets that game survive a release unquit.
+#
+# Aleph One is the recurring case, twice in one day: first seen as
+# `alephone-ppc-test` (a dev binary), then as `Classic Marathon` -- a
+# per-game CFBundleExecutable name that its own packaging script sets, not a
+# fixed binary name (alephone-fd, 2026-08-28). "Marathon" alone still matches
+# it via the same word-boundary rule ($|[ /]) that already matches every
+# other name here, since "Classic Marathon" ends in that word. A fixed list
+# is fundamentally not future-proof against a name nobody has hit yet --
+# noted here rather than solved: matching on the `.app` bundle path or a
+# marker file would generalise better and is a fair follow-up if another
+# name turns up, but is not built today.
+GAME_PROC_REGEX='(^|[ /])(xash3d|xash3d\.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm|alephone|alephone-ppc-test|AlephOne|Marathon)($|[ /])'
+
 # accept-new, never `no`. See note 2 above.
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new)
 
@@ -242,7 +259,7 @@ probe() {
 			age=-1; owner=""
 		fi
 		n=`ps ax -o command= 2>/dev/null \
-			| grep -E "(^|[ /])(xash3d|xash3d\.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm)($|[ /])|(^|[ /])(hdiutil|ditto)($|[ /])|(^|[ /])(g?make|waf|cc1|cc1plus|clang|collect2|ninja)($|[ /])" \
+			| grep -E "'"$GAME_PROC_REGEX"'|(^|[ /])(hdiutil|ditto)($|[ /])|(^|[ /])(g?make|waf|cc1|cc1plus|clang|collect2|ninja)($|[ /])" \
 			| grep -vE "grep|makewhatis|pick-build-host\.sh|pick-bench-host\.sh" | wc -l | tr -d " "`
 		os=`sw_vers -productVersion 2>/dev/null || echo unknown`
 		echo "$age $n $os $owner"
@@ -443,6 +460,22 @@ cmd_release() {
 			[ \"${FORCE:-0}\" = 1 ] && ok=1
 			if [ \$ok -eq 1 ]; then
 				rm -rf \"$LOCK\"; echo released
+				# Issue #38, live twice on 2026-08-28 (an unattended timedemo
+				# on imac-2019, Quake2 and Aleph One running at once on
+				# mini-g4): a release must not leave a game running behind
+				# it. TERM first, escalate to KILL only if it survives --
+				# never a bare KILL, which is what the OS logs as an unclean
+				# exit and is the likely cause of the separate
+				# reopen-windows-dialog complaint blocking headless QA.
+				pids=\$(ps ax -o pid,command= 2>/dev/null | grep -E \"$GAME_PROC_REGEX\" | grep -vE 'grep|makewhatis' | awk '{print \$1}')
+				if [ -n \"\$pids\" ]; then
+					echo \"pick-bench-host: quitting lingering game process(es) on release: \$pids\" >&2
+					kill -TERM \$pids 2>/dev/null
+					sleep 3
+					for pid in \$pids; do
+						kill -0 \"\$pid\" 2>/dev/null && kill -KILL \"\$pid\" 2>/dev/null
+					done
+				fi
 			else
 				echo 'not ours; leaving it' >&2; exit 1
 			fi

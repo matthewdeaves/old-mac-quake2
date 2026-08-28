@@ -116,11 +116,17 @@ clear_one() {
 	# so far) but is reported, not swallowed.
 	if [ -x "$LSREGISTER" ]; then
 		if [ "${p##*.}" = "app" ]; then
-			apps="$p"
+			printf '%s\n' "$p"
 		else
-			apps=$(find "$p" -maxdepth 4 -iname "*.app" -print 2>/dev/null || true)
-		fi
-		for a in $apps; do
+			find "$p" -maxdepth 4 -iname "*.app" -print 2>/dev/null
+		fi | while IFS= read -r a; do
+			# NOT `for a in $apps`: this fleet ships bundle names with spaces
+			# ("Marathon 2.app", "Marathon Infinity.app" -- alephone#<TBD>,
+			# measured live 2026-08-28). Word-splitting broke one path into
+			# two nonsense ones and lsregister silently scanned neither. A
+			# `find | while read` loop treats each line as one path
+			# regardless of spaces inside it, same idiom the -r fallback walk
+			# above already uses for the same reason.
 			[ -n "$a" ] || continue
 			"$LSREGISTER" -f "$a" 2>&1 | grep -v '^$' >&2 || true
 			echo "clear-launch-quarantine: re-registered $a"

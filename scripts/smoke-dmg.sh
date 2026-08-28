@@ -91,27 +91,34 @@ echo "[smoke $HOST] launching installed Quake2.app with PRODUCTION config (as a 
 # + CL_Init), so the demo plays in the machine's production fullscreen mode.
 # TERM-before-KILL always: SIGTERM lets SDL restore the captured display — a
 # hard KILL black-screens the R300/Leopard G5 (see memory/smoke-test-method.md).
+#
+# Launched via `open --args`, the LaunchServices path a real double-click
+# takes, not a direct exec from inside the install dir. A direct exec's cwd
+# is already the app's own directory, which is exactly what masked issue #35:
+# CLI/ssh smoke passed while a real Finder double-click span forever with no
+# window, because SDLMain.m's own chdir-to-bundle-parent only fires when
+# LaunchServices passes a "-psn_..." argument, which it stopped doing around
+# 10.9. `open --args` reproduces the real gap instead of hiding it.
 ssh "$HOST" "
   if killall -TERM quake2 2>/dev/null; then sleep 2; fi
   killall -KILL quake2 2>/dev/null || true
   sleep 1
-  cd ~/Desktop/quake2 || { echo 'NO_INSTALL'; exit 9; }
+  [ -d ~/Desktop/quake2/Quake2.app ] || { echo 'NO_INSTALL'; exit 9; }
   rm -f ~/.yq2/baseq2/qconsole.log
-  ./Quake2.app/Contents/MacOS/quake2 -nolauncher \\
-    +set logfile 2 +set timedemo 1 +demomap $DEMO.dm2 > /dev/null 2>&1 &
-  PID=\$!
+  open -n ~/Desktop/quake2/Quake2.app --args -nolauncher \\
+    +set logfile 2 +set timedemo 1 +demomap $DEMO.dm2
   j=0
   while [ \$j -lt $TIMEOUT ]; do
     if [ -f ~/.yq2/baseq2/qconsole.log ] && \\
        grep -q 'frames.*seconds.*fps' ~/.yq2/baseq2/qconsole.log 2>/dev/null; then break; fi
-    # bail early if the process died without producing an fps line (a crash)
-    if ! kill -0 \$PID 2>/dev/null; then break; fi
+    # bail early if the process died without producing an fps line (a crash).
+    # ps+grep, not pgrep: pgrep is absent on Panther/Tiger.
+    if ! ps ax 2>/dev/null | grep -v grep | grep -q '[Qq]uake2'; then break; fi
     sleep 1; j=\$((j+1))
   done
   killall -TERM quake2 2>/dev/null
   sleep 2
   killall -KILL quake2 2>/dev/null || true
-  wait \$PID 2>/dev/null
   sleep $COOLDOWN
   true"
 

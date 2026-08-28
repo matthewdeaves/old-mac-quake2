@@ -36,3 +36,10 @@ commit.
   rsyncing the extracted contents across, triggered only on hdiutil's specific
   exit path (every other host's install is byte-for-byte unchanged). Commit
   `892d34e2`. Refs #37.
+
+- **`smoke-dmg.sh` deleted `qconsole.log` before every launch as a "clean
+  slate"**, so a run that crashed before the engine wrote or flushed its own
+  log left nothing to pull back: the `scp` at the end fails with "no
+  qconsole.log", and there's no prior transcript to compare against either.
+  Cross-port finding from halflife's identical bug (ADR 0018). Fix: rotate to
+  `qconsole.prev.log` instead of deleting. Refs #38.

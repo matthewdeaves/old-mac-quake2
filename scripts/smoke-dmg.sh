@@ -137,7 +137,10 @@ ssh "$HOST" "
   killall -KILL quake2 2>/dev/null || true
   sleep 1
   [ -d ~/Desktop/quake2/Quake2.app ] || { echo 'NO_INSTALL'; exit 9; }
-  rm -f ~/.yq2/baseq2/qconsole.log
+  # Rotate, don't delete: a crash before this run writes/flushes its own log
+  # still leaves the previous run's transcript for comparison instead of
+  # nothing at all. Cross-port lesson from halflife's smoke-dmg.sh, issue #38.
+  mv -f ~/.yq2/baseq2/qconsole.log ~/.yq2/baseq2/qconsole.prev.log 2>/dev/null || true
   $LAUNCH_CMD
   j=0
   while [ \$j -lt $TIMEOUT ]; do

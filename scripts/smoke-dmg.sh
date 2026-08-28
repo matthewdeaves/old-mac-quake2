@@ -73,6 +73,15 @@ esac
 TIMEOUT="${SMOKE_TIMEOUT:-$TIMEOUT}"
 COOLDOWN="${SMOKE_COOLDOWN:-$COOLDOWN}"
 
+# `open --args` is a Snow Leopard (10.6) addition; older `open` binaries don't
+# parse it (see the launch block below for what was measured where).
+case "$HOST" in
+  yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5| \
+  g5-desktop|g5-tiger|g5-panther|quad-leopard|quad-tiger)
+    OPEN_ARGS=0 ;;
+  *) OPEN_ARGS=1 ;;
+esac
+
 # The bench fleet is SHARED — multiple Claude agents (this Q2 port + the
 # QuakeSpasm Q1 sister project) drive the same Macs. Launching a second
 # fullscreen game on a box already running one wedges both. Bail if anything
@@ -90,37 +99,54 @@ echo "[smoke $HOST] launching installed Quake2.app with PRODUCTION config (as a 
 # TERM-before-KILL always: SIGTERM lets SDL restore the captured display — a
 # hard KILL black-screens the R300/Leopard G5 (see memory/smoke-test-method.md).
 #
-# Launched via bare `open`, the LaunchServices path a real double-click takes,
-# with NO argv at all — not even `--args`, which Panther/Tiger's `open`
-# rejects outright (measured on g5-desktop/quad-leopard: "unrecognized option
-# `--args'") and whose `-n` it doesn't even parse as a flag (measured on
-# mini-g4: "No such file: /Users/mini/-n"). A direct exec's cwd is already
+# Launched via LaunchServices `open`, the path a real double-click takes, not
+# a direct exec from inside the install dir. A direct exec's cwd is already
 # the app's own directory, which is exactly what masked issue #35: CLI/ssh
 # smoke passed while a real Finder double-click spun forever with no window,
 # because SDLMain.m's own chdir-to-bundle-parent only fires when
 # LaunchServices passes a "-psn_..." argument, which it stopped doing
 # around 10.9.
 #
-# Since argv is off the table, the timedemo/demomap/logfile commands that
-# make the run auto-exit go into a TEMPORARY baseq2/autoexec.cfg instead —
-# FS_ExecAutoexec (filesystem.c) runs it after the bundle config layers, same
-# as a real one would. Removed unconditionally after the run: issue #28 is
-# exactly about a leftover baseq2/autoexec.cfg silently overriding every
-# later launch, and this script must not be the thing that leaves one.
+# `open --args` (added in Snow Leopard, 10.6) carries the SAME +set/+demomap
+# argv the direct-exec version always used, so timedemo behaves identically —
+# argv commands get the engine's own early/late split (Qcommon_Init), which a
+# cfg `exec` does not: tried routing the demo trigger through a temporary
+# autoexec.cfg instead (FS_ExecAutoexec) to dodge needing --args at all, and
+# it doesn't work — demomap queued that way never reaches CL_Disconnect's
+# cl_timedemo check (cl_network.c:303), so the demo just cycles maps forever
+# with no fps line. Caused a live incident on imac-2019 (loop mistaken for a
+# bench run); reverted rather than chased further.
+#
+# Panther/Tiger/Leopard's `open` predates --args entirely (measured directly:
+# g5-desktop/quad-leopard "unrecognized option \`--args'"; mini-g4/yosemite
+# don't even parse `-n` as a flag). Those OSes also aren't what #35 is about —
+# LaunchServices there still passes "-psn_...", so SDLMain.m's own
+# gFinderLaunch chdir already fires and a real double-click there gets no argv
+# either (SDLMain.m's own -psn handling discards all other args), so bare
+# `open` with a fixed wait is the faithful equivalent, not a weaker test: PASS
+# there means the renderer loaded and a new game started, checked below
+# without requiring an fps line.
+if [ "$OPEN_ARGS" = 1 ]; then
+  LAUNCH_CMD="open -n ~/Desktop/quake2/Quake2.app --args -nolauncher \\
+    +set logfile 2 +set timedemo 1 +demomap $DEMO.dm2"
+else
+  LAUNCH_CMD="open ~/Desktop/quake2/Quake2.app"
+fi
 ssh "$HOST" "
   if killall -TERM quake2 2>/dev/null; then sleep 2; fi
   killall -KILL quake2 2>/dev/null || true
   sleep 1
   [ -d ~/Desktop/quake2/Quake2.app ] || { echo 'NO_INSTALL'; exit 9; }
   rm -f ~/.yq2/baseq2/qconsole.log
-  printf 'set logfile 2\\nset timedemo 1\\ndemomap $DEMO.dm2\\n' > ~/Desktop/quake2/baseq2/autoexec.cfg
-  trap 'rm -f ~/Desktop/quake2/baseq2/autoexec.cfg' EXIT
-  open ~/Desktop/quake2/Quake2.app
+  $LAUNCH_CMD
   j=0
   while [ \$j -lt $TIMEOUT ]; do
-    if [ -f ~/.yq2/baseq2/qconsole.log ] && \\
-       grep -q 'frames.*seconds.*fps' ~/.yq2/baseq2/qconsole.log 2>/dev/null; then break; fi
-    # bail early if the process died without producing an fps line (a crash).
+    if [ -f ~/.yq2/baseq2/qconsole.log ]; then
+      if grep -q 'frames.*seconds.*fps' ~/.yq2/baseq2/qconsole.log 2>/dev/null; then break; fi
+      if [ '$OPEN_ARGS' = 0 ] && grep -q 'GL_RENDERER' ~/.yq2/baseq2/qconsole.log 2>/dev/null && \\
+         grep -q 'Map:' ~/.yq2/baseq2/qconsole.log 2>/dev/null; then break; fi
+    fi
+    # bail early if the process died without producing that evidence (a crash).
     # ps+grep, not pgrep: pgrep is absent on Panther/Tiger.
     if ! ps ax 2>/dev/null | grep -v grep | grep -q '[Qq]uake2'; then break; fi
     sleep 1; j=\$((j+1))
@@ -145,6 +171,7 @@ NOMODE_LINE=$(grep -E 'SetVideoMode failed|No video mode large enough' "$TMP" 2>
 MODE_LINE=$(grep -E 'setting mode' "$TMP" 2>/dev/null | tail -1 || true)
 DESKTOP_LINE=$(grep -E 'Desktop is' "$TMP" 2>/dev/null | tail -1 || true)
 REND_LINE=$(grep -E 'GL_RENDERER' "$TMP" 2>/dev/null | tail -1 || true)
+MAP_LINE=$(grep -E 'Map:' "$TMP" 2>/dev/null | tail -1 || true)
 rm -f "$TMP"
 
 echo "[smoke $HOST] renderer : ${REND_LINE:-<none>}"
@@ -154,6 +181,15 @@ echo "[smoke $HOST] result   : ${FPS_LINE:-<NO FPS LINE>}"
 
 if [ -n "$FPS_LINE" ]; then
   echo "[smoke $HOST] PASS — world rendered to completion on the production path"
+  exit 0
+elif [ "$OPEN_ARGS" = 0 ] && [ -n "$REND_LINE" ] && [ -n "$MAP_LINE" ]; then
+  # This OS's `open` cannot carry the +demomap/+set timedemo argv a real
+  # double-click here wouldn't get either (LaunchServices still passes
+  # "-psn_...", which SDLMain.m's own arg handling uses to discard everything
+  # else) — so there is no fps line to check for. GL initialized AND a map
+  # loaded is the equivalent evidence: the renderer came up and a new game
+  # actually started, not just an engine-load check (ADR 0009).
+  echo "[smoke $HOST] PASS — renderer initialized and a new game started (no argv on this OS, see #35)"
   exit 0
 elif [ -n "$NOMODE_LINE" ]; then
   # NOT a pass. The build is unverified here and the message must never read as

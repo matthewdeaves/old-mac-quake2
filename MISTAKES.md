@@ -17,6 +17,23 @@ dyld install-name quirks.
 
 ## Build: packaging and deploy
 
+**2026-08-28, considered adopting build-host's `create-dmg`-based drag-to-Applications
+DMG layout (`lay-out-dmg.sh`), rejected without shipping.** That primitive needs
+Homebrew and a live Finder, so it has to run on a modern host — but this repo's
+`make-dmg.sh` runs `hdiutil create` on a Tiger G4 (`quicksilver`/`mini-g4`)
+specifically because Lion's `hdiutil` writes a UDIF container the 2003-vintage
+Panther G3 can't mount, and no flag fixes it (ADR 0005, measured). `create-dmg`
+calling its own `hdiutil` on a modern host (Homebrew requires it; PPC Tiger was
+never a Homebrew target) reintroduces exactly that break, worse: the workstation
+available to run it is macOS 26 Tahoe, 14 years newer than the Lion case already
+proven incompatible, with no mechanism by which a newer container format regains
+old-OS readability. Not live-retested against Panther itself (`yosemite` was
+mid-OS-switch and unreachable this session) — this is inferred from the standing
+ADR 0005 finding, not a fresh measurement, but the direction only gets worse with
+a newer host, never better. Splitting into a second, modern-only DMG just for
+the nicer layout was considered and rejected as unrequested complexity for one
+fat cross-arch release. Issue #39.
+
 **2026-08-22, a staleness gate that caught the bug it was written for, and
 refused every good build.** `build-fat.sh` fused an arm64 slice built three
 hours before the source the other five came from, printed "fusing SIX" and

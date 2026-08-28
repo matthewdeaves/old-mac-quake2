@@ -518,19 +518,31 @@ cmd_release() {
 				# this fleet's actual Macs are never sandboxed, but the glob
 				# form works identically either way, so there is no reason to
 				# carry the fragile one.
-				cruft=\"\"
-				for f in \"\$HOME\"/Desktop/*.dmg \"\$HOME\"/Desktop/*.DMG \"\$HOME\"/Desktop/*.app; do
-					[ -e \"\$f\" ] && cruft=\"\$cruft
+				# Run under an explicit /bin/sh, not whatever the login shell is.
+				# BUG FOUND 2026-08-28: imac-2019's login shell is zsh (the
+				# modern macOS default), and zsh's default NOMATCH option
+				# throws \"no matches found\" to stderr for a glob that matches
+				# nothing, instead of leaving it literal like sh/bash do -- the
+				# behavior the [ -e ] guards below assume. Every other host in
+				# this fleet defaults to bash or sh as the login shell, which
+				# is why this only surfaced today, on the one host that matters
+				# most. /bin/sh has existed on every OS this fleet runs since
+				# Panther; nothing here needs a login shell's own config.
+				cruft=\"\$(/bin/sh -c '
+					cruft=\"\"
+					for f in \"\$HOME\"/Desktop/*.dmg \"\$HOME\"/Desktop/*.DMG \"\$HOME\"/Desktop/*.app; do
+						[ -e \"\$f\" ] && cruft=\"\$cruft
 \$f\"
-				done
-				for f in /tmp/*; do
-					case \"\$(basename \"\$f\")\" in
-						objc_sharing_*) continue ;; # OS-managed ObjC runtime segment,
-					esac                          # not deploy cruft
-					[ -f \"\$f\" ] && cruft=\"\$cruft
+					done
+					for f in /tmp/*; do
+						case \"\$(basename \"\$f\")\" in
+							objc_sharing_*) continue ;;
+						esac
+						[ -f \"\$f\" ] && cruft=\"\$cruft
 \$f\"
-				done
-				cruft=\"\$(printf '%s' \"\$cruft\" | sed '/^\$/d')\"
+					done
+					printf %s \"\$cruft\"
+				' 2>/dev/null | sed \"/^\$/d\")\"
 				if [ -n \"\$cruft\" ]; then
 					echo \"pick-bench-host: cruft left on \$(hostname -s 2>/dev/null || echo host) at release:\" >&2
 					echo \"\$cruft\" | while IFS= read -r f; do

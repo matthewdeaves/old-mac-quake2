@@ -121,8 +121,9 @@ clear_one() {
 			find "$p" -maxdepth 4 -iname "*.app" -print 2>/dev/null
 		fi | while IFS= read -r a; do
 			# NOT `for a in $apps`: this fleet ships bundle names with spaces
-			# ("Marathon 2.app", "Marathon Infinity.app" -- alephone#<TBD>,
-			# measured live 2026-08-28). Word-splitting broke one path into
+			# ("Marathon 2.app", "Marathon Infinity.app" -- flagged to the repo
+			# that ships them as alephone#10, measured live 2026-08-28). Word-
+			# splitting broke one path into
 			# two nonsense ones and lsregister silently scanned neither. A
 			# `find | while read` loop treats each line as one path
 			# regardless of spaces inside it, same idiom the -r fallback walk

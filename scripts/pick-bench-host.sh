@@ -524,6 +524,9 @@ cmd_release() {
 \$f\"
 				done
 				for f in /tmp/*; do
+					case \"\$(basename \"\$f\")\" in
+						objc_sharing_*) continue ;; # OS-managed ObjC runtime segment,
+					esac                          # not deploy cruft
 					[ -f \"\$f\" ] && cruft=\"\$cruft
 \$f\"
 				done

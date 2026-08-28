@@ -43,3 +43,29 @@ commit.
   qconsole.log", and there's no prior transcript to compare against either.
   Cross-port finding from halflife's identical bug (ADR 0018). Fix: rotate to
   `qconsole.prev.log` instead of deleting. Refs #38.
+
+- **The build-host lock was released on process identity alone, so a sibling
+  session's build could drop another session's live claim** on the same
+  Intel mini. Fix: claim with a nonce (`build-fat.sh`/`build.sh`/
+  `pick-build-host.sh`), so a release only succeeds against the claim that
+  made it. Commit `12997f86`. Refs #23.
+
+- **`deploy-dmg.sh` never cleared a stale `baseq2/autoexec.cfg` on install,
+  unlike `deploy.sh`**, so a machine that had ever had a debug/bench cfg
+  autoexec'd kept re-applying it after every fresh DMG install — a "launches
+  but wrong" report with no code change to explain it. Fix: clear it in the
+  remote install step, matching `deploy.sh`'s existing behaviour. Commit
+  `45ca55f0`. Refs #28 (folded into #35's launch-reliability sweep).
+
+- **Bloom rendered into `R_LoadPic`/`it_pic`, the 2D-UI pic-cache render
+  target**, the wrong texture path for a full-screen post-process effect —
+  correct on some paths by accident, wrong render target in general. Fix:
+  dedicated `qglTexImage2D` render targets for bloom instead of borrowing the
+  UI pic cache. Commit `d85a6281`. Refs #33. (Bloom itself stays off on weak
+  GPUs — GMA950 measured -43% — that's a perf/tier decision, not this bug.)
+
+- **mini-sl "cannot create an OpenGL pixel format" (#29) was the same root
+  cause as #35's chdir bug, not a separate GL/driver fault**: the engine spun
+  at 100% CPU with a NULL renderer table before ever reaching pixel-format
+  creation, which read like a GL failure from the console log alone. Confirmed
+  fixed by the same `c1cefca1` chdir fix — no GL-specific change needed.

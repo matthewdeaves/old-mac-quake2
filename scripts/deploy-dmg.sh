@@ -67,8 +67,47 @@ RMT_MD5=$(ssh "$HOST" "md5 'Desktop/$DMG_BASE' | awk '{print \$NF}'")
 echo "[deploy-dmg $HOST] DMG on Desktop verified intact ($RMT_MD5)"
 scp -q "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:Desktop/clear-launch-quarantine.sh"
 
+# Fallback for a target whose own hdiutil can't attach ANY disk image
+# (old-mac-build-host#41, quad-tiger: exhaustively diagnosed there as a
+# userland DiskImages/DiskArbitration fault, survives reboot and a cold
+# power-cycle, not fixable from this script). Mount the DMG HERE instead
+# and rsync the extracted contents across, skipping hdiutil on the target
+# entirely. Mechanism proven by build-host end-to-end on the same machine
+# with quakespasm's DMG before this port wired it in.
+install_via_local_mount_fallback() {
+  echo "[deploy-dmg $HOST] remote hdiutil attach failed; falling back to local-mount + rsync (old-mac-build-host#41)" >&2
+  LMNT="$(mktemp -d "${TMPDIR:-/tmp}/q2install-mnt.XXXXXX")"
+  trap 'hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true; rmdir "$LMNT" 2>/dev/null || true' EXIT
+  hdiutil attach -nobrowse -readonly -mountpoint "$LMNT" "$DMG" >/dev/null
+
+  DEST_REL="Desktop/quake2"
+  ssh "$HOST" "mkdir -p $DEST_REL/baseq2 && rm -f $DEST_REL/baseq2/autoexec.cfg"
+
+  echo "[deploy-dmg $HOST] rsync Quake2.app (local mount -> target, hdiutil bypass)"
+  rsync -a --delete -e ssh "$LMNT/Quake2.app/" "$HOST:$DEST_REL/Quake2.app/"
+  scp -pq "$LMNT/ref_gl.so" "$HOST:$DEST_REL/ref_gl.so"
+  scp -pq "$LMNT/baseq2/game.so" "$HOST:$DEST_REL/baseq2/game.so"
+  [ -f "$LMNT/q2ded" ] && scp -pq "$LMNT/q2ded" "$HOST:$DEST_REL/q2ded"
+
+  # Same byte-for-byte standard as the remote path (MISTAKES.md — a corrupt
+  # renderer that loaded but misrendered is worse than one that failed loud).
+  for f in "Quake2.app/Contents/MacOS/quake2" "ref_gl.so" "baseq2/game.so"; do
+    l=$(md5 "$LMNT/$f" 2>/dev/null | awk '{print $NF}')
+    r=$(ssh "$HOST" "md5 '$DEST_REL/$f' | awk '{print \$NF}'")
+    [ "$l" = "$r" ] || { echo "[deploy-dmg $HOST] FATAL: $f corrupt after rsync fallback ($l != $r)" >&2; exit 7; }
+  done
+  echo "[deploy-dmg $HOST] [verify] installed binaries match the image byte-for-byte (local-mount fallback) ✅"
+
+  ssh "$HOST" "sh Desktop/clear-launch-quarantine.sh '$DEST_REL/Quake2.app'"
+  ssh "$HOST" "file '$DEST_REL/Quake2.app/Contents/MacOS/quake2' 2>/dev/null | sed 's/.*: //'; rm -f Desktop/clear-launch-quarantine.sh"
+
+  hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true
+  rmdir "$LMNT" 2>/dev/null || true
+  trap - EXIT
+}
+
 echo "[deploy-dmg $HOST] mount + install into ~/Desktop/quake2/ (preserving game data)"
-ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
+if ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
 set -e
 DMG_BASE="$1"
 MNT="$HOME/q2install-mnt"
@@ -79,7 +118,16 @@ DEST="$HOME/Desktop/quake2"
 hdiutil detach "$MNT" >/dev/null 2>&1 || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
 rmdir "$MNT" 2>/dev/null || true
 mkdir -p "$MNT"
-hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$HOME/Desktop/$DMG_BASE" >/dev/null
+# Exit 42 on attach failure specifically (not whatever hdiutil's own status
+# happens to be) so the caller can tell "this host's hdiutil is broken, try
+# the local-mount fallback" apart from a real install failure below.
+# old-mac-build-host#41: quad-tiger's DiskImages/DiskArbitration stack fails
+# to attach ANY disk image — reboot, cold power-cycle, framework-version fix
+# all ruled out there, this is not a bug in this script.
+if ! hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$HOME/Desktop/$DMG_BASE" >/dev/null 2>&1; then
+  echo "  hdiutil attach failed on $(hostname -s 2>/dev/null || echo this host)" >&2
+  exit 42
+fi
 
 mkdir -p "$DEST/baseq2"
 
@@ -174,5 +222,16 @@ echo "app binary archs:"
 file "$DEST/Quake2.app/Contents/MacOS/quake2" 2>/dev/null | sed 's/.*: //' || true
 rm -f "$HOME/Desktop/clear-launch-quarantine.sh"
 REMOTE_EOF
+then
+  :
+else
+  status=$?
+  if [ "$status" = 42 ]; then
+    install_via_local_mount_fallback
+  else
+    echo "[deploy-dmg $HOST] FATAL: remote install failed (exit $status)" >&2
+    exit "$status"
+  fi
+fi
 
 echo "[deploy-dmg $HOST] done — installed from $DMG_BASE"

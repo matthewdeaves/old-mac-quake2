@@ -75,3 +75,25 @@ the ICNS without re-running background removal.
   `R_FreeUnusedImages` protect block**, the same way `r_notexture` and
   `r_particletexture` are, or it is freed at the next map load and the feature
   path then binds a deleted texnum (see `MISTAKES.md`, 2026-05-29).
+
+## Amendment, 2026-08-28: the arm64 workstation may hold game assets for QA
+
+This decision has always been about the **shipped artifact** — the DMG and the
+Linux tarball carry no id Software content, full stop. It was never a rule
+about what a developer or QA machine may hold locally; "the user brings their
+own paks" already assumes retail content exists somewhere outside the repo.
+
+`old-mac-build-host#32` promoted the arm64 workstation (the orchestration Mac
+these agents run on) from a build-only host to a full bench-lock target,
+claimable for real launch QA the same way any fleet Mac is
+(`pick-bench-host.sh --run workstation ...`). User directive 2026-08-28: all
+machines used for QA need the same game data, workstation included. That is
+recorded here explicitly so nobody has to re-derive it: **the workstation may
+hold retail `pak0-2.pak` and `baseq2/players/` locally for launch/bench QA**,
+same basis as every vintage fleet machine, and this does not touch what
+`make-dmg.sh` / `build-server-linux.sh` package for release.
+
+Not done as part of this amendment, tracked separately (`old-mac-quake2#36`):
+whether `deploy.sh` / `scripts/bundle/` asset-provisioning tooling can target
+`workstation` (local exec, no ssh) and `imac-2019` the same way it targets the
+ssh fleet — the scripts may assume an ssh transport throughout.

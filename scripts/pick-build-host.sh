@@ -103,20 +103,40 @@ probe() {
 	' 2>/dev/null
 }
 
-# free | stale (reclaimable) | busy | unknown | wrong-os, given age+procs+os.
+# Expected booted OS per host, major.minor. Any host NOT listed here defaults to
+# 10.7 - the interchangeable Lion pool's own OS, unchanged from before this
+# function existed. That default is what already refuses mini-sl (10.6) by name
+# (see classify() below); listing a host here only exists to give it a DIFFERENT
+# expectation, same shape as pick-bench-host.sh's own expect_os(). build-host#48:
+# imac-2019 is a real, verified cross-build host but is not a Lion box - it runs
+# modern macOS and cross-compiles instead of building natively, so it needs its
+# own entry, not folding into (or silently failing) the 10.7 default.
+expect_os() {
+	case "$1" in
+		imac-2019|imac|sequoia-build) echo 15.7 ;;
+		*)                            echo 10.7 ;;
+	esac
+}
+
+# free | stale (reclaimable) | busy | unknown | wrong-os, given host+age+procs+os.
 # Guard the numeric tests: a truncated/garbled probe (flaky ssh) must not blow up
 # with "unary operator expected" NOR be silently read as free - treat it as
 # unknown, and callers refuse to build on anything that is not free/stale.
 #
 # wrong-os exists because of mini-sl, the 10.6 box added 2026-08-04. This picker
-# treats its candidates as INTERCHANGEABLE, and a 10.6 host cannot build the
-# Lion-targeted slices at all - no libc++, and a C++98-only compiler. The docs
-# have always said "never add it to BUILD_HOSTS", but nothing enforced that, and
-# an unenforced invariant is one typo away from a confusing mid-build failure or,
-# worse, a silently wrong binary. Now it is refused by name.
+# treats its DEFAULT-pool candidates as INTERCHANGEABLE, and a 10.6 host cannot
+# build the Lion-targeted slices at all - no libc++, and a C++98-only compiler.
+# The docs have always said "never add it to BUILD_HOSTS", but nothing enforced
+# that, and an unenforced invariant is one typo away from a confusing mid-build
+# failure or, worse, a silently wrong binary. Now it is refused by name, via
+# expect_os() above rather than a hardcoded literal, so a genuinely different
+# kind of host (imac-2019) can be checked against its OWN expected OS instead of
+# being refused by the Lion-only assumption or, worse, having the check silently
+# skipped for it.
 classify() {
-	local age="$1" procs="$2" os="${3:-}"
-	case "$os" in 10.7*|'') : ;; *) echo wrong-os; return ;; esac
+	local host="$1" age="$2" procs="$3" os="${4:-}" want
+	want="$(expect_os "$host")"
+	case "$os" in "$want"|"$want".*|'') : ;; *) echo wrong-os; return ;; esac
 	case "$age"   in ''|*[!0-9-]*) echo unknown; return ;; esac
 	case "$procs" in ''|*[!0-9]*)  echo unknown; return ;; esac
 	if [ "$age" -lt 0 ]; then
@@ -143,7 +163,7 @@ cmd_status() {
 		procs="$(echo "$out" | awk '{print $2}')"
 		os="$(echo "$out" | awk '{print $3}')"
 		owner="$(echo "$out" | cut -d' ' -f4-)"
-		state="$(classify "$age" "$procs" "$os")"
+		state="$(classify "$h" "$age" "$procs" "$os")"
 		case "$age" in ''|*[!0-9-]*) age=- ;; *) [ "$age" -lt 0 ] && age=- ;; esac
 		printf '%-14s %-12s %-8s %-8s %-6s %s\n' "$h" "$state" "${os:--}" "$age" "$procs" "${owner:--}"
 	done
@@ -157,7 +177,7 @@ try_acquire() {
 	age="$(echo "$out" | awk '{print $1}')"
 	procs="$(echo "$out" | awk '{print $2}')"
 	os="$(echo "$out" | awk '{print $3}')"
-	state="$(classify "$age" "$procs" "$os")"
+	state="$(classify "$h" "$age" "$procs" "$os")"
 	usable "$state" || return 1
 	# Only stamp claim= when there is a real nonce; an empty one would read as
 	# "this lock has a nonce" at release and defeat the old-format fallback.
@@ -275,7 +295,7 @@ case "${1:---pick}" in
 			os="$(echo "$out" | awk '{print $3}')"
 			# os included: classify with it absent treats every OS as fine, so
 			# bare --pick was the one path that could hand out a wrong-OS host.
-			usable "$(classify "$age" "$procs" "$os")" || continue
+			usable "$(classify "$h" "$age" "$procs" "$os")" || continue
 			echo "$h"; exit 0
 		done
 		echo "pick-build-host: no free Intel build host in '$BUILD_HOSTS'" >&2

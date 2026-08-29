@@ -36,16 +36,29 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "$0")/source-stamp-excludes.sh"
 cd "$REPO_ROOT"
 
-# Pin ONE Intel build host for the whole fat build and claim it up front, so all
-# four sub-builds and the final lipo use the same mini and no sister project
-# (QuakeSpasm/Q3/Half-Life) takes the box between slices. An explicit BUILD_HOST
-# from the caller always wins.
+# Track every host WE personally claimed so ONE trap releases them all,
+# however this script exits. `trap ... EXIT` overwrites rather than appends,
+# so this stays the only EXIT trap in the file -- the optional imac-2019
+# lion-leg claim below appends here instead of installing a second trap.
+# Absolute path: the trap must still resolve if anything ever cd's away.
+CLAIMED_HOSTS=""
+release_claimed_hosts() {
+  local h
+  for h in $CLAIMED_HOSTS; do
+    "$REPO_ROOT/scripts/pick-build-host.sh" --release "$h" >/dev/null 2>&1
+  done
+  true
+}
+trap release_claimed_hosts EXIT
+
+# Pin ONE Intel build host for the g3/g4/g5/i386 legs and the final lipo, so
+# no sister project (QuakeSpasm/Q3/Half-Life) takes the box mid-run. An
+# explicit BUILD_HOST from the caller always wins.
 if [ -z "${BUILD_HOST:-}" ]; then
   # Strict release. Without a nonce the picker can only match user@host:repo,
   # which every session in this repo shares, so a sibling session's --release
   # would silently drop this build's lock -- the case build-host#7 was filed
-  # for. Exported, not local, because the EXIT trap below runs --release in a
-  # SEPARATE process and has to present the same claim this acquire made.
+  # for.
   export BENCH_LOCK_CLAIM="${BENCH_LOCK_CLAIM:-$$.$(date +%s).${RANDOM:-0}}"
   BUILD_HOST="$(BUILD_LOCK_WAIT="${BUILD_LOCK_WAIT:-900}" \
     "$REPO_ROOT/scripts/pick-build-host.sh" --acquire "quake2 build-fat")" || {
@@ -53,12 +66,30 @@ if [ -z "${BUILD_HOST:-}" ]; then
     exit 1
   }
   export BUILD_HOST
-  # Absolute path: the trap must still resolve if anything ever cd's away.
-  trap '"$REPO_ROOT/scripts/pick-build-host.sh" --release "$BUILD_HOST" >/dev/null 2>&1; true' EXIT
-  echo "[build-fat] claimed build host: $BUILD_HOST (held for all five mini-built slices + lipo)"
+  CLAIMED_HOSTS="$CLAIMED_HOSTS $BUILD_HOST"
+  echo "[build-fat] claimed build host: $BUILD_HOST (held for g3/g4/g5/i386 + lipo)"
 else
   export BUILD_HOST
   echo "[build-fat] using caller-supplied build host: $BUILD_HOST"
+fi
+
+# --- optional: build the x86_64 (lion) leg on imac-2019 instead -----------
+# imac-2019 (6-core native clang) is faster than the Lion minis for this one
+# leg, and build.sh's `lion` case is already host-agnostic clang -- unlike
+# g3/g4/g5, it needs none of imac-2019's GCC14/SDK path workarounds (see
+# build.sh's PPC_CC block). Best-effort and non-fatal: imac-2019 is a shared,
+# heavily-used box, so a busy/unreachable imac-2019 falls back to the primary
+# BUILD_HOST silently rather than fail a fat build over a speed optimization.
+# Opt out with QUAKE2_NO_IMAC2019_LION=1. Issue #41.
+LION_HOST="$BUILD_HOST"
+if [ "$BUILD_HOST" != "imac-2019" ] && [ -z "${QUAKE2_NO_IMAC2019_LION:-}" ]; then
+  if IMAC_CLAIM="$("$REPO_ROOT/scripts/pick-build-host.sh" --acquire-host imac-2019 "quake2 build-fat lion leg" 2>/dev/null)"; then
+    LION_HOST="$IMAC_CLAIM"
+    CLAIMED_HOSTS="$CLAIMED_HOSTS $LION_HOST"
+    echo "[build-fat] lion leg: claimed imac-2019 separately"
+  else
+    echo "[build-fat] lion leg: imac-2019 busy/unreachable, building on $BUILD_HOST instead"
+  fi
 fi
 
 # Sequential, not parallel — build.sh's flock already serialises, but
@@ -71,8 +102,8 @@ echo "[build-fat] sub-build 2/5: g4"
 scripts/build.sh g4
 echo "[build-fat] sub-build 3/5: g5"
 scripts/build.sh g5
-echo "[build-fat] sub-build 4/5: lion"
-scripts/build.sh lion
+echo "[build-fat] sub-build 4/5: lion (on $LION_HOST)"
+BUILD_HOST="$LION_HOST" scripts/build.sh lion
 echo "[build-fat] sub-build 5/5: i386"
 scripts/build.sh i386
 

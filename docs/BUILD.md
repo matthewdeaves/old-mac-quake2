@@ -10,7 +10,7 @@ slices and cpusubtype stamping **ADR 0001**, the engine pin **ADR 0002**, SDL
 ```sh
 scripts/pick-build-host.sh --status              # which mini is free
 scripts/build.sh <g3|g4|g5|lion>                 # one slice, claims a host, flocks
-scripts/build-fat.sh                             # g3→g4→g5→lion + lipo, one pinned host
+scripts/build-fat.sh                             # g3→g4→g5→lion + lipo; pinned host, lion best-effort on imac-2019
 scripts/deploy.sh <machine>                      # ships build/q2-fat over ssh
 scripts/make-dmg.sh                              # → dist/Quake2-OldMac-<ver>.dmg, on a Tiger box
 scripts/deploy-dmg.sh <machine>                  # install from the mounted image, as a human does
@@ -20,6 +20,12 @@ scripts/bench.sh <machine> <demo> <WxH> [runs]   # see docs/BENCH.md
 
 `BUILD_HOST=<alias>` pins a mini. `DMG_HOST=<alias>` pins the packaging box
 (must be Tiger).
+
+`build-fat.sh`'s g3/g4/g5/i386 legs and the final lipo stay on the one pinned
+`BUILD_HOST`. The x86_64 (`lion`) leg is a separate, best-effort claim on
+`imac-2019` (native clang, faster than the Lion minis) — falls back to
+`BUILD_HOST` silently if imac-2019 is busy or unreachable. Opt out with
+`QUAKE2_NO_IMAC2019_LION=1`. Issue #41.
 
 **Never run two PPC builds on the same mini at once** (ADR 0005). Two builds on
 different minis are fine.

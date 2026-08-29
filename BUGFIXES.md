@@ -4,6 +4,22 @@ Running log of real bugs found and fixed in this repo. Not a changelog of every
 commit — see `git log` for that. One entry per bug: symptom, root cause, fix
 commit.
 
+## 2026-08-29
+
+- **`deploy.sh` had no `TARGET` case for the five G5-tower aliases
+  (`g5-panther`/`g5-tiger`/`g5-desktop`/`quad-tiger`/`quad-leopard`), so
+  game data was never provisioned on any of them.** Symptom: double-click
+  launch on g5-panther "opens then quits, no errors." Root cause was not
+  the engine or the #42 floor fix — `~/Desktop/quake2/baseq2/` had only
+  `game.so`, no paks, because `deploy-dmg.sh` only preserves existing game
+  data and `deploy.sh` (the script that actually fetches it) didn't know
+  these aliases existed; they were added to the bench fleet later
+  (build-host#30) and never wired into game-data provisioning. Fixed:
+  added the five TARGET cases. Verified end to end on g5-panther, true
+  Panther 10.3.9 — real GL render, full demo playback, then a real
+  fullscreen bench point (153.8 fps @ 1680x1050, desktop-capture,
+  R300-safe). #43
+
 ## 2026-08-28
 
 - **Double-click launch silently spun at 100% CPU on Intel (imac-2019,

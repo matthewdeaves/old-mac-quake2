@@ -32,7 +32,7 @@
 
 set -euo pipefail
 
-TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019>}"
+TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019|g5-panther|g5-tiger|g5-desktop|quad-tiger|quad-leopard>}"
 
 # Claim this machine for the whole run. See scripts/pick-bench-host.sh.
 #
@@ -121,6 +121,42 @@ case "$TARGET" in
     HOST=imac-2019
     RSYNC_EXTRA=""
     GAME_DATA_DIR='Games/Quake 2/baseq2'
+    ;;
+  g5-panther)
+    # G5 Dual 2.7 (PowerMac7,3), Panther partition. Never had a target
+    # here — issue found 2026-08-29: deploy-dmg.sh only PRESERVES existing
+    # game data, so a partition that never had this script run against it
+    # stays paks-empty forever and the app opens then silently quits on
+    # missing pics/colormap.pcx. Panther's rsync 2.5.x needs the same
+    # --protocol=29 shim as yosemite.
+    HOST=g5-panther
+    RSYNC_EXTRA="--protocol=29"
+    GAME_DATA_DIR='Desktop/Quake 2/baseq2'
+    ;;
+  g5-tiger)
+    # Same PowerMac7,3 as g5-panther/g5-desktop, Tiger partition. One IP,
+    # one OS at a time. Tiger's rsync speaks protocol 29 natively.
+    HOST=g5-tiger
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Desktop/Quake 2/baseq2'
+    ;;
+  g5-desktop)
+    # Same PowerMac7,3, Leopard partition.
+    HOST=g5-desktop
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Desktop/Quake 2/baseq2'
+    ;;
+  quad-tiger)
+    # G5 Quad, Tiger partition.
+    HOST=quad-tiger
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Desktop/Quake 2/baseq2'
+    ;;
+  quad-leopard)
+    # Same G5 Quad, Leopard partition.
+    HOST=quad-leopard
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Desktop/Quake 2/baseq2'
     ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac

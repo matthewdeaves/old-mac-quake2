@@ -31,7 +31,14 @@
 # usage:
 #   scripts/pick-bench-host.sh --status [HOST ...]   # table (default: whole fleet)
 #   scripts/pick-bench-host.sh --acquire HOST LABEL  # claim it, or fail
-#   scripts/pick-bench-host.sh --run HOST LABEL -- CMD ...   # claim, run, release
+#   scripts/pick-bench-host.sh --run HOST LABEL -- CMD ...
+#       # claim HOST's lock, run CMD LOCALLY (on the caller's own machine,
+#       # NOT on HOST -- there is no remote exec here), release. If CMD needs
+#       # to actually touch HOST, it must ssh there itself, e.g.:
+#       #   --run HOST LABEL -- ssh HOST 'remote command'
+#       # Issue #49, measured live: a caller that assumes CMD runs ON HOST
+#       # gets a command that "succeeds" having proven nothing about HOST --
+#       # it silently ran on the workstation instead, with no error.
 #   scripts/pick-bench-host.sh --release HOST        # drop our claim
 #   scripts/pick-bench-host.sh --release-all         # drop our claims everywhere
 #
@@ -560,7 +567,16 @@ cmd_release() {
 	" "&1"
 }
 
-# Claim $1, run the rest, release it however that ends.
+# Claim $1, run the rest LOCALLY (on whatever machine is running this
+# script -- NOT on $1, there is no remote exec here), release it however
+# that ends.
+#
+# Issue #49, measured live by quake3 2026-08-29: a caller assuming CMD
+# executes ON the claimed host gets a command that "succeeds" while proving
+# nothing about that host -- it silently ran on the caller's own machine
+# instead, no error, no warning. If CMD needs to touch the claimed host, it
+# must `ssh "$1" '...'` itself; --run only provides the claim/release
+# around whatever CMD actually does.
 #
 # WHY THIS EXISTS rather than an --acquire plus a trap in every caller: seven of
 # the fleet scripts already install their own `trap ... EXIT`, and bash traps
@@ -573,7 +589,7 @@ cmd_run() {
 	local h="$1" label="$2" rc
 	shift 2
 	[ "${1:-}" = "--" ] && shift
-	[ "$#" -gt 0 ] || { echo "usage: --run HOST LABEL -- CMD [ARGS...]" >&2; return 2; }
+	[ "$#" -gt 0 ] || { echo "usage: --run HOST LABEL -- CMD [ARGS...]  (CMD runs LOCALLY, under the claim -- ssh HOST yourself if CMD needs to touch HOST)" >&2; return 2; }
 	# BENCH_NO_LOCK=1 runs the command WITHOUT claiming, for debugging the picker
 	# itself. Honoured here so there is ONE implementation of the bypass that says
 	# out loud it happened, instead of N silent per-repo copies. Issue #11.

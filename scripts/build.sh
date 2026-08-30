@@ -77,8 +77,17 @@ fi
 # doesn't need the extra compiler-header -isystem this works around
 # either — see the g4/g5 blocks below). -nostdinc plus an explicit
 # -isystem list routes around it. Issue #40.
+# PPC_CC is a wrapper, not the raw compiler: ~/gcc14-ppc has no Objective-C
+# frontend, and SDLMain.m — the client's one .m file — needs the SEPARATE
+# ~/gcc14-ppc-objc toolchain instead. scripts/ppc-cc-wrapper-imac2019.sh
+# routes just that one file there and everything else through the plain
+# compiler unchanged; it rides over on the same rsync as the rest of the
+# tree below, so no extra deploy step. See that script for the recipe.
 if [ "$BUILD_HOST" = "imac-2019" ]; then
-  PPC_CC="/Users/mini/gcc14-ppc/bin/powerpc-apple-darwin8-gcc"
+  # Hardcoded "quake2", not $REMOTE_PATH -- that's assigned further down,
+  # after the case below, and its own assertion already pins it to this
+  # literal value.
+  PPC_CC="/Users/mini/quake2/scripts/ppc-cc-wrapper-imac2019.sh"
   PPC_SDK_BASE="/Users/mini/SDKs"
   PPC_GCC14_INCLUDE="/Users/mini/gcc14-ppc/lib/gcc/powerpc-apple-darwin8/14.2.0/include"
 else

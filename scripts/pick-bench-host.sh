@@ -373,15 +373,32 @@ cmd_status() {
 }
 
 # Try to claim $1. Returns 0 on success.
+#
+# ACQUIRE_LAST_REASON (global, set here) is cmd_acquire's own -- not cmd_run's
+# or anything else's -- diagnostic side-channel for its final failure message.
+# A shell function can only return an integer, and "not available" alone was
+# indistinguishable between "genuinely busy" and "ssh can't even resolve this
+# alias", which is exactly why the SAME probe() failure is a specific word
+# (refused/off/timeout/auth/dns/crypto/hostkey, via why_probe_failed) in
+# cmd_status but was a blank stderr in cmd_acquire. Found live 2026-08-30
+# (old-mac-quake2 session): --status workstation read fine while --acquire on
+# the same target failed with no clue why -- probe()'s stderr was going
+# straight to /dev/null here, the one call site in this file that did that.
 try_acquire() {
-	local h="$1" label="$2" out age procs os state want tag
+	local h="$1" label="$2" out age procs os state want tag errf
 	# Only stamp claim= when there is a real nonce. An empty claim= would read as
 	# "this lock has a nonce" to cmd_release and defeat the old-format fallback.
 	tag=""
 	[ -n "$CLAIM" ] && tag=" claim=$CLAIM"
 	want="$(expect_os "$h")"
-	out="$(probe "$h")" || return 1
-	[ -z "$out" ] && return 1
+	errf="$(mktemp "${TMPDIR:-/tmp}/pick-bench-acquire.XXXXXX")" || errf=/dev/null
+	out="$(probe "$h" "$errf")"
+	if [ $? -ne 0 ] || [ -z "$out" ]; then
+		ACQUIRE_LAST_REASON="$(why_probe_failed "$errf")"
+		[ "$errf" = /dev/null ] || rm -f "$errf"
+		return 1
+	fi
+	[ "$errf" = /dev/null ] || rm -f "$errf"
 	age="$(echo "$out" | awk '{print $1}')"
 	procs="$(echo "$out" | awk '{print $2}')"
 	os="$(echo "$out" | awk '{print $3}')"
@@ -393,7 +410,10 @@ try_acquire() {
 		echo "  (BENCH_SKIP_OS_CHECK=1 overrides, and will mislabel your results.)" >&2
 		return 2
 	fi
-	usable "$state" || return 1
+	if ! usable "$state"; then
+		ACQUIRE_LAST_REASON="$state"
+		return 1
+	fi
 	# Reclaim a stale lock via mv, so only one claimant's reclaim can succeed and
 	# two retriers cannot both pass the age check and both proceed. Then mkdir,
 	# which is the atomic part. `created` is written FIRST so a lock is never
@@ -427,6 +447,7 @@ cmd_acquire() {
 	[ "${BENCH_NO_LOCK:-0}" = 1 ] && \
 		echo "pick-bench-host: BENCH_NO_LOCK is set but --acquire always claims; use --run to bypass." >&2
 	local deadline=$(( $(date +%s) + WAIT_SECS )) rc
+	ACQUIRE_LAST_REASON=""
 	while :; do
 		try_acquire "$h" "$label"; rc=$?
 		[ $rc -eq 0 ] && { echo "$h"; return 0; }
@@ -435,7 +456,7 @@ cmd_acquire() {
 		[ "$(date +%s)" -ge "$deadline" ] && break
 		sleep 10
 	done
-	echo "pick-bench-host: $h is not available" >&2
+	echo "pick-bench-host: $h is not available (${ACQUIRE_LAST_REASON:-unknown})" >&2
 	echo "  (see: scripts/pick-bench-host.sh --status $h)" >&2
 	return 1
 }

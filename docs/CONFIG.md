@@ -25,7 +25,7 @@ Files: `scripts/bundle/autoexec-*.cfg`,
 | `gl_trans_lighting` | lightmapped glass/grates, latched at map load | on multitex, off G3 + sawtooth |
 | `gl_caustics` | water-surface caustic overlay. **Water only**: skips lava and slime, see below | on multitex, off G3 + sawtooth |
 | `gl_zfix` | polygon-offset coplanar surfaces | on (all) |
-| `gl_farsee` | extended far clip, `CVAR_LATCH` | on x86 only |
+| `gl_farsee` | extended far clip, `CVAR_LATCH` | on ppc7400/ppc970/x86_64/arm64, off ppc750/i386 (#24) |
 | `gl_bloom` (+ `_alpha` `_darken` `_size`) | fixed-function light bloom | **0 everywhere, WIP, broken on the GL1 path, see MISTAKES.md** |
 | `vid_desktopfullscreen` | native-res same-mode fullscreen capture | on iMac-class (`ppc970` baseline + `imac-g5`); off elsewhere. **The only R300/Leopard-safe fullscreen, ADR 0008** |
 | `watch_host` `watch_port` `watch_rate` `watch_events` | UDP player-state feed | off (`watch_host` empty). See `docs/WATCHLINK.md` |

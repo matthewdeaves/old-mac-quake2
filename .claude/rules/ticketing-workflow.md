@@ -1,6 +1,6 @@
 ## Working alongside the other repos
 
-This repo is one of seven worked on together: four game ports, the private
+This repo is one of seven worked on together: four game ports,
 `retro-server-infra` which runs the servers, the private `old-mac-build-host`
 which owns the machines, and `retro-agents` which runs the sessions. One board
 covers all seven: <https://github.com/users/matthewdeaves/projects/8>.
@@ -81,8 +81,11 @@ finding really does recur across ports (the PowerPC SDL2 `--disable-joystick`
 issue was filed in three repos on the same day), so `cross-port` is worth using,
 but file the sibling issues rather than assuming the fix transfers.
 
-**This repo is PUBLIC. `retro-server-infra` is PRIVATE.** It describes the
-topology, firewall rules and admin surface of a live host. Never copy addresses,
-key material, tunnel tokens or `.env` content out of it into this repo, in code,
-docs or a commit message. Referring to a server release tag is fine; describing
+**This repo is PUBLIC. `retro-server-infra` is public too, as of 2026-08-31
+(confirmed intentional, not an accidental toggle — was private since
+2026-07-28 over an upstream dispute).** It describes the topology, firewall
+rules and admin surface of a live host, so the caution stands regardless of
+its own visibility: never copy addresses, key material, tunnel tokens or
+`.env` content out of it into this repo, in code, docs or a commit message.
+Referring to a server release tag is fine; describing
 where it runs is not.

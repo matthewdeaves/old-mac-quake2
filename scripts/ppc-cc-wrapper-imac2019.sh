@@ -38,13 +38,30 @@ case " $* " in
     # since ObjC compilation wasn't part of that C-only finding.
     # -nostdinc also drops the SDK's implicit framework search, so
     # -iframework has to come back explicitly or <Cocoa/Cocoa.h> fails.
+    # -O0 override at the end, not the flags this script forwards from
+    # build.sh's own OSX_ARCH ("$@" carries a -O3 for every PPC target) --
+    # gcc takes the LAST -O flag on the command line, so this wins.
+    #
+    # Load-bearing, not a style choice: GCC14 has a real register-
+    # allocation bug at -mcpu=970 -O2/-O3 in exactly this file. It reuses
+    # r27 as a zeroed literal (`li r27,0`) at the SAME point the working
+    # (-mcpu=7400) build still needs r27 holding a live selector-table
+    # base address across the setActivationPolicy: respondsToSelector:
+    # branch, producing `lwz rX,1000(r27)` -- a null-plus-offset
+    # dereference. SIGBUS in main(), before any output, on real g5
+    # hardware. Confirmed by diffing -S assembly for -mcpu=7400 vs
+    # -mcpu=970 side by side, same source, same everything else; still
+    # present at -O2, gone at -O0 (which doesn't do the kind of
+    # cross-branch register-lifetime optimization that causes it -- not
+    # just "didn't happen to trigger this time"). This file runs once at
+    # process startup, so -O0 here costs nothing measurable. Issue #40.
     exec "$OBJC_CC" -fnext-runtime -nostdinc \
       -isystem "$OBJC_GCCBASE/include" \
       -isystem "$OBJC_GCCBASE/../../../../powerpc-apple-darwin8/include" \
       -isystem "$SDK/usr/include" \
       -iframework "$SDK/System/Library/Frameworks" \
       -include "$PTRDIFF_HDR" \
-      "$@"
+      "$@" -O0
     ;;
   *)
     exec "$REGULAR_CC" "$@"

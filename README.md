@@ -173,7 +173,9 @@ Tiger, Leopard, Lion and modern macOS.
 Building and running the Linux server yourself: [`server/README.md`](server/README.md).
 
 The servers this project actually runs (hosting, deployment, monitoring) are
-managed in a separate, private repo, `retro-server-infra`, not in this one.
+managed in a separate repo,
+[**retro-server-infra**](https://github.com/matthewdeaves/retro-server-infra),
+not in this one.
 
 ## Sister projects
 

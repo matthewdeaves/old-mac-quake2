@@ -168,6 +168,13 @@ Tiger, Leopard, Lion and modern macOS.
    config and opens fullscreen. On modern macOS, clear Gatekeeper with
    `xattr -dr com.apple.quarantine Quake2.app` (not needed on Panther/Tiger/Lion).
 
+## Dedicated server
+
+Building and running the Linux server yourself: [`server/README.md`](server/README.md).
+
+The servers this project actually runs (hosting, deployment, monitoring) are
+managed in a separate, private repo, `retro-server-infra`, not in this one.
+
 ## Sister projects
 
 Same machines, same tooling, other id engines:

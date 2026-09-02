@@ -76,11 +76,16 @@
 #    Measured 2026-08-22, quad booted into Leopard:
 #      ssh quad-tiger                        -> HOST IDENTIFICATION HAS CHANGED
 #      ssh -o StrictHostKeyChecking=no quad-tiger -> connects, reports 10.5.8
-#    pick-build-host.sh sets StrictHostKeyChecking=no. Copying that here would
-#    make `--acquire quad-tiger` succeed against a Leopard-booted quad and hand
-#    back a host that labels every benchmark row "tiger" while running Leopard.
-#    We use accept-new instead: a first-time key is accepted so a new machine
-#    still onboards without a prompt, a CHANGED key is refused.
+#    pick-build-host.sh set StrictHostKeyChecking=no at the time (fixed to
+#    accept-new, old-mac-build-host#60, 2026-09-02 -- it had never actually
+#    been exercised against a multi-boot alias, since BUILD_HOSTS is
+#    Intel-only, but the same convention applies to both pickers and the
+#    drift test only ever checked this file). Copying the old behaviour here
+#    would make `--acquire quad-tiger` succeed against a Leopard-booted quad
+#    and hand back a host that labels every benchmark row "tiger" while
+#    running Leopard. We use accept-new instead: a first-time key is accepted
+#    so a new machine still onboards without a prompt, a CHANGED key is
+#    refused.
 #
 #    accept-new only protects an alias whose key is already recorded, so we also
 #    check the booted OS positively against EXPECT_OS below. Belt and braces,

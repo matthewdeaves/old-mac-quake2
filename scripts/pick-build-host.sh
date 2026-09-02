@@ -50,7 +50,7 @@ LOCK=/tmp/.retro-build-lock
 BUILD_HOSTS="${BUILD_HOSTS:-mini-intel mini-intel2}"
 STALE_SECS="${BUILD_LOCK_STALE_SECS:-10800}"
 WAIT_SECS="${BUILD_LOCK_WAIT:-0}"
-SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=no)
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=accept-new)
 
 REPO_NAME="$(basename "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)")"
 ME="${USER:-unknown}@$(hostname -s 2>/dev/null || echo host):${REPO_NAME}"

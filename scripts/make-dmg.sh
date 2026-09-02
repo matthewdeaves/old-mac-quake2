@@ -205,9 +205,9 @@ cp "$BUILD_DIR/q2ded"          "$IMG/" 2>/dev/null || true
 # says "copy EVERYTHING"), so it locates Quake2.app relative to ITSELF.
 cp "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$IMG/"
 chmod +x "$IMG/clear-launch-quarantine.sh"
-cat > "$IMG/Fix and Launch.command" <<'LAUNCHER'
+cat > "$IMG/Fix and Install.command" <<'LAUNCHER'
 #!/bin/sh
-# Fix and Launch.command -- double-click convenience for a manual (browser-
+# Fix and Install.command -- double-click convenience for a manual (browser-
 # downloaded, drag-and-drop) install. Clears the download quarantine flag and
 # re-registers the bundle, same as deploy-dmg.sh does over SSH, then launches.
 set -eu
@@ -222,7 +222,7 @@ open ./Quake2.app
 echo "Done. This window can be closed."
 sleep 2
 LAUNCHER
-chmod +x "$IMG/Fix and Launch.command"
+chmod +x "$IMG/Fix and Install.command"
 
 # ---- user-facing README inside the image ---------------------------------
 cat > "$IMG/README.txt" <<EOF
@@ -277,7 +277,7 @@ INSTALL
        ~/Desktop/quake2/baseq2/video/                (cinematics — optional)
    Retail Quake II is on Steam and GOG. The players/ folder is inside your
    retail baseq2/ directory alongside the pak files.
-4. Double-click "Fix and Launch.command" the first time (clears the download
+4. Double-click "Fix and Install.command" the first time (clears the download
    quarantine flag so Gatekeeper doesn't block the game, then launches it —
    opens a Terminal window, one click, no typing). After that, Quake2.app
    itself double-clicks normally.
@@ -286,7 +286,7 @@ The final layout:
    ~/Desktop/quake2/Quake2.app
    ~/Desktop/quake2/ref_gl.so
    ~/Desktop/quake2/q2ded
-   ~/Desktop/quake2/Fix and Launch.command
+   ~/Desktop/quake2/Fix and Install.command
    ~/Desktop/quake2/clear-launch-quarantine.sh
    ~/Desktop/quake2/baseq2/game.so
    ~/Desktop/quake2/baseq2/pak0.pak (+ pak1, pak2, players/, video/)
@@ -303,7 +303,7 @@ access to it. /Applications is outside those locations, so the prompts stop.
 
 The bundle is ad-hoc signed, which gives it a stable identity for the same
 reason. Downloaded copies still carry the quarantine flag, so the first
-launch needs "Fix and Launch.command" (see INSTALL step 4) — it clears the
+launch needs "Fix and Install.command" (see INSTALL step 4) — it clears the
 flag and launches in one double-click. (Not needed on Panther / Tiger / Lion.)
 
 Do not upgrade by copying the new files over an old install with cp. macOS

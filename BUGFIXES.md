@@ -20,9 +20,34 @@ commit.
   machine on Wi-Fi hits this. Refs #44.
 - **Manual (Safari-downloaded, drag-and-drop) installs never ran the
   quarantine-clearing step, unlike the `deploy-dmg.sh` SSH path.**
-  `scripts/make-dmg.sh` now ships a `Fix and Launch.command` in the DMG
+  `scripts/make-dmg.sh` now ships a `Fix and Install.command` in the DMG
   that runs the existing `clear-launch-quarantine.sh` before first
   launch. Refs #44.
+- **`build-fat.sh`'s lion leg shipped a v2.11.0 release candidate that
+  segfaulted instantly on real Lion hardware.** Root cause: the leg's
+  imac-2019 fast path (issue #41) used imac-2019's Sequoia clang/ld64,
+  which emits `LC_MAIN`; real 2011 Lion's dyld only understands
+  `LC_UNIXTHREAD`, a linker-generation gap no compiler flag closes.
+  Confirmed via `otool -l` and a direct exec on mini-intel (exit 139,
+  zero stdout, before any of our code runs). Fix: the lion leg now
+  always builds on the pinned `BUILD_HOST` (real Xcode 4.6.x ld) by
+  default; the imac-2019 speedup is opt-in
+  (`QUAKE2_USE_IMAC2019_LION=1`) and comes with a warning to verify
+  `LC_UNIXTHREAD` before shipping. Refs #45.
+- **A prior force-quit or crash could hang the *next* launch forever**,
+  no window, no qconsole.log, no crash report. Root cause: AppKit's
+  window-state restoration puts up a modal `-[NSAlert runModal]`
+  ("reopen windows?") via `-[NSPersistentUIManager
+  promptToIgnorePersistentState]` *before*
+  `applicationDidFinishLaunching:` ever runs, and nothing was there to
+  dismiss it. Confirmed via `sample` (gdb couldn't parse the modern
+  toolchain's Mach-O to backtrace it) — main thread parked in exactly
+  that call chain. Ruled out WatchLink directly (`+set watch_host ""`
+  reproduced the identical hang). Fix: `NSQuitAlwaysKeepsWindows = false`
+  in `Info.plist` (the actual fix) plus
+  `applicationSupportsSecureRestorableState:` returning `NO` in
+  `SDLMain.m` (correct practice, doesn't by itself disable the prompt).
+  Refs #47.
 
 ## 2026-08-29
 

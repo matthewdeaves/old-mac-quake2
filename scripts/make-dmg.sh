@@ -194,6 +194,36 @@ cp "$BUILD_DIR/baseq2/game.so" "$IMG/baseq2/"
 cp "$BUILD_DIR/q2ded"          "$IMG/" 2>/dev/null || true
 [ -f "$IMG/q2ded" ] && chmod +x "$IMG/q2ded"
 
+# ---- self-fix launcher for a manual (non-deploy-dmg.sh) install ----------
+# clear-launch-quarantine.sh is the same canonical script deploy-dmg.sh runs
+# over SSH -- already proven across the fleet, PPC/Panther's no-`-r` xattr
+# fallback included (see the script's own header). A person who downloads
+# this DMG in a browser and drags the files out by hand never runs
+# deploy-dmg.sh, so the bundle stays quarantined and Gatekeeper silently
+# blocks it -- issue #34/#35 fixed the SSH path, this is the same fix for a
+# manual install. Runs from wherever the files actually ended up (README
+# says "copy EVERYTHING"), so it locates Quake2.app relative to ITSELF.
+cp "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$IMG/"
+chmod +x "$IMG/clear-launch-quarantine.sh"
+cat > "$IMG/Fix and Launch.command" <<'LAUNCHER'
+#!/bin/sh
+# Fix and Launch.command -- double-click convenience for a manual (browser-
+# downloaded, drag-and-drop) install. Clears the download quarantine flag and
+# re-registers the bundle, same as deploy-dmg.sh does over SSH, then launches.
+set -eu
+cd "$(dirname "$0")"
+
+echo "Quake II -- Old-Mac fat build"
+echo "Clearing the download quarantine flag so Gatekeeper does not block launch..."
+sh ./clear-launch-quarantine.sh ./Quake2.app
+echo
+echo "Launching Quake2.app ..."
+open ./Quake2.app
+echo "Done. This window can be closed."
+sleep 2
+LAUNCHER
+chmod +x "$IMG/Fix and Launch.command"
+
 # ---- user-facing README inside the image ---------------------------------
 cat > "$IMG/README.txt" <<EOF
 Quake II — Old-Mac fat build ($VERSION)
@@ -247,12 +277,17 @@ INSTALL
        ~/Desktop/quake2/baseq2/video/                (cinematics — optional)
    Retail Quake II is on Steam and GOG. The players/ folder is inside your
    retail baseq2/ directory alongside the pak files.
-4. Double-click Quake2.app.
+4. Double-click "Fix and Launch.command" the first time (clears the download
+   quarantine flag so Gatekeeper doesn't block the game, then launches it —
+   opens a Terminal window, one click, no typing). After that, Quake2.app
+   itself double-clicks normally.
 
 The final layout:
    ~/Desktop/quake2/Quake2.app
    ~/Desktop/quake2/ref_gl.so
    ~/Desktop/quake2/q2ded
+   ~/Desktop/quake2/Fix and Launch.command
+   ~/Desktop/quake2/clear-launch-quarantine.sh
    ~/Desktop/quake2/baseq2/game.so
    ~/Desktop/quake2/baseq2/pak0.pak (+ pak1, pak2, players/, video/)
 
@@ -267,10 +302,9 @@ in Documents is inside a protected location, so every launch re-asks for
 access to it. /Applications is outside those locations, so the prompts stop.
 
 The bundle is ad-hoc signed, which gives it a stable identity for the same
-reason. Downloaded copies still carry the quarantine flag, so the first launch
-needs either a right-click and Open, or:
-   xattr -dr com.apple.quarantine /Applications/quake2/Quake2.app
-(Not needed on Panther / Tiger / Lion.)
+reason. Downloaded copies still carry the quarantine flag, so the first
+launch needs "Fix and Launch.command" (see INSTALL step 4) — it clears the
+flag and launches in one double-click. (Not needed on Panther / Tiger / Lion.)
 
 Do not upgrade by copying the new files over an old install with cp. macOS
 caches the code-signature validation of the file that was there before, and the

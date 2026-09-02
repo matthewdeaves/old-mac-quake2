@@ -453,6 +453,23 @@ static void CustomApplicationMain (int argc, char **argv)
 }
 
 
+/* Opt out of AppKit's window state restoration entirely. A game has no
+   window layout worth restoring, and leaving this unimplemented is worse
+   than a cosmetic gap: after any abnormal exit (force-quit, crash -- both
+   things that can genuinely happen), the NEXT launch can block forever in
+   -[NSPersistentUIManager promptToIgnorePersistentState] asking "reopen
+   windows?" via a modal NSAlert, with the process never reaching
+   applicationDidFinishLaunching at all -- no window, no qconsole.log, no
+   crash report, just CPU-idle silence. Measured on mini-intel (10.7.5)
+   2026-09-02: `sample` showed the main thread parked in exactly that call
+   chain, confirmed by a real stack trace, not inferred. Returning NO here
+   skips the whole subsystem, so a prior bad exit can never leave the next
+   launch stuck behind an invisible dialog. */
+- (BOOL) applicationSupportsSecureRestorableState: (NSApplication *) app
+{
+    return NO;
+}
+
 /* Called when the internal event loop has just started running */
 - (void) applicationDidFinishLaunching: (NSNotification *) note
 {

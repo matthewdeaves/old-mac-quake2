@@ -24,5 +24,7 @@
     <string>NSApplication</string>
     <key>LSMinimumSystemVersion</key>
     <string>10.3.9</string>
+    <key>NSQuitAlwaysKeepsWindows</key>
+    <false/>
 </dict>
 </plist>

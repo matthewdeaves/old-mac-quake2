@@ -4,6 +4,26 @@ Running log of real bugs found and fixed in this repo. Not a changelog of every
 commit — see `git log` for that. One entry per bug: symptom, root cause, fix
 commit.
 
+## 2026-09-02
+
+- **`getaddrinfo()` on the main thread blocked the first launch on Wi-Fi,
+  before any frame ever drew.** Symptom (imac-2019, user-reported):
+  app launches, process runs, no game window, unresponsive to SIGTERM.
+  Root cause: `SV_InitGame` (`sv_init.c:388`) resolves the hardcoded dead
+  id Software master server IP on every server start, including the
+  automatic attract-loop server at launch — unconditional, no timeout.
+  `NET_StringToSockaddr` (`network.c:411`) called plain `getaddrinfo()`
+  even for that literal IP; on macOS over Wi-Fi with an unreachable
+  target this can block indefinitely. Fix: try `AI_NUMERICHOST` first
+  (never touches the network for a literal IP), fall back to a real
+  lookup only for an actual hostname. Not imac-2019-specific — any fleet
+  machine on Wi-Fi hits this. Refs #44.
+- **Manual (Safari-downloaded, drag-and-drop) installs never ran the
+  quarantine-clearing step, unlike the `deploy-dmg.sh` SSH path.**
+  `scripts/make-dmg.sh` now ships a `Fix and Launch.command` in the DMG
+  that runs the existing `clear-launch-quarantine.sh` before first
+  launch. Refs #44.
+
 ## 2026-08-29
 
 - **`deploy.sh` had no `TARGET` case for the five G5-tower aliases

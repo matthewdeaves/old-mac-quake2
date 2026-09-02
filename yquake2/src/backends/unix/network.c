@@ -408,7 +408,23 @@ NET_StringToSockaddr(char *s, struct sockaddr_storage *sadr)
 		}
 	}
 
-	if ((err = getaddrinfo(addrs, ports, &hints, &resultp)))
+	/* Try as a numeric address first (AI_NUMERICHOST), so a literal IP --
+	 * e.g. the hardcoded id Software master server address SV_InitGame
+	 * resolves on every server start -- never touches the network. Plain
+	 * getaddrinfo() does real resolver work even for a dotted-quad string,
+	 * and on some networks (Wi-Fi with a dead/unreachable target, measured
+	 * on imac-2019) that can block the caller -- here, the main thread,
+	 * before the first frame is ever drawn -- for a long time. Only fall
+	 * back to a real (possibly slow) lookup for an actual hostname. */
+	hints.ai_flags = AI_NUMERICHOST;
+	err = getaddrinfo(addrs, ports, &hints, &resultp);
+	if (err)
+	{
+		hints.ai_flags = 0;
+		err = getaddrinfo(addrs, ports, &hints, &resultp);
+	}
+
+	if (err)
 	{
 		/* Error */
 		Com_Printf("NET_StringToSockaddr: string %s:\n%s\n", s,

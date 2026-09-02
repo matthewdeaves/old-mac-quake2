@@ -73,20 +73,27 @@ else
   echo "[build-fat] using caller-supplied build host: $BUILD_HOST"
 fi
 
-# --- optional: build the x86_64 (lion) leg on imac-2019 instead -----------
-# imac-2019 (6-core native clang) is faster than the Lion minis for this one
-# leg, and build.sh's `lion` case is already host-agnostic clang -- unlike
-# g3/g4/g5, it needs none of imac-2019's GCC14/SDK path workarounds (see
-# build.sh's PPC_CC block). Best-effort and non-fatal: imac-2019 is a shared,
-# heavily-used box, so a busy/unreachable imac-2019 falls back to the primary
-# BUILD_HOST silently rather than fail a fat build over a speed optimization.
-# Opt out with QUAKE2_NO_IMAC2019_LION=1. Issue #41.
+# --- x86_64 (lion) leg: NEVER imac-2019 by default -- issue #45 -----------
+# imac-2019 (6-core native clang, Sequoia toolchain) is faster than the Lion
+# minis for this one leg, and build.sh's `lion` case is already host-agnostic
+# clang -- unlike g3/g4/g5, it needs none of imac-2019's GCC14/SDK path
+# workarounds (see build.sh's PPC_CC block). That used to make it the default
+# opportunistic choice (issue #41). It shipped a broken v2.11.0 release
+# candidate: Sequoia's ld64 emits LC_MAIN, and real 2011 Lion's dyld only
+# understands LC_UNIXTHREAD, so the binary segfaults on launch (exit 139,
+# zero stdout) before a single line of our code runs -- no -mmacosx-version-min
+# value changes that, it's a linker-generation difference, not a deployment
+# target. Confirmed via otool -l (LC_MAIN vs LC_UNIXTHREAD) and a direct exec
+# on real Lion hardware. So the default is now the pinned BUILD_HOST, which
+# always has the real Xcode 4.6.x ld. Opt into the imac-2019 speedup only if
+# you will otool -l the result and confirm LC_UNIXTHREAD before shipping it:
+# QUAKE2_USE_IMAC2019_LION=1.
 LION_HOST="$BUILD_HOST"
-if [ "$BUILD_HOST" != "imac-2019" ] && [ -z "${QUAKE2_NO_IMAC2019_LION:-}" ]; then
+if [ "$BUILD_HOST" != "imac-2019" ] && [ -n "${QUAKE2_USE_IMAC2019_LION:-}" ]; then
   if IMAC_CLAIM="$("$REPO_ROOT/scripts/pick-build-host.sh" --acquire-host imac-2019 "quake2 build-fat lion leg" 2>/dev/null)"; then
     LION_HOST="$IMAC_CLAIM"
     CLAIMED_HOSTS="$CLAIMED_HOSTS $LION_HOST"
-    echo "[build-fat] lion leg: claimed imac-2019 separately"
+    echo "[build-fat] lion leg: claimed imac-2019 separately (QUAKE2_USE_IMAC2019_LION=1 -- verify LC_UNIXTHREAD before shipping)"
   else
     echo "[build-fat] lion leg: imac-2019 busy/unreachable, building on $BUILD_HOST instead"
   fi

@@ -21,11 +21,14 @@ scripts/bench.sh <machine> <demo> <WxH> [runs]   # see docs/BENCH.md
 `BUILD_HOST=<alias>` pins a mini. `DMG_HOST=<alias>` pins the packaging box
 (must be Tiger).
 
-`build-fat.sh`'s g3/g4/g5/i386 legs and the final lipo stay on the one pinned
-`BUILD_HOST`. The x86_64 (`lion`) leg is a separate, best-effort claim on
-`imac-2019` (native clang, faster than the Lion minis) — falls back to
-`BUILD_HOST` silently if imac-2019 is busy or unreachable. Opt out with
-`QUAKE2_NO_IMAC2019_LION=1`. Issue #41.
+`build-fat.sh`'s g3/g4/g5/**and x86_64 (`lion`)** legs and the final lipo all
+stay on the one pinned `BUILD_HOST` by default. `imac-2019`'s modern Sequoia
+`ld64` emits `LC_MAIN` where real Lion's 2011 dyld needs `LC_UNIXTHREAD` —
+a linker-generation gap no compiler flag closes — so a `lion` leg built there
+segfaults instantly on real Lion hardware (issue #45, shipped in a v2.11.0
+release candidate before being caught). Opt into the imac-2019 speedup with
+`QUAKE2_USE_IMAC2019_LION=1` only if you will `otool -l` the result and
+confirm `LC_UNIXTHREAD` before shipping it. Issue #41.
 
 **Never run two PPC builds on the same mini at once** (ADR 0005). Two builds on
 different minis are fine.

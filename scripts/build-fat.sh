@@ -88,6 +88,14 @@ fi
 # always has the real Xcode 4.6.x ld. Opt into the imac-2019 speedup only if
 # you will otool -l the result and confirm LC_UNIXTHREAD before shipping it:
 # QUAKE2_USE_IMAC2019_LION=1.
+#
+# Candidate fix if you want the speedup back for real: quake3 independently
+# found `-Wl,-ld_classic` makes imac-2019's ld64 emit LC_UNIXTHREAD again
+# (confirmed via otool -l against a real build of their own source; not yet
+# hardware-launch-verified by anyone -- no free Lion box either time it was
+# checked). Logged centrally at old-mac-build-host#59, not this repo's issue
+# tracker, so it doesn't drift out of sync per-port. Would still need our own
+# otool -l + a real Lion-hardware launch test before trusting it here.
 LION_HOST="$BUILD_HOST"
 if [ "$BUILD_HOST" != "imac-2019" ] && [ -n "${QUAKE2_USE_IMAC2019_LION:-}" ]; then
   if IMAC_CLAIM="$("$REPO_ROOT/scripts/pick-build-host.sh" --acquire-host imac-2019 "quake2 build-fat lion leg" 2>/dev/null)"; then

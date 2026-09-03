@@ -288,6 +288,24 @@ bench_cleanup () {
 }
 trap bench_cleanup EXIT INT TERM
 
+# Tag the raw log with EXTRA when this is an A/B leg. Without it a same-day
+# A/B (different EXTRA, same commit/target/demo/res) silently overwrites the
+# earlier leg's raw qconsole.log -- results.csv still records both rows
+# correctly since EXTRA is in the notes column, but the raw evidence for
+# every leg but the last is gone. Real incident: hit doing a 3-way A/B on
+# imac-2019 for #33. Same fix as quakespasm/scripts/bench.sh:260-269.
+# Long EXTRA strings blow past the filesystem's 255-byte name limit, so cap
+# the readable part and append a hash of the FULL string for uniqueness.
+CVAR_TAG=""
+if [ -n "${EXTRA:-}" ]; then
+  CVAR_SLUG="$(printf '%s' "$EXTRA" | tr -cs 'A-Za-z0-9' '_' | sed 's/^_//; s/_$//')"
+  if [ "${#CVAR_SLUG}" -gt 60 ]; then
+    CVAR_HASH="$(printf '%s' "$EXTRA" | shasum -a 256 | cut -c1-8)"
+    CVAR_SLUG="$(printf '%s' "$CVAR_SLUG" | cut -c1-60)_$CVAR_HASH"
+  fi
+  CVAR_TAG="_$CVAR_SLUG"
+fi
+
 declare -a FPS
 for i in $(seq 1 $RUNS); do
   echo "[bench $TARGET $DEMO $RES] run $i/$RUNS"
@@ -337,7 +355,7 @@ for i in $(seq 1 $RUNS); do
     sleep $COOLDOWN
     true" 2>&1 | grep -v "^$" | tail -3 || true
 
-  LOG_NAME="${COMMIT}_${TARGET}_${DEMO}_${RES}_run${i}.log"
+  LOG_NAME="${COMMIT}_${TARGET}_${DEMO}_${RES}${CVAR_TAG}_run${i}.log"
   scp -q "$HOST:.yq2/baseq2/qconsole.log" "$RAW_DIR/$LOG_NAME" || true
   FPS_VAL=$(grep -E 'frames.*seconds.*fps' "$RAW_DIR/$LOG_NAME" 2>/dev/null | tail -1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
   FPS+=("${FPS_VAL:-NA}")
@@ -358,6 +376,6 @@ echo "[bench] $TARGET ($BUILD_TYPE) $DEMO $RES median = $MEDIAN fps  →  $CSV"
 
 NA=0; for v in "${FPS[@]}"; do [ "$v" = "NA" ] && NA=$((NA+1)); done
 if [ "$NA" -gt 0 ]; then
-  echo "[bench] FAIL: $NA/${RUNS} run(s) NA on $TARGET $DEMO $RES — see $RAW_DIR/${COMMIT}_${TARGET}_${DEMO}_${RES}_run*.log" >&2
+  echo "[bench] FAIL: $NA/${RUNS} run(s) NA on $TARGET $DEMO $RES — see $RAW_DIR/${COMMIT}_${TARGET}_${DEMO}_${RES}${CVAR_TAG}_run*.log" >&2
   exit 1
 fi

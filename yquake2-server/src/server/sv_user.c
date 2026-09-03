@@ -28,8 +28,10 @@
 
 #define MAX_STRINGCMDS 8
 
-#define CMD_MARGIN 40 /* space in message reserved for command */
-#define SAFE_MARGIN 24 /* space reserved for more data added elsewhere */
+/* CMD_MARGIN / SAFE_MARGIN moved to header/server.h (quake2#48) --
+ * PF_Configstring (sv_game.c) needs the same constants to reject the
+ * configstring dead zone at set-time instead of only failing silently
+ * here at send-time. */
 
 edict_t *sv_player;
 

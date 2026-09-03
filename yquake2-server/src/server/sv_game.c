@@ -225,6 +225,26 @@ PF_Configstring(int index, char *val)
 			return;
 		}
 
+		/* quake2#48: this is legal per CS_STATUSBAR_SPACE above, but
+		 * with OPTIMIZE_HUDSEND on (our sv_optimize_mp_loadtime default
+		 * since quake2#46) SV_Configstrings_f sends this whole span as
+		 * ONE svc_configstring message, and _EnoughSpaceInBuffer
+		 * (sv_user.c) can never fit one whose MSG_ConfigString_Size()
+		 * exceeds MAX_MSGLEN - (CMD_MARGIN + SAFE_MARGIN), regardless of
+		 * how empty the send buffer is. Above that, SV_Configstrings_f
+		 * silently drops the whole block for that client with no retry
+		 * and no warning -- reject it here instead, at set-time, where
+		 * it is loud and immediate. */
+		if (MSG_ConfigString_Size(val) > (MAX_MSGLEN - (CMD_MARGIN + SAFE_MARGIN)))
+		{
+			Com_Printf("%s: statusbar code legal but UNSENDABLE: " YQ2_COM_PRIdS
+				" bytes on the wire, max " YQ2_COM_PRIdS
+				" -- SV_Configstrings_f can never transmit this to a client, refusing to set it\n",
+				__func__, MSG_ConfigString_Size(val),
+				(size_t)(MAX_MSGLEN - (CMD_MARGIN + SAFE_MARGIN)));
+			return;
+		}
+
 		memcpy(cs, val, len + 1);
 	}
 	else

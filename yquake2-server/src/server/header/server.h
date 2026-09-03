@@ -46,6 +46,22 @@
 #define MAX_SAVE_TOKEN_CHARS 128
 
 
+/* Shared with sv_game.c's PF_Configstring (quake2#48): a configstring
+ * write into the CS_STATUSBAR..CS_STATUSBAR_END span is legal up to
+ * CS_STATUSBAR_SPACE(index), but SV_Configstrings_f's own space check
+ * below (_EnoughSpaceInBuffer, sv_user.c) can never transmit anything
+ * whose MSG_ConfigString_Size() exceeds MAX_MSGLEN - (CMD_MARGIN +
+ * SAFE_MARGIN), regardless of how empty the send buffer is. Between
+ * those two ceilings sits a dead zone -- legal to set, impossible to
+ * ever send -- where SV_Configstrings_f permanently drops the whole
+ * statusbar block for that client with no retry and no warning at
+ * set-time. PF_Configstring rejects anything in that dead zone up
+ * front instead, so the failure is loud and immediate rather than a
+ * silent connect-time drop. Moved here (used to be local to
+ * sv_user.c) so both files stay in sync by construction. */
+#define CMD_MARGIN 40 /* space in message reserved for command */
+#define SAFE_MARGIN 24 /* space reserved for more data added elsewhere */
+
 #define SV_OUTPUTBUF_LENGTH (MAX_MSGLEN - 16)
 #define EDICT_NUM(n) ((edict_t *)((byte *)ge->edicts + ge->edict_size * (n)))
 #define CL_EDICT(cl) EDICT_NUM(1 + ((cl) - svs.clients))

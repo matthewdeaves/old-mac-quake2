@@ -89,13 +89,18 @@ fi
 # you will otool -l the result and confirm LC_UNIXTHREAD before shipping it:
 # QUAKE2_USE_IMAC2019_LION=1.
 #
-# Candidate fix if you want the speedup back for real: quake3 independently
-# found `-Wl,-ld_classic` makes imac-2019's ld64 emit LC_UNIXTHREAD again
-# (confirmed via otool -l against a real build of their own source; not yet
-# hardware-launch-verified by anyone -- no free Lion box either time it was
-# checked). Logged centrally at old-mac-build-host#59, not this repo's issue
-# tracker, so it doesn't drift out of sync per-port. Would still need our own
-# otool -l + a real Lion-hardware launch test before trusting it here.
+# Candidate fix if you want the speedup back for real: `-Wl,-ld_classic`
+# makes imac-2019's ld64 emit LC_UNIXTHREAD again. Two independent pieces of
+# evidence, both real: quake3 confirmed it via otool -l against a real build
+# of their own source (not hardware-tested); old-mac-build-host#44/#45
+# separately hardware-launch-verified the flag itself on real mini-intel
+# (Lion 10.7.5) AND mini-sl (Snow Leopard 10.6.8) -- but with a minimal
+# `hi.c`, not a real engine build. Nobody has yet run OUR ACTUAL quake2
+# binary (this project's real SDL/framework linking, not a hello-world)
+# through this flag on real Lion hardware -- that's the one link still
+# missing before I'd trust it here. Logged centrally at
+# old-mac-build-host#59, not this repo's issue tracker, so it doesn't drift
+# out of sync per-port.
 LION_HOST="$BUILD_HOST"
 if [ "$BUILD_HOST" != "imac-2019" ] && [ -n "${QUAKE2_USE_IMAC2019_LION:-}" ]; then
   if IMAC_CLAIM="$("$REPO_ROOT/scripts/pick-build-host.sh" --acquire-host imac-2019 "quake2 build-fat lion leg" 2>/dev/null)"; then

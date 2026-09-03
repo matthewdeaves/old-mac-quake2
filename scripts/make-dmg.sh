@@ -214,6 +214,38 @@ set -eu
 cd "$(dirname "$0")"
 
 echo "Quake II -- Old-Mac fat build"
+
+# Gatekeeper/the quarantine flag this script clears do not exist before Lion
+# (10.7.3, and this fleet's oldest Intel box that needs it is 10.7.5) -- no
+# PPC Mac in this port's range (ceiling 10.5.8 Leopard) has ever had either.
+# clear-launch-quarantine.sh already no-ops safely there (its own PPC/Panther
+# `-r`-less xattr fallback), but a silent no-op still runs xattr/lsregister
+# for no reason and gives no sign anything was even considered. Check first
+# and say so plainly instead.
+os_version="$(sw_vers -productVersion 2>/dev/null || echo 0.0)"
+os_major="${os_version%%.*}"
+os_rest="${os_version#*.}"
+os_minor="${os_rest%%.*}"
+needs_fix=0
+case "$os_major" in
+	''|*[!0-9]*) os_major=0 ;;
+esac
+case "$os_minor" in
+	''|*[!0-9]*) os_minor=0 ;;
+esac
+if [ "$os_major" -gt 10 ] || { [ "$os_major" -eq 10 ] && [ "$os_minor" -ge 7 ]; }; then
+	needs_fix=1
+fi
+
+if [ "$needs_fix" -eq 0 ]; then
+	echo "macOS $os_version does not have Gatekeeper/app quarantine (that"
+	echo "started in 10.7 Lion) -- there is nothing here for this script to"
+	echo "fix. Just double-click Quake2.app directly."
+	echo "Done. This window can be closed."
+	sleep 2
+	exit 0
+fi
+
 echo "Clearing the download quarantine flag so Gatekeeper does not block launch..."
 sh ./clear-launch-quarantine.sh ./Quake2.app
 echo
@@ -281,6 +313,11 @@ INSTALL
    quarantine flag so Gatekeeper doesn't block the game, then launches it —
    opens a Terminal window, one click, no typing). After that, Quake2.app
    itself double-clicks normally.
+   On 10.6 and earlier (every PowerPC Mac, and any pre-Lion Intel one) this
+   step does not apply at all — those System versions have no Gatekeeper or
+   download-quarantine flag to clear. Just double-click Quake2.app directly;
+   running "Fix and Install.command" there is harmless but does nothing, and
+   says so if you do run it.
 
 The final layout:
    ~/Desktop/quake2/Quake2.app

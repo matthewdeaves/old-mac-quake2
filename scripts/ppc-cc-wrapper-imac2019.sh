@@ -28,6 +28,29 @@ SDK="/Users/mini/SDKs/MacOSX10.3.9.sdk"
 PTRDIFF_HDR="/Users/mini/ptrdiff-compat-full.h"
 
 case " $* " in
+  *filesystem.c*)
+    # Same GCC14 -mcpu=970 -O2/-O3 register-allocation bug class as
+    # SDLMain.m below, different symptom: FS_InitFilesystem's inlined
+    # copy of FS_CreatePath(fs_gamedir) calls strchr with r3 == 0x1 --
+    # i.e. `old` (a copy of fs_gamedir's own address, loaded correctly
+    # earlier in the same function via the normal non-lazy-pointer
+    # indirection every other extern global uses here too, confirmed
+    # identical between -mcpu=970 and -mcpu=7400 -S output) reads back
+    # as 0 by the time the inlined loop runs. EXC_BAD_ACCESS /
+    # KERN_PROTECTION_FAILURE at 0x1, real g5-tiger hardware, issue #53.
+    # Not the addressing mechanism itself (proven identical both ways);
+    # a register clobbered across the long FS_InitFilesystem body that
+    # -mcpu=970's scheduler reuses where -mcpu=7400's does not -- same
+    # shape as SDLMain.m's r27 bug, not re-derived instruction-for-
+    # instruction since the fix is identical either way: -O0 makes it
+    # go away (confirmed: real g5-tiger launch, full demo playback, no
+    # crash). filesystem.c also has genuinely hot functions
+    # (FS_LoadFile et al.), unlike SDLMain.m's true run-once init, but
+    # they are disk/zip-bound, not render-bound, and this port is never
+    # benched mid-level-load -- -O0 for the whole file is the same
+    # low-risk trade already made for SDLMain.m, not a new kind of risk.
+    exec "$REGULAR_CC" "$@" -O0
+    ;;
   *SDLMain.m*)
     # -fnext-runtime: NOT the default for this GCC — without it, it emits
     # the GNU Objective-C runtime ABI, which is incompatible with Apple's

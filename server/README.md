@@ -161,6 +161,27 @@ printf '\xff\xff\xff\xffstatus\n' | nc -u -w2 127.0.0.1 27910
 A healthy server answers with its `mapname` and player list. A dead one answers
 nothing while still looking `active`.
 
+## Banning IPs
+
+From the console or rcon:
+
+```
+sv addip 203.0.113.5
+sv writeip
+```
+
+`sv addip`/`sv removeip` alone only change the running server's in-memory IP
+filter list -- confirmed reading the engine source, `game/g_svcmds.c`, which
+only writes `listip.cfg`, never reads it back in. `sv writeip` is what
+actually saves the list to disk (as replayable `sv addip` commands), and
+`server.cfg` here execs that file at every startup so a saved ban is still in
+effect after a restart. Skip `sv writeip` and the ban is gone the moment the
+process restarts, with nothing logged to say so.
+
+`sv listip` prints the current in-memory list; `filterban 0` inverts the list
+into an allow-list instead of a ban-list (see the comment block at the top of
+`game/g_svcmds.c`).
+
 ## The network side
 
 Default port is UDP 27910.

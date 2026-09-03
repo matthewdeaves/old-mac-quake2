@@ -130,3 +130,12 @@ commit.
   at 100% CPU with a NULL renderer table before ever reaching pixel-format
   creation, which read like a GL failure from the console log alone. Confirmed
   fixed by the same `c1cefca1` chdir fix — no GL-specific change needed.
+
+- **`sv addip`/`sv writeip` saved an IP ban to `listip.cfg`, but nothing ever
+  execed that file back in on server startup** (confirmed reading
+  `game/g_svcmds.c`, which only writes it) — an IP ban silently stopped
+  working the moment the server process restarted, same shape as
+  old-mac-half-life-1#31. Fix: `server.cfg` now execs `listip.cfg`
+  unconditionally at startup (harmless "couldn't exec" no-op before the file
+  exists, confirmed in `common/cmdparser.c`'s `Cmd_Exec_f`). Documented in
+  `server/README.md`. Refs #55.

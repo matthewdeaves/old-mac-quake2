@@ -28,6 +28,35 @@ SDK="/Users/mini/SDKs/MacOSX10.3.9.sdk"
 PTRDIFF_HDR="/Users/mini/ptrdiff-compat-full.h"
 
 case " $* " in
+  *clientserver.c*)
+    # Same GCC14 -mcpu=970 -O2/-O3 register-allocation bug class as
+    # filesystem.c/SDLMain.m below, root-caused at the instruction level
+    # this time (issue #56, split out of #53's filesystem.c crash --
+    # reproduced on real g5-tiger hardware: EXC_BAD_ACCESS at 0x0,
+    # Con_Print.part.0 <- Com_Printf <- S_Init <- CL_Init).
+    #
+    # -S diff, -mcpu=970 vs -mcpu=7400, same toolchain, both -O2 and -O3
+    # (confirmed both are affected, matching the "-O2/-O3" shape of the
+    # other two bugs in this file):
+    #   -mcpu=7400 keeps `msg`'s address (Com_Printf's local
+    #   char[MAXPRINTMSG] buffer) alive in a callee-saved register (r30)
+    #   across the whole function, so it is still correct in r3 by the
+    #   time control falls through to the unconditional Con_Print(msg)
+    #   call when rd_target is 0.
+    #   -mcpu=970 instead computes the address straight into r3 only for
+    #   the immediately-following vsnprintf() call, then -O3's scheduler
+    #   hoists `li r3,0` -- the argument setup for the LATER, unrelated
+    #   Sys_ConsoleOutput(NULL) call two statements down -- up above the
+    #   rd_target branch. Nothing reloads r3 before Con_Print(msg) runs,
+    #   so it gets called with r3 == 0. Confirmed present at -O2 too
+    #   (same `li r3,0` ahead of `bl _Con_Print`), gone at -O0 (r3 is
+    #   reloaded from the stack right before the call, no hoisting).
+    #
+    # -O0 for the whole file, same low-risk trade as filesystem.c/
+    # SDLMain.m: Com_Printf is print-bound, not render-bound, and this
+    # port is never benched mid-console-spam.
+    exec "$REGULAR_CC" "$@" -O0
+    ;;
   *filesystem.c*)
     # Same GCC14 -mcpu=970 -O2/-O3 register-allocation bug class as
     # SDLMain.m below, different symptom: FS_InitFilesystem's inlined

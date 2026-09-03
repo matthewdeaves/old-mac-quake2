@@ -139,3 +139,20 @@ commit.
   unconditionally at startup (harmless "couldn't exec" no-op before the file
   exists, confirmed in `common/cmdparser.c`'s `Cmd_Exec_f`). Documented in
   `server/README.md`. Refs #55.
+
+- **imac-2019 g5 build: `Com_Printf` calls `Con_Print(NULL)`, SIGSEGV in
+  `S_Init`** (issue #56, split out of #53). Root-caused with a real `-S`
+  assembly diff, `-mcpu=970` vs `-mcpu=7400`, same GCC14 toolchain:
+  `-mcpu=7400` keeps `msg`'s address (Com_Printf's local
+  `char[MAXPRINTMSG]`) alive in a callee-saved register across the whole
+  function; `-mcpu=970` at `-O2`/`-O3` instead lets the scheduler hoist
+  `li r3,0` -- the argument setup for a LATER, unrelated
+  `Sys_ConsoleOutput(NULL)` call -- up above the branch that falls through
+  to `Con_Print(msg)`, so it runs with `r3 == 0`. Same GCC14
+  register-allocation bug class as `filesystem.c` (#53) and `SDLMain.m`,
+  third file it has hit, first one pinned to the exact clobbering
+  instruction. Fix: `clientserver.c` added to
+  `ppc-cc-wrapper-imac2019.sh`'s per-file `-O0` list. Confirmed on real
+  g5-tiger hardware: this crash is gone, engine now gets past `S_Init` into
+  `VID_LoadRefresh`/`ref_gl.so` before hitting a DIFFERENT crash -- split
+  out as a new issue rather than expanding this one's scope. Refs #56.

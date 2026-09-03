@@ -11,9 +11,8 @@
 #     Contents/MacOS/quake2                  (fat: ppc750 + ppc7400 + ppc970 + x86_64)
 #     Contents/MacOS/SDL.framework/          (fat: ppc + ppc970 + i386 + x86_64)
 #     Contents/Resources/Quake2.icns
-#     Contents/Resources/autoexec-<arch>.cfg × 4      ← per-arch baselines
-#     Contents/Resources/autoexec-<machine>.cfg × 8   ← per-machine overlays
-#     Contents/Resources/autoexec-<arch>.cfg    × 4   ← per-slice baselines
+#     Contents/Resources/autoexec-<arch>.cfg × 6      ← per-arch baselines
+#     Contents/Resources/autoexec-<machine>.cfg × 9   ← per-machine overlays
 #   ref_gl.so                                ← outside .app (Q2's basedir=.)
 #   baseq2/
 #     game.so                                ← outside .app (Q2's gamedir)
@@ -243,7 +242,7 @@ fi
 # a wide margin. (v2.2.0 shipped un-stripped and hit this; fixed v2.2.1.)
 for cfg in controls \
            ppc750 ppc7400 ppc970 i386 x86_64 arm64 \
-           yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019; do
+           yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019 g5-dual; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \
     | grep -v '^[[:space:]]*$' \

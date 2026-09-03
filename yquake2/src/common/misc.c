@@ -437,6 +437,17 @@ Qcommon_Init(int argc, char **argv)
 			{ "PowerMac8,2",  "autoexec-imac-g5"     },
 			{ "PowerMac12,1", "autoexec-imac-g5"     },
 			/*
+			 * G5 Dual 2.7 tower (issue #54). One physical box, three OS
+			 * partitions sharing this one hw.model (g5-panther 10.3,
+			 * g5-tiger 10.4, g5-desktop 10.5) — same one-model-one-cfg
+			 * limit as PowerMac1,1 below. Had no overlay at all before
+			 * #54, so it silently ran the generic ppc970 baseline's
+			 * gl_flashblend 1; benched on g5-tiger, disabling it is both
+			 * the visual fix and ~1.8% faster here (see the overlay's own
+			 * header for the numbers).
+			 */
+			{ "PowerMac7,3",  "autoexec-g5-dual"     },
+			/*
 			 * iMac G4 "sunflower" family (ppc7400). 4,2 = 15" Flat Panel
 			 * 2002; 6,1 / 6,3 = the USB 2.0 15"/17"/20" models. Every one
 			 * of these GPUs is GL 1.x fixed-function and non-R300, so

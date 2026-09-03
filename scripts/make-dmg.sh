@@ -163,8 +163,8 @@ else
   esac
 fi
 
-# Both cfg layers ship inside the bundle: the four per-arch baselines
-# (picked at compile time by the fat slice dyld runs) and the six
+# Both cfg layers ship inside the bundle: the six per-arch baselines
+# (picked at compile time by the fat slice dyld runs) and the nine
 # per-machine overlays (picked at boot by sysctl hw.model via CFBundle —
 # see yquake2/src/common/misc.c).
 #
@@ -175,7 +175,7 @@ fi
 # garbled config, R300 GPU wedge on the iMac G5). Same strip as deploy.sh.
 for cfg in controls \
            ppc750 ppc7400 ppc970 i386 x86_64 arm64 \
-           yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019; do
+           yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019 g5-dual; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \
     | grep -v '^[[:space:]]*$' \

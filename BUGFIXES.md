@@ -156,3 +156,22 @@ commit.
   g5-tiger hardware: this crash is gone, engine now gets past `S_Init` into
   `VID_LoadRefresh`/`ref_gl.so` before hitting a DIFFERENT crash -- split
   out as a new issue rather than expanding this one's scope. Refs #56.
+
+- **imac-2019: `gl_bloom` paid its full ~-78% fps cost (530.6 -> 115.35 fps,
+  demo1 1920x1080, real hardware) and produced ZERO visible pixels**
+  (issue #33). Root cause: `r_bloom.c`'s overbright compensation
+  (e9a30c3a) divides the already-clamped 8-bit backbuffer value by
+  `gl_overbrightbits` before the darken stage's self-multiply passes
+  (`v0^(darken+1)`), so a genuinely bright/saturated pixel is recovered as
+  only `1/overbrightbits` before being raised to that power. At
+  imac-2019's `gl_overbrightbits 4` (default darken 4, so `v0^5`) that is
+  `(0.25)^5` -- 32x dimmer than g5-dual's `overbrightbits 2` case
+  (`(0.5)^5`), which is why bloom is confirmed visible there but was
+  invisible here. Confirmed with ImageMagick RMSE across the whole demo1
+  frame set (off-vs-on: 0.0000-0.0003, noise floor) rather than eyeballed.
+  Fix: `gl_bloom_darken 1` for imac-2019 specifically (per-machine
+  override, `autoexec-imac-2019.cfg`) restores a real, visible,
+  non-overexposed glow (RMSE 0.018-0.044) at the SAME measured cost
+  (115.35 vs 115.20 fps) -- the darken pass count isn't what the GPU time
+  goes on, the fullscreen capture/composite is. g5-dual's own working
+  `darken 4`/`overbrightbits 2` combination is untouched. Refs #33.

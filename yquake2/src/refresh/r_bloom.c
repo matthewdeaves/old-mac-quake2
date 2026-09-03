@@ -218,7 +218,28 @@ R_Bloom(void)
 
 	R_TexEnv(GL_MODULATE);
 	qglDisable(GL_BLEND);
-	qglColor4f(1, 1, 1, 1);
+	{
+		/* The captured scene already has gl_overbrightbits' GL_RGB_SCALE_EXT
+		 * baked into every lightmapped pixel (r_surf.c applies it per-surface
+		 * during the main draw, well before bloom ever sees the framebuffer —
+		 * there is no discrete "pre-overbright" point in the pipeline to move
+		 * this capture to instead). Left uncompensated, the darkening pass
+		 * below crushes toward true black assuming a normal 0..1 scene; an
+		 * already 2x/4x-boosted scene has ordinary mid-brightness surfaces
+		 * pushed close enough to white that they survive the crush alongside
+		 * real light sources, so nearly the whole view blooms instead of just
+		 * the bright spots — measured as a heavy yellow/orange wash on every
+		 * machine tested with overbright on (imac-2019 gl_overbrightbits 4,
+		 * G5 Quad gl_overbrightbits 2 — same failure shape at both values,
+		 * issue #33). Scaling the downsample by 1/overbright here restores
+		 * the scene to the un-boosted brightness the rest of this file's
+		 * math already assumes, before any of it runs. Division guarded:
+		 * value can be 0 (overbright off) or unset this early only in a
+		 * theoretical init-order edge case, not normal play. */
+		float ob = gl_overbrightbits->value;
+		float comp = (ob >= 1.0f) ? (1.0f / ob) : 1.0f;
+		qglColor4f(comp, comp, comp, 1);
+	}
 	R_Bind(TEXNUM_BLOOMSCREEN);
 	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, scr_tcw, scr_tch);
 

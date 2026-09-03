@@ -333,6 +333,21 @@ classify() {
 	fi
 }
 
+# Display only -- classify() above already consumed the raw seconds. A bare
+# number in the LOCK-AGE column is genuinely ambiguous (build-host#58,
+# 2026-09-02: a live 17-minute-old lock printed as "1015" and was read as
+# ~16-17 HOURS by two separate sessions, nearly triggering a false "this is
+# stale, force it" call on real, running work). Suffix the unit instead of
+# hoping the reader knows this column is seconds.
+fmt_age() {
+	case "$1" in ''|*[!0-9]*) echo -; return ;; esac
+	local s="$1"
+	if   [ "$s" -lt 60 ];   then printf '%ss\n' "$s"
+	elif [ "$s" -lt 3600 ]; then printf '%sm\n' "$((s / 60))"
+	else                         printf '%sh%sm\n' "$((s / 3600))" "$(((s % 3600) / 60))"
+	fi
+}
+
 usable() { [ "$1" = free ] || [ "$1" = stale ]; }
 
 cmd_status() {
@@ -370,7 +385,7 @@ cmd_status() {
 		os="$(echo "$out" | awk '{print $3}')"
 		owner="$(echo "$out" | cut -d' ' -f4-)"
 		state="$(classify "$age" "$procs" "$os" "$want")"
-		case "$age" in ''|*[!0-9-]*) age=- ;; *) [ "$age" -lt 0 ] && age=- ;; esac
+		case "$age" in ''|*[!0-9-]*) age=- ;; *) [ "$age" -lt 0 ] && age=- || age="$(fmt_age "$age")" ;; esac
 		printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' \
 			"$h" "$state" "${os:--}" "${want:--}" "$age" "$procs" "${owner:--}"
 	done

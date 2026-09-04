@@ -2,9 +2,11 @@
 # Run a Q2 timedemo benchmark on a target machine.
 # Assumes the bundle is already deployed (scripts/deploy.sh first).
 #
-# usage: scripts/bench.sh <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019> <demo> <WxH> [runs]
+# usage: scripts/bench.sh <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|g5-tiger|g5-panther|g5-desktop|quad-tiger|quad-leopard|mini-intel|imac-2019> <demo> <WxH> [runs]
 #   yosemite-tiger is the SAME Mac as yosemite on its 10.4 partition — one
-#   OS is booted at a time, so the two are never both live.
+#   OS is booted at a time, so the two are never both live. Same for the
+#   three g5-* tower aliases (one PowerMac G5 Dual 2.7, one OS booted at a
+#   time) and the two quad-* aliases (one PowerMac G5 Quad).
 #   demo:  demo1 | demo2 | demo3   (the .dm2 suffix is added automatically)
 #   WxH:   1024x768 | 640x480 | ...
 #   runs:  default 3
@@ -191,6 +193,25 @@ case "$TARGET" in
   quicksilver) HOST=quicksilver; TIMEOUT=120; COOLDOWN=2 ;;
   mini-g4)     HOST=mini-g4;     TIMEOUT=120; COOLDOWN=2 ;;
   imac-g5)     HOST=imac-g5;     TIMEOUT=90;  COOLDOWN=2 ;;
+  # G5-tower aliases (issue #61): were entirely missing from this case, so
+  # every G5-tower bench number already in this repo's history (#33's
+  # g5-tiger bloom legs, #54/#60's flashblend/dynamic legs) was taken by
+  # hand, not through this script. Deliberately NOT wrapped in the
+  # imac-g5 R300 hang guard above — that guard is specific to the R300 +
+  # Leopard driver combo on the iMac G5 chassis. g5-tiger has been
+  # fullscreen-benched at native res repeatedly without incident (Radeon
+  # 9600 RV351 + Tiger 10.4.11, a different GPU/driver/OS combo), so
+  # copying an unproven gate here would be adding a gate without proving
+  # the passing side (commands.md). TIMEOUT/COOLDOWN match imac-g5's
+  # other G5-era numbers, unbenched independently — revisit if a run
+  # times out.
+  g5-tiger)    HOST=g5-tiger;    TIMEOUT=90;  COOLDOWN=2 ;;
+  g5-panther)  HOST=g5-panther;  TIMEOUT=90;  COOLDOWN=2 ;;
+  g5-desktop)  HOST=g5-desktop;  TIMEOUT=90;  COOLDOWN=2 ;;
+  # G5 Quad aliases — same tower-bench reasoning, different physical box
+  # (NVIDIA GeForce 6600, not ATI). No R300 guard applies here either.
+  quad-tiger)   HOST=quad-tiger;   TIMEOUT=90; COOLDOWN=2 ;;
+  quad-leopard) HOST=quad-leopard; TIMEOUT=90; COOLDOWN=2 ;;
   mini-intel)  HOST=mini-intel;  TIMEOUT=60;  COOLDOWN=1 ;;
   imac-2019)   HOST=imac-2019;   TIMEOUT=45;  COOLDOWN=1 ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;

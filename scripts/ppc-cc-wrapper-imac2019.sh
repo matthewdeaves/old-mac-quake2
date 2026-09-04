@@ -57,6 +57,38 @@ case " $* " in
     # port is never benched mid-console-spam.
     exec "$REGULAR_CC" "$@" -O0
     ;;
+  *files/pcx.c*)
+    # Same GCC14 -mcpu=970 -O2/-O3 register-allocation bug class as
+    # clientserver.c/filesystem.c/SDLMain.m, fourth file hit (issue #57,
+    # split out of #56's fix). LoadPCX's local `char filename[256]` stack
+    # buffer needs its address reloaded into r3 right before the
+    # ri.FS_LoadFile(filename, &raw) call, after Q_strlcpy/COM_FileExtension/
+    # strcmp have all used r3 for other things.
+    #
+    # -S diff, -mcpu=970 vs -mcpu=7400, same toolchain:
+    #   -mcpu=7400 correctly emits `mr r3,r25` (reload filename's address)
+    #   right before the FS_LoadFile bctrl.
+    #   -mcpu=970 drops that reload entirely -- the last thing r3 held was
+    #   `li r3,0` from the *pic = NULL / *palette = NULL initialization a
+    #   few lines up (reused as a zero-scratch register), so FS_LoadFile
+    #   gets called with r3 == 0 (a NULL filename). That NULL propagates
+    #   unchanged through FS_LoadFile -> FS_FOpenFile -> FS_HandleForFile
+    #   (filesystem.c is already -O0'd since #53, so it faithfully passes
+    #   through whatever it's given) into Q_strlcpy's `src` parameter,
+    #   EXC_BAD_ACCESS at 0x0. Confirmed against a real g5-tiger crash
+    #   report: Q_strlcpy's r4 (src) was exactly 0, matching this exact
+    #   register chain back to LoadPCX's dropped reload.
+    #
+    # Reached from R_Init -> Draw_InitLocal -> R_FindImage("pics/conchars.pcx")
+    # at renderer init time (VID_LoadRefresh), before any map loads --
+    # matches the crash's own call stack (VID_LoadRefresh -> 3 unsymbolicated
+    # ref_gl.so frames -> FS_LoadFile).
+    #
+    # -O0 for the whole file, same low-risk trade as the other three: PCX
+    # loading is a one-shot init/asset-load path, not render-bound, and this
+    # port is never benched mid-load.
+    exec "$REGULAR_CC" "$@" -O0
+    ;;
   *filesystem.c*)
     # Same GCC14 -mcpu=970 -O2/-O3 register-allocation bug class as
     # SDLMain.m below, different symptom: FS_InitFilesystem's inlined

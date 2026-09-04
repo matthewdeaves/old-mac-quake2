@@ -55,7 +55,7 @@
 #   timestamp     UTC ISO-8601, captured at row-write time
 #   commit        short SHA
 #   build_type    fat | per-target | unknown — detected on the target
-#                 by which layout is in ~/Desktop/quake2/
+#                 by which layout is in ~/quake2-play/
 #   machine       ssh alias (yosemite, quicksilver, ...)
 #   cpu / gpu / os    hardcoded per-machine metadata (these are immutable
 #                 retro boxes — see the case-statement below for the
@@ -277,9 +277,9 @@ esac
 # inside Quake2.app/Contents/MacOS/; per-target lives in the deploy root.
 # Captures the binary's actual Mach-O architectures via `file` so the
 # CSV row pins down exactly what was tested.
-BUILD_TYPE=$(ssh "$HOST" 'if [ -f ~/Desktop/quake2/Quake2.app/Contents/MacOS/quake2 ]; then
+BUILD_TYPE=$(ssh "$HOST" 'if [ -f ~/quake2-play/Quake2.app/Contents/MacOS/quake2 ]; then
   echo "fat"
-elif [ -f ~/Desktop/quake2/quake2 ]; then
+elif [ -f ~/quake2-play/quake2 ]; then
   echo "per-target"
 else
   echo "unknown"
@@ -350,12 +350,12 @@ for i in $(seq 1 $RUNS); do
   # fractional sleeps return instantly and would busy-spin.
   # Engine path auto-detect: fat deploys ship Quake2.app/Contents/MacOS/quake2;
   # per-target deploys ship a flat ./quake2 next to the binary. Both are
-  # invoked with CWD = ~/Desktop/quake2/ so basedir=. picks up ref_gl.so
+  # invoked with CWD = ~/quake2-play/ so basedir=. picks up ref_gl.so
   # and baseq2/ in the parent directory either way.
   ssh "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
     killall -KILL quake2 2>/dev/null || true
     sleep 1
-    cd ~/Desktop/quake2
+    cd ~/quake2-play
     rm -f ~/.yq2/baseq2/qconsole.log
     if [ -x ./Quake2.app/Contents/MacOS/quake2 ]; then
       ENGINE=./Quake2.app/Contents/MacOS/quake2

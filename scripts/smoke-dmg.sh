@@ -127,16 +127,16 @@ echo "[smoke $HOST] launching installed Quake2.app with PRODUCTION config (as a 
 # there means the renderer loaded and a new game started, checked below
 # without requiring an fps line.
 if [ "$OPEN_ARGS" = 1 ]; then
-  LAUNCH_CMD="open -n ~/Desktop/quake2/Quake2.app --args -nolauncher \\
+  LAUNCH_CMD="open -n ~/quake2-play/Quake2.app --args -nolauncher \\
     +set logfile 2 +set timedemo 1 +demomap $DEMO.dm2"
 else
-  LAUNCH_CMD="open ~/Desktop/quake2/Quake2.app"
+  LAUNCH_CMD="open ~/quake2-play/Quake2.app"
 fi
 ssh "$HOST" "
   if killall -TERM quake2 2>/dev/null; then sleep 2; fi
   killall -KILL quake2 2>/dev/null || true
   sleep 1
-  [ -d ~/Desktop/quake2/Quake2.app ] || { echo 'NO_INSTALL'; exit 9; }
+  [ -d ~/quake2-play/Quake2.app ] || { echo 'NO_INSTALL'; exit 9; }
   # Rotate, don't delete: a crash before this run writes/flushes its own log
   # still leaves the previous run's transcript for comparison instead of
   # nothing at all. Cross-port lesson from halflife's smoke-dmg.sh, issue #38.
@@ -205,7 +205,7 @@ elif [ -n "$NOMODE_LINE" ]; then
   echo "  no display attached; it is not evidence the binary is bad, and it is" >&2
   echo "  not evidence it is good either." >&2
   echo "  To verify by hand, windowed, on the host:" >&2
-  echo "    cd ~/Desktop/quake2 && ./Quake2.app/Contents/MacOS/quake2 \\" >&2
+  echo "    cd ~/quake2-play && ./Quake2.app/Contents/MacOS/quake2 \\" >&2
   echo "      +set vid_fullscreen 0 +set s_initsound 0 +set logfile 2 \\" >&2
   echo "      +set timedemo 1 +demomap demo1.dm2" >&2
   echo "  then look for an 'N frames, N seconds: N fps' line in" >&2

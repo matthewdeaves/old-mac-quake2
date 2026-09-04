@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install the release DMG onto a target Mac *exactly the way an end user would*:
 # copy the .dmg to the Desktop, mount it, copy its contents into
-# ~/Desktop/quake2/, then unmount. This is deliberately the DMG path (not
+# ~/quake2-play/, then unmount. This is deliberately the DMG path (not
 # deploy.sh's direct rsync) so the test loop exercises the same artifact and
 # the same install steps a human performs — that is where the 2026-05-31
 # corrupt-DMG / illegal-instruction bug hid (deploy.sh was clean, the DMG
@@ -80,7 +80,7 @@ install_via_local_mount_fallback() {
   trap 'hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true; rmdir "$LMNT" 2>/dev/null || true' EXIT
   hdiutil attach -nobrowse -readonly -mountpoint "$LMNT" "$DMG" >/dev/null
 
-  DEST_REL="Desktop/quake2"
+  DEST_REL="quake2-play"
   ssh "$HOST" "mkdir -p $DEST_REL/baseq2 && rm -f $DEST_REL/baseq2/autoexec.cfg"
 
   echo "[deploy-dmg $HOST] rsync Quake2.app (local mount -> target, hdiutil bypass)"
@@ -106,12 +106,12 @@ install_via_local_mount_fallback() {
   trap - EXIT
 }
 
-echo "[deploy-dmg $HOST] mount + install into ~/Desktop/quake2/ (preserving game data)"
+echo "[deploy-dmg $HOST] mount + install into ~/quake2-play/ (preserving game data)"
 if ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
 set -e
 DMG_BASE="$1"
 MNT="$HOME/q2install-mnt"
-DEST="$HOME/Desktop/quake2"
+DEST="$HOME/quake2-play"
 
 # fresh mountpoint — detach any stale attach, then rmdir (NEVER rm -rf a path
 # that might still be a mounted read-only volume).

@@ -164,17 +164,17 @@ trap "rm -rf '$STAGE_CFG' '$TMPD'" EXIT
 LINES=$(wc -l < "$STAGE_CFG" | tr -d ' ')
 echo "[screenshot]   cfg size: $LINES lines"
 
-scp -q "$STAGE_CFG" "$HOST:Desktop/quake2/baseq2/autoshot.cfg"
+scp -q "$STAGE_CFG" "$HOST:quake2-play/baseq2/autoshot.cfg"
 
 echo "[screenshot] launch quake2 → timedemo demo1.dm2 → capture series → quit"
 # Engine path auto-detect: fat deploys ship Quake2.app/Contents/MacOS/quake2;
 # per-target deploys ship a flat ./quake2 next to the binary. Both are
-# invoked with CWD = ~/Desktop/quake2/ so basedir=. picks up ref_gl.so and
+# invoked with CWD = ~/quake2-play/ so basedir=. picks up ref_gl.so and
 # baseq2/ in the parent directory either way.
 ssh "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
   killall -KILL quake2 2>/dev/null || true
   sleep 1
-  cd ~/Desktop/quake2
+  cd ~/quake2-play
   rm -f ~/.yq2/baseq2/scrnshot/quake*.tga
   rm -f ~/.yq2/baseq2/qconsole.log
   if [ -x ./Quake2.app/Contents/MacOS/quake2 ]; then
@@ -253,7 +253,7 @@ if [ "$DEMO_BASE" = "demo1" ]; then
 fi
 
 # Remove the staged autoshot.cfg so it doesn't sit in the user's baseq2/.
-ssh "$HOST" 'rm -f ~/Desktop/quake2/baseq2/autoshot.cfg' 2>/dev/null || true
+ssh "$HOST" 'rm -f ~/quake2-play/baseq2/autoshot.cfg' 2>/dev/null || true
 
 echo "[screenshot] OK — $(ls "$SHOT_DIR/${OUT_TAG}"-*.png 2>/dev/null | wc -l) PNGs"
 ls -la "$SHOT_DIR/${OUT_TAG}"*.png 2>&1 | head -15

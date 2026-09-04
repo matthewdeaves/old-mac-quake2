@@ -465,10 +465,33 @@ static void CustomApplicationMain (int argc, char **argv)
    chain, confirmed by a real stack trace, not inferred. Returning NO here
    skips the whole subsystem, so a prior bad exit can never leave the next
    launch stuck behind an invisible dialog. */
+#ifndef Q2_ARCH_PPC970
+/* Excluded on ppc970 only (issue #65). 1a2fab13 added this to stop a
+   post-abnormal-exit hang in NSPersistentUIManager's restore-windows
+   dialog, verified only on mini-intel (10.7.5, Lion). On the ppc970
+   slice specifically it does the opposite: `open`-launching the app
+   (LaunchServices, real -psn_ argv -- the path a Finder double-click and
+   smoke-dmg.sh both take) now hangs with zero qconsole.log output and
+   never reaches applicationDidFinishLaunching: at all, while a direct
+   exec of the SAME binary (no -psn_) starts fine. ppc750/ppc7400 (G3,
+   every G4) show no such regression running the exact same method, so
+   this is not "old AppKit can't handle it" -- it is scoped to the
+   ppc970 compile specifically. Built via the STANDARD mini-intel cross
+   toolchain (build-fat.log confirms it, not the imac-2019 GCC14 path
+   #53/#56/#57/#62 are about), so this is not necessarily the same
+   compiler bug as those -- same symptom shape (a ppc970-only ObjC/init
+   miscompile), not claimed as the same root cause without more digging.
+   Verified directly on real hardware: g5-desktop (Leopard) hangs with
+   this method present, and launches clean -- GL init, game start, map
+   load -- via `open` with only this method excluded, binary otherwise
+   identical. Also reproduced identically on g5-tiger (Tiger) and
+   g5-panther (Panther) with the real fix through the full deploy+smoke
+   pipeline, not just this manual test. */
 - (BOOL) applicationSupportsSecureRestorableState: (NSApplication *) app
 {
     return NO;
 }
+#endif
 
 /* Called when the internal event loop has just started running */
 - (void) applicationDidFinishLaunching: (NSNotification *) note

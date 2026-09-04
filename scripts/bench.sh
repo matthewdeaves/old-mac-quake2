@@ -257,6 +257,18 @@ case "$TARGET" in
   quicksilver) META_CPU="PPC 7450 @ 733MHz";   META_GPU="ATI Radeon 9000 Pro 64MB";   META_OS="10.4.11 Tiger" ;;
   mini-g4)     META_CPU="PPC 7447A @ 1.25GHz"; META_GPU="ATI Radeon 9200 32MB";       META_OS="10.4.11 Tiger" ;;
   imac-g5)     META_CPU="PPC 970FX @ 2.0GHz";  META_GPU="ATI Radeon 9600 128MB";      META_OS="10.5.8 Leopard" ;;
+  # PowerMac7,3 (Power Mac G5 Dual, Late 2004/2005), one physical box, three
+  # OS partitions -- specs from autoexec-g5-dual.cfg's own header. Issue #61.
+  g5-panther)  META_CPU="PPC 970 Dual @ 2.7GHz";META_GPU="ATI Radeon 9600 128MB";     META_OS="10.3.9 Panther" ;;
+  g5-tiger)    META_CPU="PPC 970 Dual @ 2.7GHz";META_GPU="ATI Radeon 9600 128MB";     META_OS="10.4.11 Tiger" ;;
+  g5-desktop)  META_CPU="PPC 970 Dual @ 2.7GHz";META_GPU="ATI Radeon 9600 128MB";     META_OS="10.5.8 Leopard" ;;
+  # Power Mac G5 Quad (PowerMac11,2), one physical box, two OS partitions.
+  # GPU confirmed (old-mac-build-host/docs/HOSTS.md: "the Quad's 2004-era
+  # NVIDIA GeForce 6600"); CPU is the model's known public spec (4x PPC
+  # 970MP @ 2.5GHz) -- NOT independently re-verified via sysctl on this box,
+  # both aliases were off/unreachable when this was written.
+  quad-tiger)   META_CPU="PPC 970MP x4 @ 2.5GHz"; META_GPU="NVIDIA GeForce 6600";     META_OS="10.4.x Tiger" ;;
+  quad-leopard) META_CPU="PPC 970MP x4 @ 2.5GHz"; META_GPU="NVIDIA GeForce 6600";     META_OS="10.5.8 Leopard" ;;
   mini-intel)  META_CPU="Core 2 Duo @ 2.33GHz";META_GPU="Intel GMA 950 64MB";         META_OS="10.7.5 Lion" ;;
   imac-2019)   META_CPU="i5-9600K @ 3.7GHz";   META_GPU="AMD Radeon Pro 580X 8GB";    META_OS="15.7 Sequoia" ;;
 esac

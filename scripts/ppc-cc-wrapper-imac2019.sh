@@ -28,6 +28,38 @@ SDK="/Users/mini/SDKs/MacOSX10.3.9.sdk"
 PTRDIFF_HDR="/Users/mini/ptrdiff-compat-full.h"
 
 case " $* " in
+  *common/cvar.c*)
+    # Same GCC14 -mcpu=970 -O2/-O3 register-allocation bug class as
+    # clientserver.c/filesystem.c/SDLMain.m/files/pcx.c, fifth file hit
+    # (issue #62, split out of #57's fix). Cvar_SetValue formats its
+    # local `char val[32]` stack buffer, then needs val's address
+    # reloaded into r4 for the Cvar_Set(var_name, val) call -- the
+    # register holding &val[32] was only ever live in r3 (the format's
+    # dest arg), never copied into r4.
+    #
+    # -S diff, -mcpu=970 vs -mcpu=7400, same toolchain:
+    #   -mcpu=7400 correctly emits `mr r4,r29` (r29 == &val[32],
+    #   established at function entry) right before the Cvar_Set2 bctrl.
+    #   -mcpu=970 drops that copy entirely and instead emits `li r4,0`
+    #   -- a leftover scratch-zero immediate scheduled in for the branch
+    #   just taken, never overwritten with the real argument. Cvar_Set2
+    #   receives value == NULL, preserves it faithfully in its own
+    #   callee-saved r26 (that part of Cvar_Set2 is correct in both
+    #   variants), and later calls strcmp(NULL, var->string) ->
+    #   EXC_BAD_ACCESS at 0x0. Confirmed against the real g5-tiger crash
+    #   report: Cvar_Set2's strcmp had a NULL first argument, matching
+    #   this exact register chain back to Cvar_SetValue's dropped copy.
+    #
+    # Reached from VID_LoadRefresh -> an unsymbolicated ref_gl.so R_Init
+    # call setting a cvar (e.g. gl_anisotropic_avail) via
+    # ri.Cvar_SetValue, matching the crash's own call stack (VID_LoadRefresh
+    # -> ref_gl.so -> Cvar_SetValue -> Cvar_Set2 -> strcmp).
+    #
+    # -O0 for the whole file, same low-risk trade as the other four:
+    # cvar.c is init/console-command-bound, not render-bound, and this
+    # port is never benched mid-cvar-set.
+    exec "$REGULAR_CC" "$@" -O0
+    ;;
   *clientserver.c*)
     # Same GCC14 -mcpu=970 -O2/-O3 register-allocation bug class as
     # filesystem.c/SDLMain.m below, root-caused at the instruction level

@@ -31,7 +31,7 @@
 
 set -euo pipefail
 
-TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019|g5-panther|g5-tiger|g5-desktop|quad-tiger|quad-leopard>}"
+TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|mini-intel2|mini-sl|imac-2019|g5-panther|g5-tiger|g5-desktop|quad-tiger|quad-leopard>}"
 
 # Claim this machine for the whole run. See scripts/pick-bench-host.sh.
 #
@@ -115,6 +115,29 @@ case "$TARGET" in
     HOST=mini-intel
     RSYNC_EXTRA=""
     GAME_DATA_DIR='Games/Quake 2/baseq2'
+    ;;
+  mini-intel2)
+    # Same Macmini2,1 / 10.7.5 / toolchain as mini-intel (also a build
+    # host — see CLAUDE.md). Missing here entirely until issue #64:
+    # deploy.sh had no case for it at all, so it could never receive game
+    # data or an app install through this path (only smoke-dmg.sh and
+    # screenshot.sh already knew this target). ~/quake2-play is deliberately
+    # separate from ~/quake2, this box's build-tree rsync target.
+    HOST=mini-intel2
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Games/Quake 2/baseq2'
+    ;;
+  mini-sl)
+    # Snow Leopard 10.6.8 x86_64 box, added 2026-08-04 (see build-fat.sh).
+    # Same gap as mini-intel2 above: no case here until issue #64. Its
+    # real legacy game data (measured) lives at Desktop/quake2/baseq2 (no
+    # space, lowercase) -- the OLD, pre-#63 install layout -- not the
+    # "Games/Quake 2" convention the other Intel boxes use. Only matters
+    # as the last-resort fallback below; the canonical .game-data/ source
+    # is what actually gets used.
+    HOST=mini-sl
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Desktop/quake2/baseq2'
     ;;
   imac-2019)
     HOST=imac-2019

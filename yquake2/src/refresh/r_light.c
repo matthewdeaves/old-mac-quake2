@@ -25,6 +25,7 @@
  */
 
 #include "header/local.h"
+#include "header/light_bounds.h"
 
 #define DLIGHT_CUTOFF 64
 
@@ -33,6 +34,34 @@ vec3_t pointcolor;
 cplane_t *lightplane; /* used as shadow plane */
 vec3_t lightspot;
 static float s_blocklights[34 * 34 * 3];
+
+/* Direct-mapped, bounded cache, allocated only for the experimental path.
+ * Store pre-dlight floats, not clamped RGBA,
+ * so bright and negative lights retain the original arithmetic. */
+typedef struct
+{
+	msurface_t *surface;
+	byte *samples;
+	int size, maps;
+	float scale[MAXLIGHTMAPS][3];
+	float *values;
+} lightcache_t;
+#define LIGHTCACHE_SLOTS 128
+#define LIGHTCACHE_BYTES (256 * 1024)
+static lightcache_t *lightcache;
+static size_t lightcache_bytes;
+static unsigned lightcache_victim;
+
+void
+R_ClearLightCache(void)
+{
+	int i;
+	if (lightcache)
+		for (i = 0; i < LIGHTCACHE_SLOTS; i++) free(lightcache[i].values);
+	free(lightcache);
+	lightcache = NULL;
+	lightcache_bytes = lightcache_victim = 0;
+}
 
 void
 R_RenderDlight(dlight_t *light)
@@ -375,7 +404,7 @@ R_AddDynamicLights(msurface_t *surf)
 	int sd, td;
 	float fdist, frad, fminlight;
 	vec3_t impact, local;
-	int s, t;
+	int s, t, first, end;
 	int i;
 	int smax, tmax;
 	mtexinfo_t *tex;
@@ -420,6 +449,10 @@ R_AddDynamicLights(msurface_t *surf)
 				   tex->vecs[0]) + tex->vecs[0][3] - surf->texturemins[0];
 		local[1] = DotProduct(impact,
 				   tex->vecs[1]) + tex->vecs[1][3] - surf->texturemins[1];
+		first = 0;
+		end = smax;
+		if (gl_lightmap_cache->value)
+			R_LightColumns(local[0], fminlight, smax, &first, &end);
 
 		pfBL = s_blocklights;
 
@@ -447,7 +480,8 @@ R_AddDynamicLights(msurface_t *surf)
 				continue;
 			}
 
-			for (s = 0, fsacc = 0; s < smax; s++, fsacc += 16, pfBL += 3)
+			pfBL += first * 3;
+			for (s = first, fsacc = first * 16; s < end; s++, fsacc += 16, pfBL += 3)
 			{
 				sd = Q_ftol(local[0] - fsacc);
 
@@ -472,6 +506,7 @@ R_AddDynamicLights(msurface_t *surf)
 					pfBL[2] += (frad - fdist) * dl->color[2];
 				}
 			}
+			pfBL += (smax - end) * 3;
 		}
 	}
 }
@@ -502,6 +537,8 @@ R_BuildLightMap(msurface_t *surf, byte *dest, int stride)
 	float scale[4];
 	int nummaps;
 	float *bl;
+	lightcache_t *cache = NULL;
+	float cache_scale[MAXLIGHTMAPS][3];
 
 	/* Only SKY and WARP surfaces genuinely lack a lightmap. Non-warp
 	 * translucent surfaces (SURF_TRANS33/66 — glass, grates) DO carry
@@ -522,7 +559,7 @@ R_BuildLightMap(msurface_t *surf, byte *dest, int stride)
 	tmax = (surf->extents[1] >> 4) + 1;
 	size = smax * tmax;
 
-	if ((size_t)size > (sizeof(s_blocklights) >> 4))
+	if (size <= 0 || (size_t)size > sizeof(s_blocklights) / (3 * sizeof(float)))
 	{
 		ri.Sys_Error(ERR_DROP, "Bad s_blocklights size");
 	}
@@ -545,6 +582,26 @@ R_BuildLightMap(msurface_t *surf, byte *dest, int stride)
 	}
 
 	lightmap = surf->samples;
+	if (gl_lightmap_cache && gl_lightmap_cache->value)
+	{
+		if (!lightcache) lightcache = calloc(LIGHTCACHE_SLOTS, sizeof(*lightcache));
+		if (lightcache)
+		{
+			unsigned slot = ((size_t)surf / sizeof(msurface_t)) & (LIGHTCACHE_SLOTS - 1);
+			cache = &lightcache[slot];
+			memset(cache_scale, 0, sizeof(cache_scale));
+			for (i = 0; i < nummaps; i++)
+				for (j = 0; j < 3; j++)
+					cache_scale[i][j] = gl_modulate->value * r_newrefdef.lightstyles[surf->styles[i]].rgb[j];
+			if (cache->surface == surf && cache->samples == surf->samples &&
+				cache->size == size && cache->maps == nummaps &&
+				!memcmp(cache->scale, cache_scale, sizeof(cache_scale)))
+			{
+				memcpy(s_blocklights, cache->values, (size_t)size * 3 * sizeof(float));
+				goto dynamic_lights;
+			}
+		}
+	}
 
 	/* add all the lightmaps */
 	if (nummaps == 1)
@@ -626,6 +683,41 @@ R_BuildLightMap(msurface_t *surf, byte *dest, int stride)
 		}
 	}
 
+	if (cache)
+	{
+		size_t bytes = (size_t)size * 3 * sizeof(float);
+		if (cache->values && cache->size != size)
+		{
+			lightcache_bytes -= (size_t)cache->size * 3 * sizeof(float);
+			free(cache->values);
+			cache->values = NULL;
+		}
+		if (!cache->values)
+		{
+			while (lightcache_bytes + bytes > LIGHTCACHE_BYTES)
+			{
+				lightcache_t *victim = &lightcache[lightcache_victim++ & (LIGHTCACHE_SLOTS - 1)];
+				if (!victim->values) continue;
+				lightcache_bytes -= (size_t)victim->size * 3 * sizeof(float);
+				free(victim->values);
+				memset(victim, 0, sizeof(*victim));
+			}
+			cache->values = malloc(bytes);
+			if (!cache->values)
+			{
+				cache->surface = NULL;
+				goto dynamic_lights;
+			}
+			lightcache_bytes += bytes;
+		}
+		cache->surface = surf;
+		cache->samples = surf->samples;
+		cache->size = size;
+		cache->maps = nummaps;
+		memcpy(cache->scale, cache_scale, sizeof(cache_scale));
+		memcpy(cache->values, s_blocklights, (size_t)size * 3 * sizeof(float));
+	}
+dynamic_lights:
 	/* add all the dynamic lights */
 	if (surf->dlightframe == r_framecount)
 	{
@@ -705,4 +797,3 @@ store:
 		}
 	}
 }
-

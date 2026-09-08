@@ -268,7 +268,14 @@ R_DrawAliasFrameLerp(dmdl_t *paliashdr, float backlerp)
 
 	R_LerpVerts(paliashdr->num_xyz, v, ov, verts, lerp, move, frontv, backv);
 
-	if (gl_vertex_arrays->value)
+	if (gl_indexedmodels->value && R_DrawIndexedAlias(currentmodel, s_lerped, verts, shadedots,
+		shadelight, alpha,
+		(currententity->flags & (RF_SHELL_RED | RF_SHELL_GREEN |
+		 RF_SHELL_BLUE | RF_SHELL_DOUBLE | RF_SHELL_HALF_DAM)) != 0, shell_glow))
+	{
+		/* Common shell/texgen cleanup below also owns the indexed path. */
+	}
+	else if (gl_vertex_arrays->value)
 	{
 		float colorArray[MAX_VERTS * 4];
 
@@ -506,6 +513,12 @@ R_DrawAliasShadow(dmdl_t *paliashdr, int posenum)
 		qglEnable(GL_STENCIL_TEST);
 		qglStencilFunc(GL_EQUAL, 1, 2);
 		qglStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
+	}
+
+	if (gl_indexedmodels->value && R_DrawIndexedShadow(currentmodel, s_lerped, shadevector, lheight, height))
+	{
+		if (have_stencil && gl_stencilshadow->value) qglDisable(GL_STENCIL_TEST);
+		return;
 	}
 
 	while (1)
@@ -1002,4 +1015,3 @@ R_DrawAliasModel(entity_t *e)
 
 	qglColor4f(1, 1, 1, 1);
 }
-

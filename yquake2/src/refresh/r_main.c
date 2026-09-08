@@ -107,6 +107,9 @@ cvar_t *gl_overbrightbits;
 cvar_t *gl_waterwarp;          /* yquake2-ppc Phase C #2 — underwater frustum warp magnitude */
 cvar_t *gl_lightmap_subrect;   /* yquake2-ppc Phase B #1 — subrect dynamic lightmap upload */
 cvar_t *gl_groupdraw;          /* yquake2-ppc Phase B #3 — buffer-batched draw vs immediate */
+cvar_t *gl_staticworld, *gl_indexedmodels, *gl_lightmap_cache;
+cvar_t *gl_worldsort;
+cvar_t *gl_mesh_lockarrays;
 cvar_t *gl_minlight;           /* yquake2-ppc Tier 2 — clamp dark luxels to this floor (0-255, default 0) */
 cvar_t *gl_skydistance;        /* yquake2-ppc Tier 2 — sky box half-extent (was hardcoded 2300/4096) */
 cvar_t *gl_particle_square;    /* yquake2-ppc Tier 2 — force GL_POINTS particle path even without pointparameters ext */
@@ -1113,6 +1116,15 @@ R_Register(void)
 	gl_groupdraw = ri.Cvar_Get("gl_groupdraw", "1", CVAR_ARCHIVE);
 #endif
 
+	/* Experimental paths: opt in independently for correctness and FPS A/B. */
+	gl_staticworld = ri.Cvar_Get("gl_staticworld", "0", CVAR_ARCHIVE);
+	gl_indexedmodels = ri.Cvar_Get("gl_indexedmodels", "0", CVAR_ARCHIVE);
+	gl_lightmap_cache = ri.Cvar_Get("gl_lightmap_cache", "0", CVAR_ARCHIVE);
+	/* Keep the candidate's original ordering unless explicitly testing
+	 * retained geometry without the per-frame depth/material sort. */
+	gl_worldsort = ri.Cvar_Get("gl_worldsort", "1", CVAR_ARCHIVE);
+	gl_mesh_lockarrays = ri.Cvar_Get("gl_mesh_lockarrays", "0", CVAR_ARCHIVE);
+
 	/* Tier 2 — minimum lightmap luxel value. 0 disables (lightmap stays
 	 * pitch-black in unlit corners as the original Q2 does). 8-32 lifts
 	 * those corners to a faint glow so geometry is still visible.
@@ -1645,6 +1657,7 @@ R_Shutdown(void)
 	ri.Cmd_RemoveCommand("gl_strings");
 
 	Mod_FreeAll();
+	R_ClearLightCache();
 
 	R_ShutdownImages();
 
@@ -1927,4 +1940,3 @@ Com_Printf(char *fmt, ...)
 
 	ri.Con_Printf(PRINT_ALL, "%s", text);
 }
-

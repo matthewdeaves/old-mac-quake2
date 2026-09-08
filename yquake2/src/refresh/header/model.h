@@ -110,6 +110,8 @@ typedef struct msurface_s
 	byte *samples;                          /* [numstyles*surfsize] */
 
 	int checkCount;                         /* decal fragment recursion guard */
+	int prepared_lightframe, prepared_lightmap;
+	vec3_t drawcenter;
 } msurface_t;
 
 typedef struct mnode_s
@@ -214,6 +216,10 @@ typedef struct model_s
 
 	int extradatasize;
 	void *extradata;
+	/* Optional renderer-owned caches; inline BSP models borrow the world's. */
+	struct worldmesh_s *worldmesh;
+	struct aliasmesh_s *aliasmesh;
+	qboolean worldmesh_attempted, aliasmesh_attempted;
 } model_t;
 
 void Mod_Init(void);

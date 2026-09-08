@@ -40,6 +40,151 @@ qboolean LM_AllocBlock(int w, int h, int *x, int *y);
 
 void R_SetCacheState(msurface_t *surf);
 void R_BuildLightMap(msurface_t *surf, byte *dest, int stride);
+static void R_RenderLightmappedPoly(msurface_t *surf);
+
+typedef struct
+{
+	msurface_t *surface;
+	int band, texture, order;
+} worlddraw_t;
+static worlddraw_t *worlddraws;
+static int worlddraw_capacity, worlddraw_count;
+static qboolean collect_world;
+
+/* Mirror up to four source atlases. Their original slots do not overlap,
+ * so dynamic surfaces can share an upload without reusing atlas 0 between
+ * draws. The cap bounds CPU and GPU storage on the smallest machines;
+ * excess source atlases retain the original per-surface path. */
+#define DYNAMIC_PAGES 4
+#define TEXNUM_DYNAMIC_FIRST (TEXNUM_BLOOMEFFECT + 1)
+typedef struct
+{
+	byte pixels[BLOCK_WIDTH * BLOCK_HEIGHT * LIGHTMAP_BYTES];
+	int source, xmin, ymin, xmax, ymax;
+	qboolean allocated;
+} dynamicpage_t;
+static dynamicpage_t *dynamicpages;
+
+void
+R_FreeSurfaceQueue(void)
+{
+	int i;
+	R_ApplyGLBuffer();
+	free(worlddraws);
+	worlddraws = NULL;
+	worlddraw_capacity = worlddraw_count = 0;
+	collect_world = false;
+	if (dynamicpages)
+	{
+		for (i = 0; i < DYNAMIC_PAGES; i++)
+			if (dynamicpages[i].allocated)
+			{
+				GLuint texture = TEXNUM_DYNAMIC_FIRST + i;
+				qglDeleteTextures(1, &texture);
+			}
+		free(dynamicpages);
+		dynamicpages = NULL;
+		gl_state.currenttextures[0] = gl_state.currenttextures[1] = -1;
+	}
+}
+
+static void
+R_PrepareWorldLights(void)
+{
+	int i, page;
+	if (!gl_lightmap_cache->value || !gl_dynamic->value || !qglMTexCoord2fSGIS) return;
+	if (!dynamicpages) dynamicpages = calloc(DYNAMIC_PAGES, sizeof(*dynamicpages));
+	if (!dynamicpages) return;
+	R_ApplyGLBuffer();
+	for (page = 0; page < DYNAMIC_PAGES; page++)
+	{
+		dynamicpage_t *p = &dynamicpages[page];
+		p->source = -1;
+		p->xmin = BLOCK_WIDTH;
+		p->ymin = BLOCK_HEIGHT;
+		p->xmax = p->ymax = 0;
+	}
+	for (i = 0; i < worlddraw_count; i++)
+	{
+		msurface_t *s = worlddraws[i].surface;
+		dynamicpage_t *p;
+		int w = (s->extents[0] >> 4) + 1, h = (s->extents[1] >> 4) + 1;
+		s->prepared_lightframe = 0;
+		if (s->dlightframe != r_framecount) continue;
+		if (s->light_s < 0 || s->light_t < 0 || w <= 0 || h <= 0 ||
+			s->light_s + w > BLOCK_WIDTH || s->light_t + h > BLOCK_HEIGHT) continue;
+		for (page = 0; page < DYNAMIC_PAGES; page++)
+			if (dynamicpages[page].source == s->lightmaptexturenum || dynamicpages[page].source == -1) break;
+		if (page == DYNAMIC_PAGES) continue;
+		p = &dynamicpages[page];
+		p->source = s->lightmaptexturenum;
+		R_BuildLightMap(s, p->pixels + (s->light_t * BLOCK_WIDTH + s->light_s) * LIGHTMAP_BYTES,
+			BLOCK_WIDTH * LIGHTMAP_BYTES);
+		if (s->light_s < p->xmin) p->xmin = s->light_s;
+		if (s->light_t < p->ymin) p->ymin = s->light_t;
+		if (s->light_s + w > p->xmax) p->xmax = s->light_s + w;
+		if (s->light_t + h > p->ymax) p->ymax = s->light_t + h;
+		s->prepared_lightmap = TEXNUM_DYNAMIC_FIRST + page - gl_state.lightmap_textures;
+		s->prepared_lightframe = r_framecount;
+	}
+	for (page = 0; page < DYNAMIC_PAGES; page++)
+	{
+		dynamicpage_t *p = &dynamicpages[page];
+		if (p->source == -1) continue;
+		R_MBind(QGL_TEXTURE1, TEXNUM_DYNAMIC_FIRST + page);
+		if (!p->allocated)
+		{
+			qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			qglTexImage2D(GL_TEXTURE_2D, 0, gl_lms.internal_format, BLOCK_WIDTH, BLOCK_HEIGHT,
+				0, GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE, p->pixels);
+			p->allocated = true;
+		}
+		else
+		{
+			qglPixelStorei(GL_UNPACK_ROW_LENGTH, BLOCK_WIDTH);
+			qglTexSubImage2D(GL_TEXTURE_2D, 0, p->xmin, p->ymin, p->xmax - p->xmin, p->ymax - p->ymin,
+				GL_LIGHTMAP_FORMAT, GL_UNSIGNED_BYTE,
+				p->pixels + (p->ymin * BLOCK_WIDTH + p->xmin) * LIGHTMAP_BYTES);
+			qglPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+		}
+		if (qglGetError() != GL_NO_ERROR)
+		{
+			for (i = 0; i < worlddraw_count; i++)
+				if (worlddraws[i].surface->prepared_lightmap == TEXNUM_DYNAMIC_FIRST + page - gl_state.lightmap_textures)
+					worlddraws[i].surface->prepared_lightframe = 0;
+		}
+	}
+}
+
+static int
+R_CompareWorldDraws(const void *a, const void *b)
+{
+	const worlddraw_t *x = a, *y = b;
+	int lx, ly;
+	if (x->band != y->band) return x->band < y->band ? -1 : 1;
+	if (x->texture != y->texture) return x->texture < y->texture ? -1 : 1;
+	lx = x->surface->prepared_lightframe == r_framecount ? x->surface->prepared_lightmap : x->surface->lightmaptexturenum;
+	ly = y->surface->prepared_lightframe == r_framecount ? y->surface->prepared_lightmap : y->surface->lightmaptexturenum;
+	if (lx != ly) return lx < ly ? -1 : 1;
+	return x->order - y->order;
+}
+
+static void
+R_DrawCollectedWorld(void)
+{
+	int i;
+	R_PrepareWorldLights();
+	if (gl_staticworld->value && gl_worldsort->value)
+		qsort(worlddraws, worlddraw_count, sizeof(*worlddraws), R_CompareWorldDraws);
+	for (i = 0; i < worlddraw_count; i++)
+	{
+		msurface_t *s = worlddraws[i].surface;
+		if (qglMTexCoord2fSGIS) R_RenderLightmappedPoly(s);
+		else R_RenderBrushPoly(s);
+	}
+	R_ApplyGLBuffer();
+}
 
 /*
  * Returns the proper texture for a given time and base texture
@@ -553,6 +698,21 @@ R_RenderBrushPoly(msurface_t *fa)
 		return;
 	}
 
+	/* Retained world geometry has its own batch, including on single-TMU
+	 * hardware. Keep lightmap chain construction below common to both. */
+	if (gl_staticworld->value && currentmodel == r_worldmodel)
+	{
+		float scroll = 0;
+		if (fa->texinfo->flags & SURF_FLOWING)
+		{
+			scroll = -64 * ((r_newrefdef.time / 40.0) - (int)(r_newrefdef.time / 40.0));
+			if (scroll == 0) scroll = -64;
+		}
+		if (R_QueueWorldSurface(fa, image->texnum, 0, false, scroll))
+			goto lightmap;
+	}
+	if (gl_staticworld->value) R_FlushWorldMesh();
+
 	/* Standard brush surface. Two paths:
 	 *   gl_groupdraw 1: R_UpdateGLBuffer sets buf_singletex state and
 	 *     flushes only when texture/flags change; R_DrawGLPoly /
@@ -579,6 +739,7 @@ R_RenderBrushPoly(msurface_t *fa)
 		R_DrawGLPoly(fa->polys);
 	}
 
+lightmap:
 	/* check for lightmap modification */
 	for (maps = 0; maps < MAXLIGHTMAPS && fa->styles[maps] != 255; maps++)
 	{
@@ -974,6 +1135,13 @@ R_RenderLightmappedPoly(msurface_t *surf)
 		}
 	}
 
+	if (gl_lightmap_cache->value && currentmodel == r_worldmodel &&
+		surf->prepared_lightframe == r_framecount)
+	{
+		lmtex = surf->prepared_lightmap;
+		is_dynamic = false;
+	}
+
 	/* Dynamic-rebuild path: rebuild the lightmap subrect, upload to the
 	 * appropriate atlas slot, decide which lmtex to draw with. Note the
 	 * R_MBind here is for the qglTexSubImage2D upload's bind target,
@@ -1048,6 +1216,11 @@ R_RenderLightmappedPoly(msurface_t *surf)
 		}
 	}
 
+	if (gl_staticworld->value)
+	{
+		if (R_QueueWorldSurface(surf, image->texnum, lmtex, true, scroll)) return;
+		R_FlushWorldMesh();
+	}
 	if (gl_groupdraw->value)
 	{
 		/* Buffer state for this batch. Flushes the pending batch if
@@ -1427,7 +1600,24 @@ R_RecursiveWorldNode(mnode_t *node)
 		}
 		else
 		{
-			if (qglMTexCoord2fSGIS && !(surf->flags & SURF_DRAWTURB))
+			if (collect_world && worlddraw_count < worlddraw_capacity && !(surf->flags & SURF_DRAWTURB))
+			{
+				worlddraw_t *draw = &worlddraws[worlddraw_count];
+				vec3_t delta;
+				float depth;
+				draw->band = 0;
+				if (gl_staticworld->value && gl_worldsort->value)
+				{
+					VectorSubtract(surf->drawcenter, r_newrefdef.vieworg, delta);
+					depth = DotProduct(delta, vpn) * (1.0f / 256.0f);
+					draw->band = depth < 0 ? 0 : (depth > 65535 ? 65535 : (int)depth);
+				}
+				draw->surface = surf;
+				draw->texture = R_TextureAnimation(surf->texinfo)->texnum;
+				draw->order = worlddraw_count++;
+				surf->prepared_lightframe = 0;
+			}
+			else if (qglMTexCoord2fSGIS && !(surf->flags & SURF_DRAWTURB))
 			{
 				R_RenderLightmappedPoly(surf);
 			}
@@ -1461,6 +1651,23 @@ R_DrawWorld(void)
 	}
 
 	currentmodel = r_worldmodel;
+	R_BuildWorldMesh(r_worldmodel); /* permits an A/B toggle without vid_restart */
+	worlddraw_count = 0;
+	collect_world = false;
+	if (gl_staticworld->value ||
+		(gl_lightmap_cache->value && gl_dynamic->value && qglMTexCoord2fSGIS))
+	{
+		if (worlddraw_capacity < r_worldmodel->numsurfaces)
+		{
+			worlddraw_t *draws = realloc(worlddraws, (size_t)r_worldmodel->numsurfaces * sizeof(*draws));
+			if (draws)
+			{
+				worlddraws = draws;
+				worlddraw_capacity = r_worldmodel->numsurfaces;
+			}
+		}
+		collect_world = worlddraw_capacity >= r_worldmodel->numsurfaces;
+	}
 
 	VectorCopy(r_newrefdef.vieworg, modelorg);
 
@@ -1531,6 +1738,7 @@ R_DrawWorld(void)
 		}
 
 		R_RecursiveWorldNode(r_worldmodel->nodes);
+		if (collect_world) R_DrawCollectedWorld();
 		/* RecursiveWorldNode emitted lots of mtex draws into the
 		 * buffer; drain before flipping multitex off. */
 		R_ApplyGLBuffer();
@@ -1539,7 +1747,9 @@ R_DrawWorld(void)
 	else
 	{
 		R_RecursiveWorldNode(r_worldmodel->nodes);
+		if (collect_world) R_DrawCollectedWorld();
 	}
+	collect_world = false;
 
 	R_DrawTextureChains();
 	R_BlendLightmaps();
@@ -1644,4 +1854,3 @@ R_MarkLeaves(void)
 		}
 	}
 }
-

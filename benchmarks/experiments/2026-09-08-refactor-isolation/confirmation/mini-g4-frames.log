@@ -1,0 +1,15 @@
+[check-frames] capturing mini-g4 from mini-g4
+[check-frames] captured 10 frames
+  frame                  RMSE         verdict
+  mini-g4-00.png         9.13426e-05  ok
+  mini-g4-01.png         0.000114634  ok
+  mini-g4-02.png         8.04127e-05  ok
+  mini-g4-03.png         8.72549e-05  ok
+  mini-g4-04.png         3.38708e-05  ok
+  mini-g4-05.png         0.000134711  ok
+  mini-g4-06.png         0.000424277  ok
+  mini-g4-07.png         0.000133935  ok
+  mini-g4-08.png         6.37765e-05  ok
+  mini-g4-09.png         9.01936e-05  ok
+
+[check-frames] PASS — 10 frames match their reference within 0.04

@@ -1,0 +1,2 @@
+timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_fps,median_fps,notes
+2026-09-08T20:35:10Z,8dd19993,fat,mini-g4,PPC 7447A @ 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,1024x768,40.2,40.3,40.3,40.30,lock-off world1 indexed0 cache1 sort0 source91b6ab2e3e01 | mode=fullscreen EXTRA=+exec q2-lock-off.cfg | SDLMain.m: exclude applicationSupportsSecureRestorableState on ppc970 (#65)

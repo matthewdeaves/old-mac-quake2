@@ -319,6 +319,23 @@ extern qboolean  gl_have_pointsprite;
 
 /* yquake2-ppc Phase B #3 — gl_groupdraw group-draw batching toggle */
 extern cvar_t *gl_groupdraw;
+extern cvar_t *gl_staticworld, *gl_indexedmodels, *gl_lightmap_cache;
+extern cvar_t *gl_worldsort;
+extern cvar_t *gl_mesh_lockarrays;
+void R_BuildWorldMesh(model_t *mod);
+void R_FreeWorldMesh(model_t *mod);
+void R_FlushWorldMesh(void);
+qboolean R_QueueWorldSurface(msurface_t *surf, int texture, int lightmap,
+		qboolean multitexture, float scroll);
+void R_BuildAliasMesh(model_t *mod);
+void R_FreeAliasMesh(model_t *mod);
+qboolean R_DrawIndexedAlias(model_t *mod, float (*positions)[4],
+		dtrivertx_t *verts, float *shadedots, float *light, float alpha,
+		qboolean shell, qboolean glow);
+qboolean R_DrawIndexedShadow(model_t *mod, float (*positions)[4],
+		float *shade, float lheight, float height);
+void R_ClearLightCache(void);
+void R_FreeSurfaceQueue(void);
 
 /* yquake2-ppc Tier 2 — gl_minlight clamp + gl_skydistance box size */
 extern cvar_t *gl_minlight;

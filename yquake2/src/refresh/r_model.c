@@ -278,6 +278,8 @@ Mod_ForName(char *name, qboolean crash)
 	}
 
 	loadmodel->extradatasize = Hunk_End();
+	if (mod->type == mod_alias && gl_indexedmodels->value)
+		R_BuildAliasMesh(mod);
 
 	ri.FS_FreeFile(buf);
 
@@ -657,6 +659,17 @@ Mod_LoadFaces(lump_t *l)
 		if (!(out->texinfo->flags & SURF_WARP))
 		{
 			LM_BuildPolygonFromSurface(out);
+			if (out->polys && out->polys->numverts > 0)
+			{
+				int vertex, axis;
+				for (axis = 0; axis < 3; axis++)
+				{
+					out->drawcenter[axis] = 0;
+					for (vertex = 0; vertex < out->polys->numverts; vertex++)
+						out->drawcenter[axis] += out->polys->verts[vertex][axis];
+					out->drawcenter[axis] /= out->polys->numverts;
+				}
+			}
 		}
 	}
 
@@ -928,6 +941,7 @@ Mod_LoadBrushModel(model_t *mod, void *buffer)
 	Mod_LoadNodes(&header->lumps[LUMP_NODES]);
 	Mod_LoadSubmodels(&header->lumps[LUMP_MODELS]);
 	mod->numframes = 2; /* regular and alternate animation */
+	R_BuildWorldMesh(mod);
 
 	/* set up the submodels */
 	for (i = 0; i < mod->numsubmodels; i++)
@@ -964,6 +978,9 @@ Mod_LoadBrushModel(model_t *mod, void *buffer)
 void
 Mod_Free(model_t *mod)
 {
+	if (mod->type == mod_brush) R_FreeSurfaceQueue();
+	R_FreeWorldMesh(mod);
+	R_FreeAliasMesh(mod);
 	Hunk_Free(mod->extradata);
 	memset(mod, 0, sizeof(*mod));
 }
@@ -1090,4 +1107,3 @@ R_EndRegistration(void)
 
 	R_FreeUnusedImages();
 }
-

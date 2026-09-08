@@ -286,6 +286,7 @@ LM_BeginBuildingLightmaps(model_t *m)
 	static lightstyle_t lightstyles[MAX_LIGHTSTYLES];
 	int i;
 	unsigned dummy[128 * 128];
+	R_ClearLightCache();
 
 	memset(gl_lms.allocated, 0, sizeof(gl_lms.allocated));
 
@@ -330,4 +331,3 @@ LM_EndBuildingLightmaps(void)
 	LM_UploadBlock(false);
 	R_EnableMultitexture(false);
 }
-

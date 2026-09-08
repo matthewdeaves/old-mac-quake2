@@ -74,6 +74,8 @@ R_ApplyGLBuffer(void)
 	GLint vtx_size;
 	qboolean texture, mtex, alpha, color;
 
+	R_FlushWorldMesh();
+
 	if (vtx_ptr == 0 || idx_ptr == 0)
 	{
 		return;

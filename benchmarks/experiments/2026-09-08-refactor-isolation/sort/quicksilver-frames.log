@@ -1,0 +1,15 @@
+[check-frames] capturing quicksilver from quicksilver
+[check-frames] captured 10 frames
+  frame                  RMSE         verdict
+  quicksilver-00.png     9.13426e-05  ok
+  quicksilver-01.png     0.000114634  ok
+  quicksilver-02.png     8.04127e-05  ok
+  quicksilver-03.png     0.00699955   ok
+  quicksilver-04.png     0.00763729   ok
+  quicksilver-05.png     0.000134711  ok
+  quicksilver-06.png     0.000424277  ok
+  quicksilver-07.png     0.000133935  ok
+  quicksilver-08.png     6.37765e-05  ok
+  quicksilver-09.png     9.01936e-05  ok
+
+[check-frames] PASS — 10 frames match their reference within 0.04

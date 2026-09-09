@@ -1,7 +1,10 @@
 # 14. The engine is arm64-clean. Only SDL 1.2 is not.
 
 Date: 2026-08-20
-Status: accepted (measured); no arm64 slice ships yet
+Status: accepted (measured); superseded by ADR 0015, native arm64 slice ships
+
+> Superseded for release status: the implementation decision below records the
+> pre-ADR-0015 state. The current fat binary carries `arm64`; see ADR 0015.
 
 Follows ADR 0003, which argued arm64 is a separate decision from an engine
 bump but had compiled nothing. This one compiled something.
@@ -30,7 +33,7 @@ architecture comes from `OSX_ARCH`. It is also why the PowerPC slices pass a
 list that does not contain `ppc`: they cross-compile from an x86_64 Lion host,
 so `uname -m` never says `ppc`. `arm64` is now in the list.
 
-## Why no arm64 slice ships yet
+## Why no arm64 slice shipped at the time of this decision
 
 `sdl12-compat` is the route ADR 0003 identified, and it does exist for arm64.
 The problem is what it stands on. Homebrew's `sdl12-compat` `dlopen`s SDL2 at
@@ -49,12 +52,11 @@ SDL2 builds for `ppc750` and runs on a G3. That engine uses SDL2 directly, so
 on it arm64 needs no shim at all. The shim is now the worse-evidenced of the
 two paths, not the cheaper one.
 
-## Decision
+## Historical decision
 
-**Record that the engine is arm64-clean, keep the Makefile fix, and do not
-ship an arm64 slice on the shim.** Revisit arm64 as part of the engine-bump
-decision (ADR 0013), where it comes almost free, rather than as a shim layered
-under a pinned 2018 engine.
+**Record that the engine is arm64-clean, keep the Makefile fix, and defer
+shipping an arm64 slice on the shim.** This was later revisited and superseded
+by ADR 0015, which ships the tested `sdl12-compat` route.
 
 ## Consequences
 
@@ -64,11 +66,11 @@ under a pinned 2018 engine.
 - `q2ded` for arm64 is a real artifact. The Linux server story already covers
   aarch64; this is the same engine proving out on Apple Silicon.
 
-**Lost**
+**Historical consequence**
 
-- Apple Silicon still runs the `x86_64` slice under Rosetta 2.
+- Before ADR 0015, Apple Silicon ran the `x86_64` slice under Rosetta 2.
 
-**Open**
+**Historical open items**
 
 - Neither `q2ded` nor `game.so` for arm64 has been run, only built.
 - Nothing was built against a real (non-`sdl2-compat`) SDL2 for arm64.

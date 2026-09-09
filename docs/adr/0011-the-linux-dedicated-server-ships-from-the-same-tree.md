@@ -10,7 +10,8 @@ stands.
 
 ## Context
 
-The Mac clients are the fat binary's four slices (ADR 0001). A LAN game needs a
+The Mac clients are the fat binary's PPC and Intel slices (ADR 0001); the current
+fat also carries native `arm64` (ADR 0015). A LAN game needs a
 host, and a vintage Mac is a poor one. A headless x86_64 or aarch64 Linux box is
 a good one, and the engine already builds there.
 

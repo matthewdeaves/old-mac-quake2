@@ -12,7 +12,8 @@ old ones, which decides where each step runs.
 
 ## Decision
 
-**All four slices cross-compile on an Intel Lion mini. The release disk image is
+**The PPC and Intel slices cross-compile on an Intel Lion mini. The arm64 slice
+is built separately on Apple Silicon. The release disk image is
 packaged on a Tiger G4. The PowerPC machines are bench and deploy targets only.**
 
 ### Which mini is asked, never assumed

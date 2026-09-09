@@ -37,8 +37,8 @@
 # post:  dist/Quake2-OldMac-<version>.dmg
 #
 # One .dmg installs on every supported Mac — the fat binary's six slices
-# (ppc750 / ppc7400 / ppc970 / x86_64) + the CFBundle per-arch & per-machine
-# autoexec layers mean one disk image serves G3 Panther through modern Intel.
+# (ppc750 / ppc7400 / ppc970 / i386 / x86_64 / arm64) + the CFBundle per-arch & per-machine
+# autoexec layers mean one disk image serves G3 Panther through modern Apple Silicon.
 
 set -euo pipefail
 
@@ -92,7 +92,7 @@ if [ ! -f "$BUILD_DIR/quake2" ]; then
   echo "[make-dmg] build/q2-fat missing — building it"
   scripts/build-fat.sh
 fi
-# Sanity: must be the 4-slice fat, not a stray single-arch binary. Use lipo
+# Sanity: must be the multi-slice fat, not a stray single-arch binary. Use lipo
 # (reads the Mach header directly) rather than file(1): file's ppc subtype
 # names vary by host/toolchain — on an Apple-silicon workstation it renders
 # the ppc750 slice as "ppc_650", so the old `file | grep ppc_750` check

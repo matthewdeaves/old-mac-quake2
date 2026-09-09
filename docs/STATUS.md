@@ -70,8 +70,8 @@ verified at 21.0 fps with slice selection proven by positive control; nine
 `res=1` bench rows identified and `bench.sh` hardened; iMac G5 and iMac G4 model
 IDs mapped (ADR 0007); `yosemite-tiger` wired in as a bench target with a guard
 against running it alongside `yosemite`; the bundle now carries the port
-version. arm64 closed as out of scope, **that closure's stated reason has since
-been withdrawn, see ADR 0003**.
+version. arm64 was initially closed as out of scope; that decision was later
+superseded by the native arm64 slice described in ADR 0015.
 
 **Post-v2.6.0** (2026-08-19/20), Linux dedicated server release, measured query
 amplification, and a remote buffer overflow in `Cmd_TokenizeString` found by
@@ -80,10 +80,17 @@ fuzzing and fixed (ADR 0011). Documentation consolidated into `docs/adr/`.
 **v2.8.1** (2026-08-27), Universal 6-slice release:
 - Six-slice fat binary: `ppc750`, `ppc7400`, `ppc970`, `x86_64`, `i386`, `arm64`.
 - Modern macOS AppKit compatibility: enabled regular activation policy and layer-backed window surface observation for macOS 10.14+ (Mojave through macOS 15 Sequoia) without breaking 10.3/10.4 PPC builds (issue #26).
-- Bloom renderer overhaul with dedicated render targets (`qglTexImage2D`) replacing `R_LoadPic/it_pic` (issue #33).
+- Bloom renderer overhaul with dedicated render targets (`qglTexImage2D`) replacing `R_LoadPic/it_pic` (issue #33); bloom remains disabled because Apple Silicon still renders a black screen when enabled.
 - GPU-family capability tier for unmapped machines with automatic feature scaling (issue #32).
 - Resolved stencil shadow configuration across G4 and sawtooth profiles (issues #7, #25, #34).
 - Linux dedicated server 8.70 with rate-limiting and security hardening for x86_64 and aarch64.
+
+**Current internal renderer work** (2026-09-08/09): the six-slice fat build
+includes a native `arm64` client, dedicated server, game module and SDL
+compatibility layer. Apple Silicon support is build-verified, but bloom is not
+fixed and no release candidate has been approved. The opt-in renderer refactors
+and PPC isolation measurements are recorded in
+`benchmarks/experiments/2026-09-08-refactor-isolation/`.
 
 ## Open
 

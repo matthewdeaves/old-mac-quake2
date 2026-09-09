@@ -1,5 +1,9 @@
 # 1. Four slices: graded by CPU subtype, each stamped exactly
 
+> Historical title and decision. ADR 0015 and the current build extend this
+> to six slices by adding `i386` and native `arm64`; the original four-slice
+> constraints still govern the PPC and x86_64 members.
+
 Date: 2026-08-20 (records decisions taken 2026-05-11 through 2026-07-25)
 Status: accepted
 

@@ -1,7 +1,7 @@
 # Quake II: old-Mac port
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](yquake2/LICENSE)
-[![Platform: PPC + Intel macOS](https://img.shields.io/badge/Platform-PPC%20%7C%20Intel%20macOS-lightgrey.svg)](#tested-machines)
+[![Platform: PPC + Intel + Apple Silicon macOS](https://img.shields.io/badge/Platform-PPC%20%7C%20Intel%20%7C%20Apple%20Silicon-lightgrey.svg)](#tested-machines)
 [![macOS: 10.3.9 → 15.7](https://img.shields.io/badge/macOS-10.3.9%20%E2%86%92%2015.7-success.svg)](#tested-machines)
 [![Engine: yquake2 5.11](https://img.shields.io/badge/Engine-yquake2%205.11-red.svg)](https://github.com/yquake2/yquake2)
 
@@ -9,9 +9,9 @@
   <img src="docs/icon-source/quake2-icon-256.png" width="180" alt="Quake II icon" />
 </p>
 
-A Quake II port (yquake2 5.11) built as one fat PowerPC + Intel binary inside a
-single `Quake2.app`, tested on a range of old Macs, G3, G4, G5 and Intel, from a
-1999 Power Mac to a 2019 iMac. The app carries three config layers: shared
+A Quake II port (yquake2 5.11) built as one six-slice fat PowerPC + Intel + Apple
+Silicon binary inside a single `Quake2.app`, tested on a range of old Macs, G3,
+G4, G5 and Intel, from a 1999 Power Mac to a 2019 iMac. The app carries three config layers: shared
 controls, a per-arch baseline picked by the running slice, and a per-machine
 overlay picked at boot by `sysctl hw.model`. A headless Linux dedicated server
 builds from the same tree (see [`server/`](server/README.md)).
@@ -30,7 +30,7 @@ builds from the same tree (see [`server/`](server/README.md)).
   <img src="docs/screenshots/mini-g4.png" width="19%" alt="mini-g4 (G4 Tiger / R9200)" />
   <img src="docs/screenshots/mini-intel.png" width="19%" alt="mini-intel (Lion / GMA 950)" />
 </p>
-<p align="center"><sub>Same binary, same demo, five GPU generations · 1999 → 2007</sub></p>
+<p align="center"><sub>Same fat binary, same demo, five legacy GPU generations · 1999 → 2007; native arm64 support included</sub></p>
 
 ## Tested machines
 
@@ -55,6 +55,7 @@ The binary carries one slice per CPU family, each stamped with its exact CPU sub
 | G4 (7400 / 7450 / 7447A) | `ppc7400` | 10.3.9 Panther or later | 10.4.11 |
 | G5 (970) | `ppc970` | **10.5 Leopard, a G5 on 10.3 or 10.4 is not supported** | 10.5.8 |
 | Intel, 64-bit | `x86_64` | 10.6 Snow Leopard or later | 10.7.5 and 15.7 |
+| Apple Silicon | `arm64` | 11 Big Sur or later | native slice built and checked on the orchestration Mac |
 
 `dyld` picks a slice by CPU alone; the OS plays no part in it. A Mac running an OS
 older than its slice needs gets that slice anyway rather than falling back to a lower
@@ -67,9 +68,10 @@ testing.
 
 32-bit-only Intel Macs (Core Duo / Core Solo, 2006) **now have their own `i386`
 slice**, and Apple Silicon has a native `arm64` one, so there is no longer any Mac
-this binary cannot run on natively. Neither has been run on hardware here: there is no
-32-bit-only Intel Mac in the fleet, and the arm64 slice is verified on the
-orchestration Mac rather than a bench machine. Both configs say so in their comments.
+this binary cannot run on natively. The i386 slice has not been run on hardware
+here, and the arm64 slice has been built and checked on the orchestration Mac;
+Apple Silicon has not yet completed a fleet bench run. Both configs say so in
+their comments.
 
 The `arm64` slice is the only one that does not link a real SDL 1.2, because none
 exists for that architecture. It links `sdl12-compat` over an SDL 2.32.4 this project
@@ -129,9 +131,13 @@ cover the setup, the build pipeline and the timedemo bench loop.
 
 ## Features
 
-- **One fat binary** (PPC G3 + G4 AltiVec + G5 + Intel x86_64) in a
-  self-contained `Quake2.app`; runs on Mac OS X 10.3.9 Panther through modern
-  macOS.
+- **One six-slice fat binary** (`ppc750`, `ppc7400`, `ppc970`, `i386`, `x86_64`,
+  `arm64`) in a self-contained `Quake2.app`; runs natively from Mac OS X 10.3.9
+  Panther through modern Apple Silicon macOS.
+- **Native Apple Silicon support** through the `arm64` slice and bundled
+  `sdl12-compat`/SDL2 runtime. Bloom remains disabled because the fixed-function
+  path still produces a black screen on Apple Silicon; it is not counted as a
+  working feature.
 - **Three config layers baked into the `.app`**, shared controls, a per-arch
   baseline picked by the running slice, and a per-machine overlay dispatched at
   boot by `sysctl hw.model` (all applied before video init, so the renderer

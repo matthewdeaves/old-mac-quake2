@@ -1,7 +1,10 @@
 # 3. arm64 is a separate decision from an engine bump
 
 Date: 2026-08-20
-Status: accepted (as a correction); no arm64 slice is shipped
+Status: accepted (as a correction); superseded for implementation by ADR 0015
+
+> This ADR preserves the reasoning from before native arm64 support landed.
+> The current six-slice fat binary includes `arm64`; see ADR 0015.
 
 ## Context
 
@@ -65,12 +68,12 @@ The old reason for closing arm64 has expired: the sister Half-Life port now
 ships a five-slice fat including `arm64`, so "matching the sister ports" would
 today argue *for* it.
 
-## Status
+## Historical status
 
-No arm64 slice is shipped and none is planned in the current round. The point of
-this record is that a future round must argue arm64 on the SDL question and on
-whether the build host's `lipo` can fuse it, and must not close it by pointing
-at the engine version.
+At the time of this record no arm64 slice was shipped. ADR 0015 later resolved
+the SDL question with a bundled `sdl12-compat`/SDL2 stack and the build host now
+fuses a six-slice binary. The reasoning remains useful as the historical reason
+the decision was revisited.
 
 Two things are known from the sister port and worth carrying: Lion's `lipo` can
 write a correct fat containing arm64 but cannot NAME the slice, printing a

@@ -8,7 +8,7 @@
 # Ships a self-contained Quake2.app bundle to ~/quake2-play/:
 #   Quake2.app/
 #     Contents/Info.plist
-#     Contents/MacOS/quake2                  (fat: ppc750 + ppc7400 + ppc970 + x86_64)
+#     Contents/MacOS/quake2                  (fat: ppc750 + ppc7400 + ppc970 + i386 + x86_64 + arm64)
 #     Contents/MacOS/SDL.framework/          (fat: ppc + ppc970 + i386 + x86_64)
 #     Contents/Resources/Quake2.icns
 #     Contents/Resources/autoexec-<arch>.cfg × 6      ← per-arch baselines
@@ -241,8 +241,8 @@ fi
 #
 # Two cfg layers ship in every deploy (regardless of $TARGET) so the
 # bundle is self-contained and machine-portable — dropping the .app onto
-# ANY G3/G4/G5/Intel Mac works without redeployment:
-#   * per-arch baselines (ppc750/ppc7400/ppc970/x86_64) — picked at
+# ANY G3/G4/G5/Intel/Apple Silicon Mac works without redeployment:
+#   * per-arch baselines (ppc750/ppc7400/ppc970/i386/x86_64/arm64) — picked at
 #     compile time by the fat slice dyld runs; the "sane generic on
 #     everything else" floor for machines not in the hw.model map.
 #   * per-machine overlays (the six fleet boxes) — picked at runtime by

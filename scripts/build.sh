@@ -285,7 +285,7 @@ rsync -a --partial --inplace --delete \
 # Generated logs live inside the same Q2-owned child but are excluded from the
 # source mirror and source stamp. One fixed file per target bounds disk use and
 # retains the most recent full compiler output for diagnosis.
-REMOTE_LOG="$REMOTE_PATH/logs/build-$TARGET.log"
+REMOTE_LOG="logs/build-$TARGET.log"
 ssh "$BUILD_HOST" "mkdir -p '$REMOTE_PATH/logs'"
 
 echo "[build] compile $TARGET on $BUILD_HOST (vmin=$VMIN)"

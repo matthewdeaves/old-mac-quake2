@@ -26,7 +26,7 @@ Files: `scripts/bundle/autoexec-*.cfg`,
 | `gl_caustics` | water-surface caustic overlay. **Water only**: skips lava and slime, see below | on multitex, off G3 + sawtooth |
 | `gl_zfix` | polygon-offset coplanar surfaces | on (all) |
 | `gl_farsee` | extended far clip, `CVAR_LATCH` | on ppc7400/ppc970/x86_64/arm64, off ppc750/i386 (#24) |
-| `gl_bloom` (+ `_alpha` `_darken` `_size`) | fixed-function light bloom | on for tuned G5 dual and imac-2019 profiles; off on G3/G4, generic Intel and arm64 conservative profiles. Apple Silicon readback fix and current evidence: `benchmarks/experiments/2026-09-12-bloom-readback/` |
+| `gl_bloom` (+ `_alpha` `_darken` `_size`) | fixed-function light bloom | on for tuned G5 dual, imac-2019 and arm64 profiles; off on G3/G4 and generic Intel. Apple Silicon measured 264.55 fps at 1920x1080 with bloom, 4x MSAA and desktop-fullscreen; evidence: `benchmarks/experiments/2026-09-12-bloom-readback/` |
 | `vid_desktopfullscreen` | native-res same-mode fullscreen capture | on iMac-class (`ppc970` baseline + `imac-g5`); off elsewhere. **The only R300/Leopard-safe fullscreen, ADR 0008** |
 | `watch_host` `watch_port` `watch_rate` `watch_events` | UDP player-state feed | off (`watch_host` empty). See `docs/WATCHLINK.md` |
 | `q2_autotier` | marker, not a knob: `misc.c` sets it to 1 when `hw.model` matched no per-machine overlay; `R_Init` then reads `GL_RENDERER` and enables `gl_glows`/`gl_trans_lighting`/`gl_caustics` on known-capable GPU families (Radeon, GeForce; Rage 128 gets the latter two). Unrecognised GPUs keep the conservative baseline. Never touches video-mode cvars. Issue #32 | 0 on every mapped machine |

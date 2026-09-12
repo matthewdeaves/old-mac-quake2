@@ -40,6 +40,13 @@ SHA-256 values above. The three legacy installs match the build by BSD MD5
 `11413655de8d1c14a3b7bbc9ca000d05`, and
 `a912294eb83833b7add31e4f6540e64f`, in the same product order.
 
+The same exact DMG is also installed at `/Applications/Quake2` on `mini-g4`,
+`mini-intel2` and the Apple Silicon workstation. The workstation's installed
+engine, renderer and game library match the mounted DMG by MD5. The `mini-g4`
+install copied its legacy `baseq2` without modifying the rollback tree, removed
+the stale loose autoexec, byte-verified the staged runtime and passed the
+Finder-equivalent smoke on the Radeon 9200.
+
 The source stamp includes the pre-existing, user-owned working-tree SDL
 framework binary (`MacOSX/SDL.framework/Versions/A/SDL`, SHA-256
 `5db4a0fd33a01f035745eb983f32f78536cd127f390364d41e0349d8d9678588`).
@@ -117,6 +124,9 @@ profiles.
 | G3 Rage 128, Tiger 10.4.11 | bloom off, 1024x768 fullscreen, vsync off | 25.8 / 25.8 / 25.9 | 25.85 fps |
 | G4 Radeon 9000, Tiger 10.4.11 | bloom off, 1024x768 fullscreen, vsync off | 61.6 / 61.9 / 61.8 | 61.85 fps |
 | G5 Radeon 9600, Panther 10.3.9 | bloom on, 1680x1050 fullscreen, vsync off | 50.2 / 50.3 / 50.3 | 50.30 fps |
+| G4 Radeon 9200, Tiger 10.4.11 | bloom off, 2x MSAA, 1024x768 desktop-fullscreen, vsync on | 29.8 / 29.8 / 29.8 | 29.80 fps |
+| G4 Radeon 9200, Tiger 10.4.11 | bloom off, 2x MSAA, 1024x768 desktop-fullscreen, vsync off | 40.5 / 40.6 / 40.6 | 40.60 fps |
+| Apple M5, macOS 26.6.2 | bloom on, darken 1, 4x MSAA, 1920x1080 desktop-fullscreen, vsync off | 265.2 / 263.6 / 265.5 | 264.55 fps |
 
 ## Exploratory performance
 
@@ -130,7 +140,23 @@ comparison.
 | G4 Radeon 9000 | 61.80 fps warm median | 21.50 fps warm median | Keep off. Bloom falls below the 40 fps G4 floor. |
 | G5 Radeon 9600 | 153.20 fps warm median | 50.30 fps warm median | Bloom stays available and the existing G5 profile can keep it on. It remains above the 40 fps legacy floor. |
 | Intel GMA 950 | Invalid | Invalid | No decision from this environment. Keep existing conservative default pending a display-backed test. |
-| Apple Silicon | Not measured | Not measured | Do not change the default from visual evidence alone. |
+| Apple Silicon | Not remeasured in this candidate-only pass | 264.55 fps warm median | Enable bloom with darken 1. The exact installed artifact completed all runs with live readback confirming the effect and production fullscreen path; the user's earlier visual pass supports the decision but does not replace final successor acceptance. |
+
+## Config-only arm64-default successor
+
+Commit `943c256a` changes only the arm64 bundle profile to `gl_bloom 1` and
+`gl_bloom_darken 1`. The unpublished Panther-compatible DMG is
+`dist/Quake2-OldMac-bloom-fix-arm64-on-943c256a.dmg`, SHA-256
+`8c507473a14ce4dd2b9d6b4078001e9ee7c7209bed3722e36565c465f41d2247`.
+It repackages the exact signed runtime extracted from the preserved
+`f7921e27...` DMG, plus the matching SDL framework and SDL2 companion; it is a
+documented config-only successor, not a new code build. Artifact audit found
+all six slices, a valid deep code signature, the arm64 SDL2 companion, and the
+expected effective bundle values: bloom 1, darken 1, 4x MSAA, fullscreen
+desktop capture and vsync 1. It is not yet installed over the workstation's
+tested candidate because the canonical fresh installer correctly refuses an
+occupied destination and an update must retain that install as a named
+rollback.
 
 No release or publication is authorized. The final candidate still needs the
 user's release-gate gameplay passes on G3, G4, G5, Intel and Apple Silicon.

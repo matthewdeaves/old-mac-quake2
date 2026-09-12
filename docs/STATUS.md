@@ -80,17 +80,18 @@ fuzzing and fixed (ADR 0011). Documentation consolidated into `docs/adr/`.
 **v2.8.1** (2026-08-27), Universal 6-slice release:
 - Six-slice fat binary: `ppc750`, `ppc7400`, `ppc970`, `x86_64`, `i386`, `arm64`.
 - Modern macOS AppKit compatibility: enabled regular activation policy and layer-backed window surface observation for macOS 10.14+ (Mojave through macOS 15 Sequoia) without breaking 10.3/10.4 PPC builds (issue #26).
-- Bloom renderer overhaul with dedicated render targets (`qglTexImage2D`) replacing `R_LoadPic/it_pic` (issue #33); bloom remains disabled because Apple Silicon still renders a black screen when enabled.
+- Bloom renderer overhaul with dedicated render targets (`qglTexImage2D`) replacing `R_LoadPic/it_pic` (issue #33). The Apple Silicon black-screen fault was fixed by routing GL readback through sdl12-compat after context creation; arm64 now enables the measured bloom profile by default.
 - GPU-family capability tier for unmapped machines with automatic feature scaling (issue #32).
 - Resolved stencil shadow configuration across G4 and sawtooth profiles (issues #7, #25, #34).
 - Linux dedicated server 8.70 with rate-limiting and security hardening for x86_64 and aarch64.
 
-**Current internal renderer work** (2026-09-08/09): the six-slice fat build
+**Current internal renderer work** (2026-09-12): the six-slice fat build
 includes a native `arm64` client, dedicated server, game module and SDL
-compatibility layer. Apple Silicon support is build-verified, but bloom is not
-fixed and no release candidate has been approved. The opt-in renderer refactors
-and PPC isolation measurements are recorded in
-`benchmarks/experiments/2026-09-08-refactor-isolation/`.
+compatibility layer. The bloom readback fix is in Review; an unpublished
+config-only successor enables bloom on arm64 after a 264.55 fps warm median at
+1920x1080 with 4x MSAA. The release still requires the user's final gameplay
+gate across G3, G4, G5, Intel and Apple Silicon. Evidence is in
+`benchmarks/experiments/2026-09-12-bloom-readback/`.
 
 ## Open
 
@@ -100,8 +101,7 @@ and PPC isolation measurements are recorded in
   ~40 fps floor, kept ON, no config change needed. sawtooth and quicksilver
   are still on the invalid `res=1` figures; re-bench when either is next
   powered up (both off as of 2026-08-23).
-- Bloom redo with a dedicated render target and a sub-resolution budget
-  (MISTAKES.md has the constraints). Issue #33.
+- Bloom fix awaits the user's final multi-machine gameplay gate. Issue #33.
 - GL1 gamma correction, 5.11 has none on the GL path (fixed-function has no
   linear-space blending to correct; the hardware gamma ramp via SDL_SetGamma
   already works).

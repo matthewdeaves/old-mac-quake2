@@ -17,11 +17,24 @@ commit.
   SDL 1.2 keeps its original bindings. The user manually passed an earlier
   candidate on Apple M5 and a Panther G5/Radeon 9600, with visible bloom and no
   GL error in any bloom stage. The final candidate's G4 and G5 frames also
-  render correctly, but measured cost keeps bloom off on G3 and G4. Intel
-  visual coverage remains open: the GMA 950 mini had no attached display and
-  produced the same invalid readback with a prior build and with bloom off,
-  while the display-backed Radeon Pro 580X iMac's panel was asleep. Evidence:
+  render correctly, but measured cost keeps bloom off on G3 and G4. The
+  display-backed Radeon Pro 580X control and candidate both rendered a textured
+  world after a bounded panel wake, with a visible bloom difference and zero GL
+  errors. The GMA 950 mini remains untested because its headless captures are
+  invalid and reproduce with bloom off and with an older build. Apple M5 ran
+  bloom at a 264.55 fps warm median at 1920x1080 with 4x MSAA, so the arm64
+  profile now enables the effect with `gl_bloom_darken 1`. Evidence:
   `benchmarks/experiments/2026-09-12-bloom-readback/`. Refs #33.
+
+- **A DMG with an arm64 executable could be reported successful without its
+  required SDL2 companion, then delete the last tested candidate.** A
+  config-only package sourced its six-slice executable from a tested DMG but
+  initially omitted `libSDL2-2.0.0.dylib`; `make-dmg.sh` only warned even though
+  native Apple Silicon launch would fail. After content verification it also
+  pruned every older candidate, contrary to the current rollback requirement.
+  Missing SDL2 is now fatal whenever arm64 is present, and packaging retains
+  older candidates for an explicit post-acceptance cleanup. The rejected image
+  is retained under `/private/tmp` and was never deployed. Refs #33, #67.
 
 ## 2026-09-02
 

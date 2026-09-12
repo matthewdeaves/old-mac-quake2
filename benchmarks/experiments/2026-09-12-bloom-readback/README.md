@@ -48,6 +48,24 @@ an unpublished test candidate, not an artifact reproducible solely from the
 bloom commit until that separate work-in-progress file is resolved by its
 owner.
 
+### SDL input provenance and tracked-file control
+
+A clean detached worktree at `d6c4545` began with the tracked framework binary
+at SHA-256 `6dd17a4569163659d40a4e26bc8b281797f748c7c97fdaf98efbab7c2b890376`.
+Running the canonical `scripts/build-arm64.sh` there reproduced the main
+working-tree modification exactly: its documented framework-staging step
+re-fused a freshly signed sdl12-compat arm64 member into the tracked fat
+framework, changing the file to the same `5db4a0fd...` hash before computing
+the arm64 source stamp. The subsequent fat build passed with all six slices at
+stamp `4a74d93842df86c28be005d251a18fa211243370373da2c9981dbe62cf44be1c`.
+
+This establishes how the modified bytes were produced, but does not change
+their ownership or authorize committing them. It also means a canonical build
+that leaves the tracked framework byte-identical is not a viable independent
+control: the current arm64 driver intentionally refreshes that member. The
+original main-tree file remains untouched and unstaged, with an exact private
+backup retained under the fleet scratch area.
+
 ## Visual results
 
 | Class | Result | Evidence |

@@ -7,6 +7,7 @@ scripts/build.sh <g3|g4|g5|lion>                 # one slice, for fast iteration
 scripts/deploy.sh <machine>                      # ships build/q2-fat
 scripts/make-dmg.sh                              # → dist/, hdiutil step on a TIGER box
 scripts/deploy-dmg.sh <machine>                  # install from the image, as a human does
+scripts/deploy-dmg.sh --update <machine> <ver>   # occupied install, unique rollback retained
 scripts/smoke-dmg.sh <machine>                   # production-config launch test
 scripts/bench.sh <machine> <demo> <WxH> [runs]
 scripts/check-frames.sh <machine> [--update]     # is the PICTURE still correct

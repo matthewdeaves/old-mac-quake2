@@ -10,7 +10,9 @@ the way they do: `docs/adr/`.
 | `build-fat.sh` | g3→g4→g5→lion sequentially on ONE pinned host, then `lipo`. The only supported way to produce `build/q2-fat` |
 | `deploy.sh <machine>` | ships the fat `Quake2.app` plus the loose `ref_gl.so` / `q2ded` / `baseq2/game.so`; md5-verifies what landed |
 | `make-dmg.sh` | stages the image, runs `hdiutil create -format UDZO` on a **Tiger** box, then mounts the result and md5s every binary inside it against source. ADR 0005, ADR 0006 |
-| `deploy-dmg.sh <machine>` | installs from the mounted image the way a human does; md5-verifies each installed binary, retries 4x, exits 7 on failure |
+| `deploy-dmg.sh <machine>` | fresh install from the mounted image; refuses an occupied destination, md5-verifies each installed binary and retries 4x |
+| `deploy-dmg.sh --update <machine> <version>` | updates an occupied install through a same-volume stage; preserves all data/config and retains the complete old install under a unique rollback name |
+| `update-dmg.sh --restore <machine> <rollback-path>` | atomically restores a named updater rollback while retaining the replaced candidate as a uniquely named superseded install |
 | `smoke-dmg.sh <machine>` | launches the installed copy with the PRODUCTION config and a timedemo so it auto-exits. ADR 0009 |
 | `bench.sh <machine> <demo> <WxH> [runs]` | timedemo harness. Rejects a malformed resolution; refuses a non-native fullscreen on `imac-g5`; TERM-sleep-KILL always |
 | `parallel-bench.sh` | fleet grid; refuses to run both `yosemite` partitions |

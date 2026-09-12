@@ -10,17 +10,26 @@
 # wasn't). See MISTAKES.md.
 #
 # usage: scripts/deploy-dmg.sh <machine> [version]
+#        scripts/deploy-dmg.sh --update <machine> <version>
 #   machine: yosemite | yosemite-tiger | sawtooth | quicksilver | mini-g4 |
 #            imac-g5 | mini-intel | imac-2019 (ssh alias). yosemite-tiger is
 #            the same Mac as yosemite on its 10.4 partition.
 #   version: e.g. v2.2.4  (default: newest dist/Quake2-OldMac-*.dmg)
 #
 # Preserves the user's complete baseq2 tree by copying it into the staged install
-# before overlaying the app and loose runtime libraries from the image. An
-# occupied /Applications/Quake2 is refused rather than replaced.
+# before overlaying the app and loose runtime libraries from the image. The
+# default fresh path refuses occupied /Applications/Quake2. Explicit --update
+# routes to the named-backup updater and requires an exact version.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Explicit occupied-install path. Keep the fresh installer's refusal as its
+# safety default; update-dmg.sh adds artifact preflight and a named rollback.
+if [ "${1:-}" = --update ]; then
+  shift
+  exec "$REPO_ROOT/scripts/update-dmg.sh" "$@"
+fi
 
 HOST="${1:?usage: $0 <machine> [version]}"
 

@@ -108,8 +108,30 @@ Both install paths refuse an occupied `/Applications/Quake2`, build a complete
 same-volume `/Applications/.Quake2.stage.<pid>` tree, verify the staged runtime
 binaries, and publish it with one rename. They copy existing
 `~/quake2-play/baseq2` data into the stage without changing that legacy tree, so
-the old install remains rollback. An update needs an explicit named-backup flow;
-these scripts intentionally perform fresh installs only.
+the old install remains rollback. To update an already occupied canonical
+install, name the exact image version explicitly:
+
+```
+scripts/deploy-dmg.sh --update <machine> <version>
+```
+
+The update path validates the DMG signature, SDL2 companion and all six slices
+before contacting the target. It inventories the occupied install, checks free
+space, copies the complete install to a same-volume stage, preserves every
+non-runtime `baseq2` file and replaces only the packaged runtime. Verified
+promotion leaves the complete predecessor at a unique
+`/Applications/Quake2.rollback-<timestamp>-<hash>` path. Pre-promotion failure
+leaves the original untouched; a failing post-promotion gate moves the rejected
+candidate aside and restores the original. It never reuses or removes an older
+backup. A named rollback can be restored with:
+
+```
+scripts/update-dmg.sh --restore <machine> <rollback-path>
+```
+
+If an existing `baseq2/autoexec.cfg` is present, the updater preserves it and
+prints that live cvar readback is required; the updater does not silently discard
+user configuration.
 
 `rsync --delete` is scoped to the staged `Quake2.app` bundle. It never sweeps
 the install root or `baseq2/`, avoiding the historical deletion of player-model

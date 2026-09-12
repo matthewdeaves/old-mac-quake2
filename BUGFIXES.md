@@ -1,5 +1,17 @@
 # Bug fixes
 
+## 2026-09-12 — Occupied installs had no rollback-safe update path
+
+The fresh DMG deployer correctly refused `/Applications/Quake2` when it already
+existed, but that also left no bounded way to install a validated successor.
+`deploy-dmg.sh --update` now preflights the exact DMG, copies the entire current
+install to a same-volume stage, verifies preserved data and replacement runtime,
+and promotes it only after all pre-publish gates pass. Success retains the whole
+old install under a unique rollback name. A failed post-publish gate restores
+the original path and retains the rejected candidate for diagnosis. Fixtures
+cover pre-publish refusal, automatic restoration, successful update and explicit
+restore. Refs #67.
+
 Running log of real bugs found and fixed in this repo. Not a changelog of every
 commit — see `git log` for that. One entry per bug: symptom, root cause, fix
 commit.

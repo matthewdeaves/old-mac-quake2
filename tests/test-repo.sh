@@ -199,6 +199,12 @@ else
 	pass "/Applications/Quake2 installs are staged, collision-safe and preserve rollback data"
 fi
 
+if "$REPO_ROOT/tests/test-update-install.sh"; then
+	pass "occupied-install updater preserves data and restores failed or selected rollbacks"
+else
+	fail "occupied-install updater fixture failed"
+fi
+
 echo
 [ "$FAILED" = 0 ] && echo "all repo invariants hold" || echo "repo invariants FAILED"
 exit "$FAILED"

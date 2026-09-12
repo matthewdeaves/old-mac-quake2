@@ -45,6 +45,8 @@ SOURCE_STAMP_EXCLUDES='.git
 build/
 benchmarks/
 prereqs/
+logs/
+fat-stage/
 yquake2/release/
 reference/
 .claude/'

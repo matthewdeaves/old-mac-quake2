@@ -32,7 +32,7 @@ Both mechanisms are kept; `flock` still guards same-repo races.
 
 ### Never run PPC builds in parallel on the SAME mini
 
-The three PPC targets rsync to the same `quake2/` directory there and share one
+The three PPC targets rsync to the same `oldmac/quake2/` directory there and share one
 `-arch ppc` object tree, differing only by `-mcpu`. Concurrent runs race the
 `.o` files and the binary ends up stamped with the *other* target's CPU subtype.
 Symptom: the G3 binary becomes `ppc7400`, Panther loads it, then crashes during
@@ -51,8 +51,8 @@ separate upload directories and workstation-local artifacts:
 
 | Resource | QuakeSpasm | Quake II (must) |
 |---|---|---|
-| rsync target on the mini | `mini-intel:quakespasm/` | `mini-intel:quake2/` |
-| `make` cwd | `mini-intel:quakespasm/Quake/` | `mini-intel:quake2/` (top level) |
+| rsync target on the mini | `mini-intel:quakespasm/` | `mini-intel:oldmac/quake2/` |
+| `make` cwd | `mini-intel:quakespasm/Quake/` | `mini-intel:oldmac/quake2/` (top level) |
 | local flock | `~/quakespasm/build/.build.lock` | `~/quake2/build/.build.lock` |
 | local outputs | `~/quakespasm/build/quakespasm-*` | `~/quake2/build/q2-*` |
 
@@ -66,8 +66,10 @@ and the sister projects depend on the current install.
 
 Tell-tale of accidental conflation: if `build.sh` rsyncs to `mini-intel:~/` with
 no project prefix, or to `mini-intel:quakespasm/`, it overwrites QuakeSpasm's
-source. `build.sh` hardcodes `mini-intel:quake2/` and asserts the path is
-project-local before rsync.
+source. `build.sh` hardcodes `mini-intel:oldmac/quake2/` and asserts the path is
+the port's owned child before rsync. Compiler logs and the temporary lipo tree
+live below the same child as `logs/` and `fat-stage/`; both are excluded from
+the source mirror and source stamp.
 
 Concurrent builds from different projects on one mini are safe given that
 isolation. The only contention is CPU on a dual-core Core 2 Duo, so serial is

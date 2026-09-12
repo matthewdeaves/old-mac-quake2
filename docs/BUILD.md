@@ -21,6 +21,10 @@ scripts/bench.sh <machine> <demo> <WxH> [runs]   # see docs/BENCH.md
 `BUILD_HOST=<alias>` pins a mini. `DMG_HOST=<alias>` pins the packaging box
 (must be Tiger).
 
+The remote source mirror is `~/oldmac/quake2/`. `rsync --delete` is scoped to
+that child only. The latest per-target compiler logs live in its `logs/` child,
+and `build-fat.sh` uses its `fat-stage/` child for lipo input and output.
+
 `build-fat.sh`'s g3/g4/g5/**and x86_64 (`lion`)** legs and the final lipo all
 stay on the one pinned `BUILD_HOST` by default. `imac-2019`'s modern Sequoia
 `ld64` emits `LC_MAIN` where real Lion's 2011 dyld needs `LC_UNIXTHREAD` —

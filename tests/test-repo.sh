@@ -62,6 +62,14 @@ detect_install_without_cfg_cleanup () {
 	printf '%s\n' $hits
 }
 
+# Issue #67. Build-host homes are shared by every port. A bare ~/quake2 mirror
+# and /tmp staging scatter Q2 state across shared top-level locations instead
+# of the one owned ~/oldmac/quake2 child. Catch the known old spellings in the
+# build scripts before rsync --delete or cleanup can target them again.
+detect_legacy_remote_build_layout () {
+	grep -El 'REMOTE_PATH="quake2"|/Users/mini/quake2/|/tmp/q2-build-|/tmp/q2-fat-stage' "$1"/*.sh 2>/dev/null
+}
+
 # --- self-test -------------------------------------------------------------
 selftest () {
 	local name="$1" fn="$2" bad="$3" good="$4"
@@ -92,6 +100,9 @@ selftest "install without cfg cleanup" detect_install_without_cfg_cleanup \
 	'mkdir -p "$DEST/baseq2"' \
 	'mkdir -p "$DEST/baseq2"
 rm -f "$DEST/baseq2/autoexec.cfg"'
+selftest "legacy remote build layout" detect_legacy_remote_build_layout \
+	'REMOTE_PATH="quake2"' \
+	'REMOTE_PATH="oldmac/quake2"'
 
 # --- the input must actually be there --------------------------------------
 echo
@@ -142,6 +153,15 @@ elif hits=$(detect_install_without_cfg_cleanup "$SCRIPTS"); then
 	printf '        %s\n' $hits
 else
 	pass "every deploy path clears a stale baseq2/autoexec.cfg"
+fi
+
+if [ "$INPUT_OK" = 0 ]; then
+	:
+elif hits=$(detect_legacy_remote_build_layout "$SCRIPTS"); then
+	fail "legacy remote build path escapes ~/oldmac/quake2 (issue #67):"
+	printf '        %s\n' $hits
+else
+	pass "remote build mirror, logs and fat stage stay under ~/oldmac/quake2"
 fi
 
 echo

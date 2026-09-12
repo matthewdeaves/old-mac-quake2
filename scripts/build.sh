@@ -49,7 +49,8 @@ if [ -z "${BUILD_HOST:-}" ]; then
 fi
 trap '[ "$BUILD_HOST_CLAIMED" = 1 ] && "$REPO_ROOT/scripts/pick-build-host.sh" --release "$BUILD_HOST" >/dev/null 2>&1; true' EXIT
 
-# Serialize concurrent invocations. Both targets rsync to mini-intel:quake2/
+# Serialize concurrent invocations. Both targets rsync to
+# mini-intel:oldmac/quake2/
 # and `make -j` in the same dir — running in parallel races on .o files and
 # stamps the binary with the *other* target's CPU subtype (documented in
 # CLAUDE.md "Don't run g3 and g4 builds in parallel").
@@ -84,10 +85,10 @@ fi
 # compiler unchanged; it rides over on the same rsync as the rest of the
 # tree below, so no extra deploy step. See that script for the recipe.
 if [ "$BUILD_HOST" = "imac-2019" ]; then
-  # Hardcoded "quake2", not $REMOTE_PATH -- that's assigned further down,
-  # after the case below, and its own assertion already pins it to this
-  # literal value.
-  PPC_CC="/Users/mini/quake2/scripts/ppc-cc-wrapper-imac2019.sh"
+  # The build mirror is deliberately rooted in this port's owned child under
+  # ~/oldmac. Keep this absolute because make invokes it after changing into
+  # yquake2/ and needs an unambiguous compiler command.
+  PPC_CC="/Users/mini/oldmac/quake2/scripts/ppc-cc-wrapper-imac2019.sh"
   PPC_SDK_BASE="/Users/mini/SDKs"
   PPC_GCC14_INCLUDE="/Users/mini/gcc14-ppc/lib/gcc/powerpc-apple-darwin8/14.2.0/include"
 else
@@ -255,13 +256,13 @@ case "$TARGET" in
     ;;
 esac
 
-# Hard-coded project-local rsync path. Conflating with the QuakeSpasm
-# sister project's mini-intel:quakespasm/ would overwrite QS source and
-# break both projects (see CLAUDE.md "Multi-tenancy on mini-intel").
-REMOTE_PATH="quake2"
+# Hard-coded project-local rsync path. The remote home is shared by the ports,
+# so every Q2 build artifact stays under this one owned child. Never broaden
+# the --delete below to ~/oldmac or point it at a sister project.
+REMOTE_PATH="oldmac/quake2"
 case "$REMOTE_PATH" in
-  quake2) ;;
-  *) echo "build.sh: REMOTE_PATH must be quake2/, got $REMOTE_PATH" >&2; exit 3 ;;
+  oldmac/quake2) ;;
+  *) echo "build.sh: REMOTE_PATH must be oldmac/quake2/, got $REMOTE_PATH" >&2; exit 3 ;;
 esac
 
 echo "[build] sync sources Ubuntu → $BUILD_HOST:$REMOTE_PATH/"
@@ -274,11 +275,18 @@ echo "[build] sync sources Ubuntu → $BUILD_HOST:$REMOTE_PATH/"
 # repeated here. The source stamp hashes exactly the set this rsync sends, so the
 # two must not drift: a file this excludes cannot affect the build, and a file it
 # sends must change the stamp. See issue #17.
+ssh "$BUILD_HOST" "mkdir -p '$REMOTE_PATH'"
 # shellcheck disable=SC2046
 rsync -a --partial --inplace --delete \
   $(source_stamp_rsync_excludes "$SOURCE_STAMP_EXCLUDES") \
   -e 'ssh -o ServerAliveInterval=15' \
   "$REPO_ROOT/" "$BUILD_HOST:$REMOTE_PATH/" | tail -3
+
+# Generated logs live inside the same Q2-owned child but are excluded from the
+# source mirror and source stamp. One fixed file per target bounds disk use and
+# retains the most recent full compiler output for diagnosis.
+REMOTE_LOG="$REMOTE_PATH/logs/build-$TARGET.log"
+ssh "$BUILD_HOST" "mkdir -p '$REMOTE_PATH/logs'"
 
 echo "[build] compile $TARGET on $BUILD_HOST (vmin=$VMIN)"
 # Build config:
@@ -307,9 +315,9 @@ ssh "$BUILD_HOST" "cd $REMOTE_PATH && \
   make -j2 \
     CC=$CC \
     OSX_ARCH=\"$OSX_ARCH\" \
-    > /tmp/q2-build-$TARGET.log 2>&1
+    > $REMOTE_LOG 2>&1
   RC=\$?
-  if [ \$RC -ne 0 ]; then echo '--- tail of build log ---'; tail -50 /tmp/q2-build-$TARGET.log; exit \$RC; fi
+  if [ \$RC -ne 0 ]; then echo '--- tail of build log ---'; tail -50 $REMOTE_LOG; exit \$RC; fi
   ls -la release/"
 
 # ---- stale-artifact guard --------------------------------------------

@@ -222,16 +222,21 @@ echo "[build-fat] all $( set -- $ARCHES; echo $# ) slices built from the same so
 
 : "${BUILD_HOST:?internal error: build host should have been pinned above}"
 echo "[build-fat] lipo -create on $BUILD_HOST ($ARCHES)"
-ssh "$BUILD_HOST" 'mkdir -p /tmp/q2-fat-stage && rm -rf /tmp/q2-fat-stage/*'
+REMOTE_FAT_STAGE="oldmac/quake2/fat-stage"
+case "$REMOTE_FAT_STAGE" in
+  oldmac/quake2/fat-stage) ;;
+  *) echo "[build-fat] unsafe remote fat stage: $REMOTE_FAT_STAGE" >&2; exit 3 ;;
+esac
+ssh "$BUILD_HOST" "mkdir -p '$REMOTE_FAT_STAGE' && find '$REMOTE_FAT_STAGE' -mindepth 1 -maxdepth 1 -exec rm -rf {} +"
 for arch in $ARCHES; do
-  rsync -aq build/q2-$arch/ "$BUILD_HOST:/tmp/q2-fat-stage/$arch/"
+  rsync -aq build/q2-$arch/ "$BUILD_HOST:$REMOTE_FAT_STAGE/$arch/"
 done
 
 # Lion's lipo WRITES an arm64 member correctly but cannot NAME it, so a six-way
 # fuse prints "cputype (16777228)" for that member in the [lipo] lines below.
 # Cosmetic. The naming check that matters runs back on this box, after the fetch.
 ssh "$BUILD_HOST" "set -e
-  cd /tmp/q2-fat-stage
+  cd $REMOTE_FAT_STAGE
   mkdir -p fat/baseq2
   for art in quake2 q2ded ref_gl.so; do
     lipo -create \$(for a in $ARCHES; do printf '%s ' \"\$a/\$art\"; done) -output fat/\$art
@@ -242,8 +247,8 @@ ssh "$BUILD_HOST" "set -e
 
 mkdir -p "$REPO_ROOT/build/q2-fat/baseq2"
 echo "[build-fat] fetch → build/q2-fat/"
-rsync -aq "$BUILD_HOST:/tmp/q2-fat-stage/fat/" "$REPO_ROOT/build/q2-fat/"
-ssh "$BUILD_HOST" 'rm -rf /tmp/q2-fat-stage' 2>/dev/null || true
+rsync -aq "$BUILD_HOST:$REMOTE_FAT_STAGE/fat/" "$REPO_ROOT/build/q2-fat/"
+ssh "$BUILD_HOST" "find '$REMOTE_FAT_STAGE' -mindepth 1 -maxdepth 1 -exec rm -rf {} +" 2>/dev/null || true
 
 if [ "$HAVE_ARM64" = 1 ]; then
   cp "$ARM64_DIR/libSDL2-2.0.0.dylib" "$REPO_ROOT/build/q2-fat/libSDL2-2.0.0.dylib" 2>/dev/null || true

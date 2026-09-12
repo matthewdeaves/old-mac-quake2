@@ -1,0 +1,52 @@
+Snow Leopard manual result, 2026-09-13
+========================================
+
+Target: mini-sl, Mac OS X 10.6.8, native x86_64
+Installed candidate: bloom-fix-arm64-on-943c256a
+Application: /Applications/Quake2/Quake2.app
+Engine MD5: 64e1bf9d72fea24b96d4416727a660b4
+
+Normal production launch
+------------------------
+
+The normal LaunchServices run reported:
+
+  SDL video driver is "Quartz".
+  Desktop is 1920x1080.
+  setting mode 5: 800 500
+  GL_RENDERER: NVIDIA GeForce 9400 OpenGL Engine
+  Map: base2
+  Map: base1
+  ----------- shutting down ----------
+  ==== ShutdownGame ====
+  Closing SDL audio device...
+  SDL audio device shut down.
+  Input shut down.
+
+The user watched and played this exact run over screen sharing and reported
+that it looked great and played so well that remote play was practical. This
+is direct visual and input/gameplay evidence. The engine initialized CoreAudio,
+but the user did not separately report hearing sound.
+
+Temporary bloom-on launch
+-------------------------
+
+The same installed application was launched through Snow Leopard's supported
+`open --args` path with `+set gl_bloom 1`, followed by live cvar queries. The
+process stayed alive, but its 41-line qconsole stopped after OpenGL extension
+probing. It did not print the normal Yamagi initialization completion, a map,
+the requested cvar readback, or Bloom GL diagnostics.
+
+A bounded process check after 1 minute 46 seconds showed the engine in state U
+using 7.9% CPU. TERM was sent first and did not end the process after more than
+10 seconds; KILL was then used as the documented backstop. The held canonical
+reservation was released, zero Quake II processes remained, and the persisted
+user setting was verified as:
+
+  set gl_bloom "0"
+
+The user did not report what the stalled bloom-on frame looked like. Do not
+count this as a bloom visual test. The matched normal launch and bloom-on stall
+place the next discriminator after extension probing and before map startup;
+instrument the post-probe setup calls, especially `R_InitBloomTextures`, before
+changing bloom behaviour.

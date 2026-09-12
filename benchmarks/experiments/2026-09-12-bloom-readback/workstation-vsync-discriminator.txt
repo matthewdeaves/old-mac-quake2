@@ -1,0 +1,46 @@
+Artifact
+========
+Installed successor: /Applications/Quake2
+Config commit: 943c256a
+DMG SHA-256: 8c507473a14ce4dd2b9d6b4078001e9ee7c7209bed3722e36565c465f41d2247
+Engine MD5: 64e1bf9d72fea24b96d4416727a660b4
+Machine: Apple M5, macOS 26.6.2
+Renderer: Apple M5, OpenGL 2.1 Metal - 90.5
+Demo/mode: demo1.dm2, 1920x1080 desktop fullscreen
+
+Production LaunchServices smoke — FAIL
+======================================
+Command: scripts/smoke-dmg.sh workstation
+Effective: bloom 1, MSAA 4, mode -1, custom 1920x1080, fullscreen 1,
+desktopfullscreen 1, swapinterval 1.
+Observed: renderer initialized, then the command-driven demo stopped after
+client_connect. No FPS line. The harness terminated it after its timeout.
+
+Sound-off-only discriminator — STALL
+====================================
+Command shape: exact installed profile and command-driven timedemo, adding only
++set s_initsound 0.
+Effective: bloom 1, darken 1, MSAA 4, mode -1, custom 1920x1080, fullscreen 1,
+desktopfullscreen 1, swapinterval 1, s_initsound 0.
+Observed: no map, frame or FPS line after 60 seconds.
+Log: /private/tmp/q2-successor-discriminators/sound-off.qconsole.log
+
+Vsync-off-only discriminator — COMPLETE
+========================================
+Command shape: exact installed profile and command-driven timedemo, adding only
++set gl_swapinterval 0.
+Effective: bloom 1, darken 1, MSAA 4, mode -1, custom 1920x1080, fullscreen 1,
+desktopfullscreen 1, swapinterval 0, s_initsound 1.
+Observed: bloom capture/downsample/darken/blur-x/blur-y/composite GL error 0;
+689 frames, 2.6 seconds, 265.5 fps.
+Log: /private/tmp/q2-successor-discriminators/vsync-off.qconsole.log
+
+Visual qualification
+====================
+A normal no-argument launch with the shipped profile reached base2 and every
+bloom stage reported GL error 0. macOS screencapture produced no file and an
+injected F12 produced no engine screenshot. A later temporary command-only
+autoexec produced two black screenshots, but its log stopped at client_connect
+without Map or Bloom diagnostics. Those are pre-render captures and invalid,
+not evidence that bloom made a rendered world black. Final visible validation
+therefore remains the user's manual gate.

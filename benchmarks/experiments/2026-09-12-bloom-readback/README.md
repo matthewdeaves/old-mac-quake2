@@ -40,12 +40,13 @@ SHA-256 values above. The three legacy installs match the build by BSD MD5
 `11413655de8d1c14a3b7bbc9ca000d05`, and
 `a912294eb83833b7add31e4f6540e64f`, in the same product order.
 
-The same exact DMG is also installed at `/Applications/Quake2` on `mini-g4`
-and `mini-intel2`. It was the workstation's directly tested predecessor; that
-complete install is now retained at
-`/Applications/Quake2.rollback-bloom-fix-71dc862afcbd`. The `mini-g4` install
-copied its legacy `baseq2` without modifying the rollback tree, removed the
-stale loose autoexec, byte-verified the staged runtime and passed the
+The same exact DMG was the directly tested predecessor on `mini-g4`,
+`mini-intel2` and the Apple Silicon workstation. The successor rollout retained
+the complete mini installs under their named rollback paths and retained the
+workstation copy at
+`/Applications/Quake2.rollback-bloom-fix-71dc862afcbd`. The earlier `mini-g4`
+install copied its legacy `baseq2` without modifying the rollback tree, removed
+the stale loose autoexec, byte-verified the staged runtime and passed the
 Finder-equivalent smoke on the Radeon 9200.
 
 The source stamp includes the pre-existing, user-owned working-tree SDL
@@ -175,21 +176,32 @@ The successor's production LaunchServices smoke read back bloom 1, 4x MSAA,
 1920x1080 desktop fullscreen and vsync 1, but its timedemo did not finish and
 therefore that automated smoke is not a pass. A normal launch of this exact
 installed successor reached `base2`; the bloom capture, downsample, darken,
-both blur passes and composite all reported GL error 0. The user manual
-gameplay/appearance result is still pending while that normal launch remains
-open.
+both blur passes and composite all reported GL error 0.
+
+Two clean discriminators identify the automated stall without changing bloom
+quality. With only sound disabled, live readback showed the full shipped
+profile including vsync 1 and the run stalled for 60 seconds without a frame or
+FPS line. With only vsync disabled, sound remained on, all other settings were
+unchanged, every bloom stage reported GL error 0 and the demo completed at
+265.5 fps. Thus the automated command-driven demo stall follows vsync 1, not
+sound or bloom. This does not authorize shipping vsync off: the normal
+no-argument vsync-1 launch reaches the world, and the user's appearance/gameplay
+gate remains pending. Two black engine screenshots from a command-only autoexec
+were rejected because their log never reached a map or bloom pass; they captured
+the pre-render screen and are not evidence of a black bloom frame. Exact commands
+and output are in `workstation-vsync-discriminator.txt`.
 
 ## Installation and release-gate matrix
 
 | Alias | Installed package | Automated state | User gate |
 | --- | --- | --- | --- |
-| `workstation` | arm64-default successor `943c256a`; predecessor retained under the named rollback path above | Normal launch reached `base2`; every bloom stage GL error 0. Production timedemo smoke incomplete, so not an automatic pass. | Successor gameplay/appearance pending. |
-| `quicksilver` | arm64-default successor `943c256a` (PowerPC defaults unchanged) | Finder-equivalent smoke passed on Radeon 9000; bloom remains off. | Final gameplay pending. |
-| `mini-g4` | predecessor `71dc862afcbd` | Finder-equivalent smoke passed; bloom off. | Final gameplay pending. |
-| `mini-intel2` | predecessor `71dc862afcbd` | Launch and live cvar readback passed; headless visual capture invalid. | Display-backed Intel gameplay pending. |
-| `yosemite-tiger` | predecessor `71dc862afcbd` | Final shipped-profile bench passed; bloom off. | Final G3 gameplay pending. |
-| `g5-panther` | predecessor `71dc862afcbd` | Final bloom-on bench and visible frame passed. | Final G5 gameplay pending. |
-| `imac-2019` | predecessor `71dc862afcbd` | Display-backed matched off/on frames passed; bloom stages GL error 0. | Final Intel gameplay pending. |
+| `workstation` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-bloom-fix-71dc862afcbd` | Normal launch reached `base2`; every bloom stage GL error 0. Production timedemo smoke incomplete; vsync discriminator recorded above. | Successor gameplay/appearance pending. |
+| `quicksilver` | successor `943c256a` (PowerPC defaults unchanged); legacy data retained | Finder-equivalent smoke passed on Radeon 9000; bloom remains off. | Final gameplay pending. |
+| `mini-g4` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-20260912T211243Z-66b8a7b012cc` | Jenkins `smoke-quake2-mini-g4` #2 passed on Radeon 9200; bloom remains off. | Final gameplay pending. |
+| `mini-intel2` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-20260912T211451Z-66b8a7b012cc` | Jenkins `smoke-quake2-mini-intel` #1 passed on GMA 950: bloom 0, 8x MSAA, desktop fullscreen, vsync 1, 797.5 fps. Headless visual capture remains invalid. | Display-backed Intel gameplay pending. |
+| `yosemite-tiger` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g3` #1 passed on Rage 128; bloom remains off. | Final G3 gameplay pending. |
+| `g5-panther` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g5-panther` #1 passed on Radeon 9600; bloom remains on. | Final G5 gameplay pending. |
+| `imac-2019` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-mini-intel` #2 passed on Radeon Pro 580X: bloom 1, 8x MSAA, desktop fullscreen, vsync 1, 72.7 fps. | Final Intel gameplay pending. |
 | `yosemite` (Panther) | not installed in this rollout | Canonical boot remains approval-blocked; no workaround attempted. | Untested. |
 
 No release or publication is authorized. The final candidate still needs the

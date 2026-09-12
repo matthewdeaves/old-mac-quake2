@@ -31,6 +31,10 @@
 # usage:
 #   scripts/pick-bench-host.sh --status [HOST ...]   # table (default: whole fleet)
 #   scripts/pick-bench-host.sh --acquire HOST LABEL  # claim it, or fail
+#   scripts/pick-bench-host.sh --boot-intent TARGET LABEL
+#       # reserve a multi-boot physical machine for booting TARGET; requires
+#       # BENCH_LOCK_CLAIM and claims the currently reachable sibling instead.
+#   scripts/pick-bench-host.sh --release-boot-intent TARGET
 #   scripts/pick-bench-host.sh --run HOST LABEL -- CMD ...
 #       # claim HOST's lock, run CMD LOCALLY (on the caller's own machine,
 #       # NOT on HOST -- there is no remote exec here), release. If CMD needs
@@ -369,6 +373,93 @@ fmt_age() {
 }
 
 usable() { [ "$1" = free ] || [ "$1" = stale ]; }
+
+# A target alias is deliberately not ssh-reachable while its sibling is booted:
+# host-key refusal is how the normal picker prevents a wrong-OS claim.  Booting
+# still needs an explicit target intent, so reserve the live sibling's physical
+# lock with target= metadata.  Keep this map here, beside expect_os(), rather
+# than deriving it from an address or accepting an arbitrary sibling argument.
+boot_group() {
+	case "$1" in
+		yosemite|yosemite-tiger) echo "yosemite yosemite-tiger" ;;
+		g5-panther|g5-tiger|g5-desktop) echo "g5-panther g5-tiger g5-desktop" ;;
+		quad-tiger|quad-leopard) echo "quad-tiger quad-leopard" ;;
+		*) return 1 ;;
+	esac
+}
+
+boot_live_alias() {
+	local target="$1" require_free="${2:-yes}" a out age procs os state want group
+	group="$(boot_group "$target")" || return 1
+	for a in $group; do
+		[ "$a" = "$target" ] && continue
+		out="$(probe "$a")" || continue
+		age="$(echo "$out" | awk '{print $1}')"
+		procs="$(echo "$out" | awk '{print $2}')"
+		os="$(echo "$out" | awk '{print $3}')"
+		want="$(expect_os "$a")"
+		state="$(classify "$age" "$procs" "$os" "$want")"
+		if [ "$require_free" = yes ]; then
+			[ "$state" = free ] || continue
+		fi
+		echo "$a"; return 0
+	done
+	return 1
+}
+
+cmd_boot_intent() {
+	local target="${1:?usage: --boot-intent TARGET LABEL}" label="${2:-boot switch}" live
+	[ -n "$CLAIM" ] || { echo "pick-bench-host: --boot-intent requires BENCH_LOCK_CLAIM." >&2; return 2; }
+	live="$(boot_live_alias "$target" no)" || {
+		echo "pick-bench-host: no free reachable sibling can reserve boot intent for $target." >&2
+		return 1
+	}
+	try_acquire "$live" "boot-intent target=$target $label" || {
+		echo "pick-bench-host: could not reserve $live for boot intent $target (${ACQUIRE_LAST_REASON:-busy})." >&2
+		return 1
+	}
+	echo "$live"
+}
+
+cmd_release_boot_intent() {
+	local target="${1:?usage: --release-boot-intent TARGET}" live owner
+	[ -n "$CLAIM" ] || { echo "pick-bench-host: --release-boot-intent requires BENCH_LOCK_CLAIM." >&2; return 2; }
+	live="$(boot_live_alias "$target")" || {
+		echo "pick-bench-host: no reachable sibling for boot-intent cleanup of $target." >&2
+		return 1
+	}
+	owner="$(run_remote "$live" "cat $LOCK/owner 2>/dev/null" "&1")" || return 1
+	case "$owner" in
+		*"$ME"*"claim=$CLAIM"*"boot-intent target=$target"*) ;;
+		*) echo "pick-bench-host: refusing non-matching boot-intent cleanup for $target." >&2; return 1 ;;
+	esac
+	run_remote "$live" "rm -rf $LOCK" >/dev/null 2>&1 || return 1
+	echo "released $live boot intent for $target"
+}
+
+# Jenkins calls this immediately before a boot. It intentionally accepts a
+# busy state only when that busy lock is our explicit target intent; a generic
+# sibling claim, a wrong target, an absent nonce, or a running process refuses.
+cmd_check_boot_intent() {
+	local target="${1:?usage: --check-boot-intent TARGET CLAIM}" claim="${2:?usage: --check-boot-intent TARGET CLAIM}" live out age procs os owner state want group
+	live="$(boot_live_alias "$target")" && {
+		echo "pick-bench-host: $target has no boot intent; $live is free." >&2; return 1
+	}
+	group="$(boot_group "$target")" || return 1
+	for live in $group; do
+		[ "$live" = "$target" ] && continue
+		out="$(probe "$live")" || continue
+		age="$(echo "$out" | awk '{print $1}')"; procs="$(echo "$out" | awk '{print $2}')"
+		os="$(echo "$out" | awk '{print $3}')"; owner="$(echo "$out" | cut -d' ' -f4-)"
+		want="$(expect_os "$live")"; state="$(classify "$age" "$procs" "$os" "$want")"
+		case "$owner" in *"boot-intent target=$target"*"claim=$claim"*)
+			[ "$state" = busy ] && [ "$procs" = 0 ] || continue
+			echo "$live"; return 0 ;;
+		esac
+	done
+	echo "pick-bench-host: no matching idle boot intent for $target." >&2
+	return 1
+}
 
 cmd_status() {
 	local hosts="$*"
@@ -715,6 +806,9 @@ cmd_run() {
 case "${1:---status}" in
 	--status)      shift; cmd_status "$@" ;;
 	--acquire)     cmd_acquire "${2:?usage: --acquire HOST [LABEL]}" "${3:-bench}" ;;
+	--boot-intent) cmd_boot_intent "${2:?usage: --boot-intent TARGET LABEL}" "${3:-boot switch}" ;;
+	--check-boot-intent) cmd_check_boot_intent "${2:?usage: --check-boot-intent TARGET CLAIM}" "${3:?usage: --check-boot-intent TARGET CLAIM}" ;;
+	--release-boot-intent) cmd_release_boot_intent "${2:?usage: --release-boot-intent TARGET}" ;;
 	--run)         h="${2:?usage: --run HOST LABEL -- CMD ...}"; l="${3:-bench}"
 	               shift 3; cmd_run "$h" "$l" "$@" ;;
 	--release)     cmd_release "${2:?usage: --release HOST}" ;;

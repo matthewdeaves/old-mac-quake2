@@ -57,15 +57,18 @@ owner.
 | G4, Radeon 9000, Tiger 10.4.11 | The final candidate's automated bloom-on frame is visible and textured. No user gameplay pass on the final candidate yet. | `frames/g4-final-bloom-on.png` |
 | G3, Rage 128, Tiger 10.4.11 | The earlier automated frame is visible and textured with bloom. The user said it looked lovely but was incredibly slow and directed that bloom not be enabled by default. A ten-frame final-candidate bloom capture was stopped because it was too slow to add useful evidence; the final shipped-profile benchmark below confirms bloom remains off. | `frames/g3-bloom-on.png` |
 | Intel, GMA 950, Lion 10.7.5 | Untested. The current mini has no display listed by `system_profiler`. Candidate bloom-on, candidate bloom-off and a prior-build bloom-on control all produced byte-identical corrupted engine screenshots in its 800x600 Quartz session. Their FPS values are invalid. | `frames/intel-headless-invalid.png` |
-| Intel, Radeon Pro 580X, macOS 15.7.9 | Final six-slice candidate installed and x86_64 host/slice verified. The built-in 5K LCD was online and main, but `system_profiler` reported `Display Asleep: Yes`; no capture was accepted as displayed-frame evidence. | Visual test pending an awake display. |
+| Intel, Radeon Pro 580X, macOS 15.7.9 | Automated pass on the final artifact. A bounded `caffeinate` assertion woke the online built-in panel; matching bloom-off/on LaunchServices processes reported the effective settings below. Both ten-frame sets show a textured world/HUD, bloom changes the pixels, and all bloom stages report GL error 0. | `frames/intel-radeon-off-control.png`, `frames/intel-radeon-bloom-on.png`, `intel-radeon-validated.txt` |
 
 The Apple Silicon and G5 screenshots accompany real user observations. The G3
 and G4 files are engine screenshots. The GMA 950 file documents an invalid
 headless capture and is not evidence of the displayed frame. The Radeon Pro
-580X preflight verified console user `mini`, a running WindowServer, readable
-retail paks, a writable user game directory, the six-slice app and the exact
-fat binary hashes above before rejecting the asleep display as a visual-test
-precondition.
+580X preflight verified an active Aqua session, a running WindowServer,
+readable retail paks, a writable user game directory, the six-slice app and
+the exact fat binary hashes above. Its first capture was rejected because the
+panel was asleep. The corrected run used the target's documented temporary
+display-wake primitive inside the normal claim, verified the panel awake and
+the assertions active, then restored the original config byte-for-byte and
+removed the assertions.
 
 ## Final candidate shipped-profile checks
 
@@ -97,6 +100,8 @@ comparison.
 | Intel GMA 950 | Invalid | Invalid | No decision from this environment. Keep existing conservative default pending a display-backed test. |
 | Apple Silicon | Not measured | Not measured | Do not change the default from visual evidence alone. |
 
-No release or publication is authorized. The final candidate still needs an
-awake display-backed Intel test and the user's release-gate gameplay passes on
-the final artifact. The GMA 950 visual cell remains explicitly untested.
+No release or publication is authorized. The final candidate still needs the
+user's release-gate gameplay passes on G3, G4, G5, Intel and Apple Silicon.
+The automated Intel Radeon test used matched 1024x768 settings; the user's
+test must exercise the shipped desktop-fullscreen profile. The GMA 950 visual
+cell remains explicitly untested.

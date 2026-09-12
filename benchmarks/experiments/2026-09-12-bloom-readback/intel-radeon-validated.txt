@@ -1,0 +1,48 @@
+Intel Radeon display-backed bloom validation, 2026-09-12
+
+Artifact
+  label: bloom-fix-71dc862afcbd
+  source stamp: 71dc862afcbd7bc6121d629442e5f517a2a8b1edd6d88a9ef500ca2d7802795d
+  quake2 SHA-256: 285283d66487e7334314e37c8884a70e337d0e1ccdbf2044d23b3769b4327a3d
+  host selected x86_64 from the six-slice app
+
+Trigger and pass criterion
+  Same installed app, demo1 scene and settings; compare gl_bloom 0 with
+  gl_bloom 1. Pass requires a visible, textured world/HUD, a nonzero visual
+  bloom difference and GL error 0 at every bloom stage. Disabling bloom is
+  the matching control, not a bloom pass.
+
+Preflight
+  OS: macOS 15.7.9 (24G830), x86_64
+  GPU/context: Radeon Pro 580X, GL 2.1 ATI-7.0.24, Quartz SDL video driver
+  display: built-in Retina 5K online and main; active Aqua session, console
+           user and WindowServer present
+  data: pak0/pak1/pak2 readable; ~/.yq2/baseq2 writable
+  launch: the panel initially reported asleep. Under the canonical host claim,
+          /usr/bin/caffeinate -u -t 10 woke it; system_profiler then omitted
+          Display Asleep and pmset showed bounded display/system assertions.
+          The captures ran through LaunchServices while those assertions held.
+
+Effective settings reported after startup in both processes
+  Desktop is 2560x1440; rendering mode 1024x768
+  vid_fullscreen 1; vid_desktopfullscreen 0; gl_swapinterval 1
+  gl_msaa_samples 8
+  gl_bloom_alpha 0.3; gl_bloom_darken 1; gl_bloom_size 256
+  control gl_bloom 0; candidate gl_bloom 1
+
+Result
+  Both ten-frame sets show a visible, textured world, weapon and HUD.
+  Bloom-on reported capture/downsample/darken/blur-x/blur-y/composite error 0.
+  GL_READ_BUFFER and GL_DRAW_BUFFER were both 0x405 (GL_BACK).
+  Off-vs-on normalized RMSE by frame:
+    00 .0367592  01 .0343549  02 .0391943  03 .0360428  04 .0345416
+    05 .0268176  06 .0442312  07 .0426313  08 .0193840  09 .0206833
+  This is an automated Intel visual pass at matched 1024x768 settings. It does
+  not replace the user's required gameplay pass with the shipped desktop-mode
+  profile.
+
+Cleanup
+  The temporary caffeinate assertions were terminated and verified absent.
+  The original config.cfg was restored byte-for-byte; SHA-256
+  05abda815ccdddaf238720aaf4e2cee177226530fbd3a78c14f3f4040b96478b.
+

@@ -52,7 +52,7 @@ detect_install_without_cfg_cleanup () {
 	local f hits=""
 	for f in "$1"/*.sh; do
 		[ -f "$f" ] || continue
-		if grep -qE 'mkdir -p "\$DEST/baseq2"|"\$STAGE/" "\$HOST:Desktop/quake2/"' "$f"; then
+		if grep -qE 'mkdir -p "\$DEST/baseq2"|"\$STAGE/" "\$HOST:Desktop/quake2/"|DEST="/Applications/Quake2"' "$f"; then
 			if ! grep -qE 'rm -f .*baseq2/autoexec\.cfg' "$f"; then
 				hits="$hits $f"
 			fi
@@ -68,6 +68,25 @@ detect_install_without_cfg_cleanup () {
 # build scripts before rsync --delete or cleanup can target them again.
 detect_legacy_remote_build_layout () {
 	grep -El 'REMOTE_PATH="quake2"|/Users/mini/quake2/|/tmp/q2-build-|/tmp/q2-fat-stage' "$1"/*.sh 2>/dev/null
+}
+
+# Issue #67. A fresh /Applications install must be staged on the same volume,
+# preserve the old user-data tree by copying it, refuse an occupied destination,
+# and become visible with one rename. Each missing property is the unsafe old
+# shape, so print the installer if any is absent.
+detect_unsafe_applications_install () {
+	local f hits=""
+	for f in "$1"/*.sh; do
+		[ -f "$f" ] || continue
+		grep -q 'DEST="/Applications/Quake2"' "$f" || continue
+		grep -q 'DEST_STAGE="/Applications/.Quake2.stage.\$\$"' "$f" &&
+		grep -q '\[ ! -e "\$DEST" \].*\[ ! -L "\$DEST" \]' "$f" &&
+		grep -q 'ditto "\$HOME/quake2-play/baseq2" "\$DEST_STAGE/baseq2"' "$f" &&
+		grep -q 'mv "\$DEST_STAGE" "\$DEST"' "$f" && continue
+		hits="$hits $f"
+	done
+	[ -n "$hits" ] || return 1
+	printf '%s\n' $hits
 }
 
 # --- self-test -------------------------------------------------------------
@@ -103,6 +122,13 @@ rm -f "$DEST/baseq2/autoexec.cfg"'
 selftest "legacy remote build layout" detect_legacy_remote_build_layout \
 	'REMOTE_PATH="quake2"' \
 	'REMOTE_PATH="oldmac/quake2"'
+selftest "unsafe Applications install" detect_unsafe_applications_install \
+	'DEST="/Applications/Quake2"' \
+	'DEST="/Applications/Quake2"
+DEST_STAGE="/Applications/.Quake2.stage.$$"
+[ ! -e "$DEST" ] && [ ! -L "$DEST" ]
+ditto "$HOME/quake2-play/baseq2" "$DEST_STAGE/baseq2"
+mv "$DEST_STAGE" "$DEST"'
 
 # --- the input must actually be there --------------------------------------
 echo
@@ -162,6 +188,15 @@ elif hits=$(detect_legacy_remote_build_layout "$SCRIPTS"); then
 	printf '        %s\n' $hits
 else
 	pass "remote build mirror, logs and fat stage stay under ~/oldmac/quake2"
+fi
+
+if [ "$INPUT_OK" = 0 ]; then
+	:
+elif hits=$(detect_unsafe_applications_install "$SCRIPTS"); then
+	fail "unsafe /Applications/Quake2 installer shape (issue #67):"
+	printf '        %s\n' $hits
+else
+	pass "/Applications/Quake2 installs are staged, collision-safe and preserve rollback data"
 fi
 
 echo

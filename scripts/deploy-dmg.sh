@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Install the release DMG onto a target Mac *exactly the way an end user would*:
-# copy the .dmg to the Desktop, mount it, copy its contents into
-# ~/quake2-play/, then unmount. This is deliberately the DMG path (not
+# copy the .dmg to the Desktop, mount it, then atomically publish a new
+# /Applications/Quake2 install. The previous ~/quake2-play tree remains an
+# untouched rollback and supplies the user's existing game data. This is the
+# deliberate DMG path (not
 # deploy.sh's direct rsync) so the test loop exercises the same artifact and
 # the same install steps a human performs — that is where the 2026-05-31
 # corrupt-DMG / illegal-instruction bug hid (deploy.sh was clean, the DMG
@@ -13,8 +15,9 @@
 #            the same Mac as yosemite on its 10.4 partition.
 #   version: e.g. v2.2.4  (default: newest dist/Quake2-OldMac-*.dmg)
 #
-# Preserves the user's game data: baseq2/pak*.pak, players/, video/ are left
-# untouched; only the app + loose runtime libs are (re)installed.
+# Preserves the user's complete baseq2 tree by copying it into the staged install
+# before overlaying the app and loose runtime libraries from the image. An
+# occupied /Applications/Quake2 is refused rather than replaced.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -54,6 +57,14 @@ else
 fi
 DMG_BASE=$(basename "$DMG")
 
+# This migration only creates a fresh canonical install. Refuse before copying
+# even the DMG if the destination is occupied; an explicit update/rollback flow
+# must preserve and name the old destination first.
+if ! ssh "$HOST" '[ ! -e /Applications/Quake2 ] && [ ! -L /Applications/Quake2 ]'; then
+  echo "[deploy-dmg $HOST] REFUSE: /Applications/Quake2 already exists; leaving it and ~/quake2-play untouched" >&2
+  exit 10
+fi
+
 # Panther (yosemite) ships rsync 2.5.x but scp is fine everywhere; use scp.
 echo "[deploy-dmg $HOST] copy $DMG_BASE to ~/Desktop/"
 ssh "$HOST" 'mkdir -p ~/Desktop'
@@ -77,41 +88,74 @@ scp -q "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:Desktop/clear-laun
 install_via_local_mount_fallback() {
   echo "[deploy-dmg $HOST] remote hdiutil attach failed; falling back to local-mount + rsync (old-mac-build-host#41)" >&2
   LMNT="$(mktemp -d "${TMPDIR:-/tmp}/q2install-mnt.XXXXXX")"
-  trap 'hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true; rmdir "$LMNT" 2>/dev/null || true' EXIT
+  DEST="/Applications/Quake2"
+  DEST_STAGE="/Applications/.Quake2.stage.$$"
+  cleanup_local_fallback() {
+    if [ -n "${DEST_STAGE:-}" ]; then
+      ssh "$HOST" "rm -rf '$DEST_STAGE'; rm -f Desktop/clear-launch-quarantine.sh" >/dev/null 2>&1 || true
+    fi
+    hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true
+    rmdir "$LMNT" 2>/dev/null || true
+  }
+  trap cleanup_local_fallback EXIT HUP INT TERM
   hdiutil attach -nobrowse -readonly -mountpoint "$LMNT" "$DMG" >/dev/null
 
-  DEST_REL="quake2-play"
-  ssh "$HOST" "mkdir -p $DEST_REL/baseq2 && rm -f $DEST_REL/baseq2/autoexec.cfg"
+  ssh "$HOST" "set -e
+    DEST='$DEST'
+    STAGE='$DEST_STAGE'
+    [ ! -e \"\$DEST\" ] && [ ! -L \"\$DEST\" ] || { echo 'REFUSE: /Applications/Quake2 already exists' >&2; exit 10; }
+    [ ! -e \"\$STAGE\" ] && [ ! -L \"\$STAGE\" ] || { echo 'REFUSE: staging path exists' >&2; exit 11; }
+    mkdir \"\$STAGE\"
+    if [ -d \"\$HOME/quake2-play/baseq2\" ]; then
+      ditto \"\$HOME/quake2-play/baseq2\" \"\$STAGE/baseq2\"
+    else
+      mkdir \"\$STAGE/baseq2\"
+    fi
+    rm -f \"\$STAGE/baseq2/autoexec.cfg\""
 
   echo "[deploy-dmg $HOST] rsync Quake2.app (local mount -> target, hdiutil bypass)"
-  rsync -a --delete -e ssh "$LMNT/Quake2.app/" "$HOST:$DEST_REL/Quake2.app/"
-  scp -pq "$LMNT/ref_gl.so" "$HOST:$DEST_REL/ref_gl.so"
-  scp -pq "$LMNT/baseq2/game.so" "$HOST:$DEST_REL/baseq2/game.so"
-  [ -f "$LMNT/q2ded" ] && scp -pq "$LMNT/q2ded" "$HOST:$DEST_REL/q2ded"
+  rsync -a --delete -e ssh "$LMNT/Quake2.app/" "$HOST:$DEST_STAGE/Quake2.app/"
+  scp -pq "$LMNT/ref_gl.so" "$HOST:$DEST_STAGE/ref_gl.so"
+  scp -pq "$LMNT/baseq2/game.so" "$HOST:$DEST_STAGE/baseq2/game.so"
+  [ -f "$LMNT/q2ded" ] && scp -pq "$LMNT/q2ded" "$HOST:$DEST_STAGE/q2ded"
 
   # Same byte-for-byte standard as the remote path (MISTAKES.md — a corrupt
   # renderer that loaded but misrendered is worse than one that failed loud).
   for f in "Quake2.app/Contents/MacOS/quake2" "ref_gl.so" "baseq2/game.so"; do
     l=$(md5 "$LMNT/$f" 2>/dev/null | awk '{print $NF}')
-    r=$(ssh "$HOST" "md5 '$DEST_REL/$f' | awk '{print \$NF}'")
+    r=$(ssh "$HOST" "md5 '$DEST_STAGE/$f' | awk '{print \$NF}'")
     [ "$l" = "$r" ] || { echo "[deploy-dmg $HOST] FATAL: $f corrupt after rsync fallback ($l != $r)" >&2; exit 7; }
   done
-  echo "[deploy-dmg $HOST] [verify] installed binaries match the image byte-for-byte (local-mount fallback) ✅"
+  echo "[deploy-dmg $HOST] [verify] staged binaries match the image byte-for-byte (local-mount fallback) ✅"
 
-  ssh "$HOST" "sh Desktop/clear-launch-quarantine.sh '$DEST_REL/Quake2.app'"
-  ssh "$HOST" "file '$DEST_REL/Quake2.app/Contents/MacOS/quake2' 2>/dev/null | sed 's/.*: //'; rm -f Desktop/clear-launch-quarantine.sh"
+  ssh "$HOST" "set -e
+    sh Desktop/clear-launch-quarantine.sh '$DEST_STAGE/Quake2.app'
+    mv '$DEST_STAGE' '$DEST'
+    file '$DEST/Quake2.app/Contents/MacOS/quake2' 2>/dev/null | sed 's/.*: //'
+    rm -f Desktop/clear-launch-quarantine.sh"
+  DEST_STAGE=""
 
   hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true
   rmdir "$LMNT" 2>/dev/null || true
-  trap - EXIT
+  trap - EXIT HUP INT TERM
 }
 
-echo "[deploy-dmg $HOST] mount + install into ~/quake2-play/ (preserving game data)"
+echo "[deploy-dmg $HOST] mount + stage /Applications/Quake2 (preserving ~/quake2-play as rollback)"
 if ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
 set -e
 DMG_BASE="$1"
 MNT="$HOME/q2install-mnt"
-DEST="$HOME/quake2-play"
+DEST="/Applications/Quake2"
+DEST_STAGE="/Applications/.Quake2.stage.$$"
+
+[ ! -e "$DEST" ] && [ ! -L "$DEST" ] || {
+  echo "REFUSE: $DEST already exists; leaving it and $HOME/quake2-play untouched" >&2
+  exit 10
+}
+[ ! -e "$DEST_STAGE" ] && [ ! -L "$DEST_STAGE" ] || {
+  echo "REFUSE: staging path exists: $DEST_STAGE" >&2
+  exit 11
+}
 
 # fresh mountpoint — detach any stale attach, then rmdir (NEVER rm -rf a path
 # that might still be a mounted read-only volume).
@@ -126,10 +170,26 @@ mkdir -p "$MNT"
 # all ruled out there, this is not a bug in this script.
 if ! hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$HOME/Desktop/$DMG_BASE" >/dev/null 2>&1; then
   echo "  hdiutil attach failed on $(hostname -s 2>/dev/null || echo this host)" >&2
+  rmdir "$MNT" 2>/dev/null || true
   exit 42
 fi
 
-mkdir -p "$DEST/baseq2"
+cleanup_remote_install() {
+  [ -n "${DEST_STAGE:-}" ] && rm -rf "$DEST_STAGE"
+  hdiutil detach "$MNT" >/dev/null 2>&1 || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
+  rmdir "$MNT" 2>/dev/null || true
+  rm -f "$HOME/Desktop/clear-launch-quarantine.sh"
+}
+trap cleanup_remote_install EXIT HUP INT TERM
+
+mkdir "$DEST_STAGE"
+if [ -d "$HOME/quake2-play/baseq2" ]; then
+  ditto "$HOME/quake2-play/baseq2" "$DEST_STAGE/baseq2"
+  echo "  [data] copied legacy baseq2 into the staged install; rollback left untouched"
+else
+  mkdir "$DEST_STAGE/baseq2"
+  echo "  [data] no legacy baseq2 found; add retail pak files before launching"
+fi
 
 # Migration, same as deploy.sh:254-260 — an earlier scheme staged the
 # per-machine cfg to baseq2/autoexec.cfg. It now ships inside
@@ -139,8 +199,8 @@ mkdir -p "$DEST/baseq2"
 # would override the shipped overlay on a machine nobody would think to
 # check. The disk image never ships one (make-dmg.sh:193 stages only
 # game.so into baseq2/), so removing it here can only remove an orphan.
-rm -f "$DEST/baseq2/autoexec.cfg"
-if [ -e "$DEST/baseq2/autoexec.cfg" ]; then
+rm -f "$DEST_STAGE/baseq2/autoexec.cfg"
+if [ -e "$DEST_STAGE/baseq2/autoexec.cfg" ]; then
   echo "  FATAL: could not remove stale baseq2/autoexec.cfg" >&2; exit 7
 fi
 echo "  [config] no stale baseq2/autoexec.cfg (shipped cfg is the bundle's)"
@@ -176,17 +236,17 @@ copy_verified() {
 APP_BIN="Quake2.app/Contents/MacOS/quake2"
 appok=no
 for k in 1 2 3 4; do
-  rm -rf "$DEST/Quake2.app"; ditto "$MNT/Quake2.app" "$DEST/Quake2.app"; sync
-  if [ "$(_md5 "$DEST/$APP_BIN")" = "$(_md5 "$MNT/$APP_BIN")" ]; then appok=yes; break; fi
+  rm -rf "$DEST_STAGE/Quake2.app"; ditto "$MNT/Quake2.app" "$DEST_STAGE/Quake2.app"; sync
+  if [ "$(_md5 "$DEST_STAGE/$APP_BIN")" = "$(_md5 "$MNT/$APP_BIN")" ]; then appok=yes; break; fi
   echo "  [verify] app binary mismatch (try $k) — re-dittoing" >&2; sleep 1
 done
 [ "$appok" = yes ] || { echo "  FATAL: app binary still corrupt after retries" >&2; exit 7; }
 
 # Loose runtime libs that live OUTSIDE the bundle (Q2 basedir=. resolves them).
-copy_verified "$MNT/ref_gl.so"       "$DEST/ref_gl.so"       || exit 7
-copy_verified "$MNT/baseq2/game.so"  "$DEST/baseq2/game.so"  || exit 7
-[ -f "$MNT/q2ded" ] && { copy_verified "$MNT/q2ded" "$DEST/q2ded" || exit 7; }
-echo "  [verify] installed binaries match the image byte-for-byte ✅"
+copy_verified "$MNT/ref_gl.so"       "$DEST_STAGE/ref_gl.so"       || exit 7
+copy_verified "$MNT/baseq2/game.so"  "$DEST_STAGE/baseq2/game.so"  || exit 7
+[ -f "$MNT/q2ded" ] && { copy_verified "$MNT/q2ded" "$DEST_STAGE/q2ded" || exit 7; }
+echo "  [verify] staged binaries match the image byte-for-byte ✅"
 
 # Strip com.apple.quarantine and re-register with LaunchServices. `ditto`
 # above PRESERVES quarantine from whatever carried it on the DMG (a real
@@ -194,7 +254,12 @@ echo "  [verify] installed binaries match the image byte-for-byte ✅"
 # person to run `xattr -dr` by hand is not a fix — issue #35/#34. Local step
 # on the target, not piped over ssh (see the script's own header).
 [ -x "$HOME/Desktop/clear-launch-quarantine.sh" ] && \
-  sh "$HOME/Desktop/clear-launch-quarantine.sh" "$DEST/Quake2.app"
+  sh "$HOME/Desktop/clear-launch-quarantine.sh" "$DEST_STAGE/Quake2.app"
+
+# Same-volume rename publishes the verified directory in one step. The legacy
+# tree remains in place as rollback and is never renamed or deleted here.
+mv "$DEST_STAGE" "$DEST"
+DEST_STAGE=""
 
 # detach — retry until the slow-disk flush completes; only THEN rmdir the now-
 # empty mountpoint (rmdir can't touch mounted contents, so it's safe).
@@ -205,6 +270,7 @@ for k in 1 2 3 4 5; do
 done
 [ "$detached" = yes ] || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
 rmdir "$MNT" 2>/dev/null || true
+trap - EXIT HUP INT TERM
 
 # Tidy: drop any OTHER Quake2-OldMac-*.dmg left on the Desktop from previous
 # rounds — keep only the one we just installed from. The bench Macs have small
@@ -216,7 +282,7 @@ for old in "$HOME"/Desktop/Quake2-OldMac-*.dmg; do
   fi
 done
 
-echo "installed:"
+echo "installed into $DEST:"
 ls -la "$DEST" | awk '{print "  "$NF}' | grep -vE '^\s+\.$|^\s+\.\.$' | grep -v '^  $' || true
 echo "app binary archs:"
 file "$DEST/Quake2.app/Contents/MacOS/quake2" 2>/dev/null | sed 's/.*: //' || true
@@ -234,4 +300,4 @@ else
   fi
 fi
 
-echo "[deploy-dmg $HOST] done — installed from $DMG_BASE"
+echo "[deploy-dmg $HOST] done — installed from $DMG_BASE at /Applications/Quake2"

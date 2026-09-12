@@ -16,3 +16,4 @@ adefa8d6d3a6,g5-panther,PPC 970 Dual 2.7GHz,ATI Radeon 9600 128MB,10.3.9 Panther
 71dc862afcbd,workstation,Apple M5,Apple M5,macOS 26.6.2,demo1,1920x1080,on,265.2,263.6,265.5,264.55,exact installed artifact; desktop-fullscreen; 4x MSAA; vsync off; live cvar readback; candidate-only
 71dc862afcbd,mini-g4,PPC 7447A 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,1024x768,off,29.8,29.8,29.8,29.80,exact installed artifact; desktop-fullscreen; 2x MSAA; vsync on; live cvar readback; candidate-only
 71dc862afcbd,mini-g4,PPC 7447A 1.25GHz,ATI Radeon 9200 32MB,10.4.11 Tiger,demo1,1024x768,off,40.5,40.6,40.6,40.60,exact installed artifact; desktop-fullscreen; 2x MSAA; vsync off; live cvar readback; candidate-only raw floor
+71dc862afcbd,workstation,Apple M5,Apple M5,macOS 26.6.2,demo1,1920x1080,on,263.8,,,263.80,config successor 943c256a installed; one bench-style isolation control; darken 1; 4x MSAA; desktop-fullscreen; vsync off; not shipped-vsync fps

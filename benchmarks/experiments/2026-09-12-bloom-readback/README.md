@@ -195,19 +195,20 @@ and output are in `workstation-vsync-discriminator.txt`.
 
 | Alias | Installed package | Automated state | User gate |
 | --- | --- | --- | --- |
-| `workstation` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-bloom-fix-71dc862afcbd` | User-requested normal launch reached `base2` and `base1`; every bloom stage reported GL error 0 and the engine shut down normally. Production timedemo smoke remains incomplete; vsync discriminator recorded above. | Successor visual verdict still pending. |
+| `workstation` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-bloom-fix-71dc862afcbd` | User-requested normal launch reached `base2` and `base1`; every bloom stage reported GL error 0 and the engine shut down normally. Production timedemo smoke remains incomplete; vsync discriminator recorded above. | User reports it "looks great on this macbook air m5"; detailed input/sound checks were not reported. |
 | `quicksilver` | successor `943c256a` (PowerPC defaults unchanged); legacy data retained | Finder-equivalent smoke passed on Radeon 9000; bloom remains off. | Final gameplay pending. |
 | `mini-g4` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-20260912T211243Z-66b8a7b012cc` | Jenkins `smoke-quake2-mini-g4` #2 passed on Radeon 9200; bloom remains off. | Final gameplay pending. |
 | `mini-intel2` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-20260912T211451Z-66b8a7b012cc` | Jenkins `smoke-quake2-mini-intel` #1 passed on GMA 950: bloom 0, 8x MSAA, desktop fullscreen, vsync 1, 797.5 fps. Headless visual capture remains invalid. | Display-backed Intel gameplay pending. |
 | `mini-sl` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Native x86-64 process on Snow Leopard 10.6.8. Production smoke passed on GeForce 9400 at 56.8 fps: bloom 0, 2x MSAA, mode 5 (800x500), desktop fullscreen and vsync 1. | Display-backed Snow Leopard gameplay pending. |
-| `yosemite-tiger` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g3` #1 passed on Rage 128; bloom remains off. | Final G3 gameplay pending. |
+| `yosemite-tiger` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g3` #1 passed on Rage 128; bloom remains off. | User tested this exact install and reports it is playable; bloom/input/sound/quit details were not reported. |
 | `g5-panther` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g5-panther` #1 passed on Radeon 9600; bloom remains on. | Final G5 gameplay pending. |
 | `imac-g5` | successor `943c256a` freshly installed; diagnostic `v2.11.1-dirty` tree retained at `~/quake2-play` | Jenkins `smoke-quake2-imac-g5` #1 was unstable: no renderer, mode, map or FPS line. The current candidate log stops after GL refresher initialization and shuts down audio, reproducing #66. | Blocked; do not send the user to launch this cell. |
-| `imac-2019` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-mini-intel` #2 passed on Radeon Pro 580X: bloom 1, 8x MSAA, desktop fullscreen, vsync 1, 72.7 fps. | Final Intel gameplay pending. |
+| `imac-2019` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-mini-intel` #2 passed on Radeon Pro 580X: bloom 1, 8x MSAA, desktop fullscreen, vsync 1, 72.7 fps. A post-reboot manual launch reached `base2`, all bloom stages reported GL error 0, and the engine shut down normally without a fresh crash report. | User reports it "plays nice on imac 2019"; detailed input/sound checks were not reported. |
 | `yosemite` (Panther) | not installed in this rollout | Canonical boot remains approval-blocked; no workaround attempted. | Untested. |
 
 No release or publication is authorized. The final candidate still needs the
-user's release-gate gameplay passes on G3, G4, G5, Intel and Apple Silicon.
+unreported parts of the human gameplay gate and coverage on the remaining G4,
+G5 and Intel cells.
 The automated Intel Radeon test used matched 1024x768 settings; the user's
 test must exercise the shipped desktop-fullscreen profile. The GMA 950 visual
 cell remains explicitly untested.

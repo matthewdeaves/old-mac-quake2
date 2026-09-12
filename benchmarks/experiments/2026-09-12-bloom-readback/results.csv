@@ -1,0 +1,15 @@
+source_stamp,machine,cpu,gpu,os,demo,resolution,bloom,run1_fps,run2_fps,run3_fps,warm_median_fps,validity
+f0ed943c21f6,quicksilver,PPC 7450 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,1024x768,off,61.7,61.8,61.8,61.80,exploratory non-interleaved
+f0ed943c21f6,quicksilver,PPC 7450 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,1024x768,on,21.5,21.5,21.5,21.50,exploratory non-interleaved
+f0ed943c21f6,g5-panther,PPC 970 Dual 2.7GHz,ATI Radeon 9600 128MB,10.3.9 Panther,demo1,1680x1050,off,153.2,153.2,153.2,153.20,exploratory non-interleaved
+f0ed943c21f6,g5-panther,PPC 970 Dual 2.7GHz,ATI Radeon 9600 128MB,10.3.9 Panther,demo1,1680x1050,on,50.3,50.3,50.3,50.30,exploratory non-interleaved
+f0ed943c21f6,yosemite-tiger,PPC 750 449MHz,ATI Rage 128 16MB,10.4.11 Tiger,demo1,1024x768,off,25.8,25.8,25.9,25.85,exploratory non-interleaved
+f0ed943c21f6,yosemite-tiger,PPC 750 449MHz,ATI Rage 128 16MB,10.4.11 Tiger,demo1,1024x768,on,2.2,,,INVALID,one run only; stopped at user direction
+f0ed943c21f6,mini-intel,Core 2 Duo 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,800x600,off,954.3,960.9,960.9,INVALID,headless Quartz session; corrupted frame
+f0ed943c21f6,mini-intel,Core 2 Duo 2.33GHz,Intel GMA 950 64MB,10.7.5 Lion,demo1,800x600,on,956.9,956.9,955.6,INVALID,headless Quartz session; corrupted frame
+adefa8d6d3a6,yosemite-tiger,PPC 750 449MHz,ATI Rage 128 16MB,10.4.11 Tiger,demo1,1024x768,off,25.9,25.9,25.9,25.90,final candidate shipped profile; candidate-only
+adefa8d6d3a6,quicksilver,PPC 7450 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,1024x768,off,62.1,61.9,62.1,62.00,final candidate shipped profile; candidate-only
+adefa8d6d3a6,g5-panther,PPC 970 Dual 2.7GHz,ATI Radeon 9600 128MB,10.3.9 Panther,demo1,1680x1050,on,50.3,50.3,50.3,50.30,final candidate shipped profile; candidate-only
+71dc862afcbd,yosemite-tiger,PPC 750 449MHz,ATI Rage 128 16MB,10.4.11 Tiger,demo1,1024x768,off,25.8,25.8,25.9,25.85,final exact artifact shipped profile; candidate-only
+71dc862afcbd,quicksilver,PPC 7450 733MHz,ATI Radeon 9000 Pro 64MB,10.4.11 Tiger,demo1,1024x768,off,61.6,61.9,61.8,61.85,final exact artifact shipped profile; candidate-only
+71dc862afcbd,g5-panther,PPC 970 Dual 2.7GHz,ATI Radeon 9600 128MB,10.3.9 Panther,demo1,1680x1050,on,50.2,50.3,50.3,50.30,final exact artifact shipped profile; candidate-only

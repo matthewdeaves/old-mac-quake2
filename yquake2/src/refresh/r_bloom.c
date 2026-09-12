@@ -60,6 +60,7 @@ static int   v_x, v_y, v_w, v_h;
 static float scr_tcw, scr_tch;
 
 static qboolean bloom_inited = false;
+static qboolean bloom_diagnostics_pending = true;
 
 static int
 R_Bloom_RoundUpPow2(int v)
@@ -76,6 +77,7 @@ void
 R_InitBloomTextures(void)
 {
 	bloom_inited = false;
+	bloom_diagnostics_pending = true;
 
 	if (!gl_bloom->value)
 	{
@@ -161,6 +163,15 @@ R_Bloom(void)
 {
 	int i;
 	float blur;
+	qboolean diagnose;
+	GLint read_buffer = 0;
+	GLint draw_buffer = 0;
+	GLenum capture_error = GL_NO_ERROR;
+	GLenum downsample_error = GL_NO_ERROR;
+	GLenum darken_error = GL_NO_ERROR;
+	GLenum blur_x_error = GL_NO_ERROR;
+	GLenum blur_y_error = GL_NO_ERROR;
+	GLenum composite_error = GL_NO_ERROR;
 
 	if (!gl_bloom->value || (r_newrefdef.rdflags & RDF_NOWORLDMODEL))
 	{
@@ -176,6 +187,8 @@ R_Bloom(void)
 		}
 	}
 
+	diagnose = bloom_diagnostics_pending;
+
 	/* drain any pending batch before we take over GL state */
 	R_ApplyGLBuffer();
 
@@ -186,6 +199,17 @@ R_Bloom(void)
 
 	scr_tcw = (float)v_w / (float)screen_tex_w;
 	scr_tch = (float)v_h / (float)screen_tex_h;
+
+	/* Record the context's framebuffer state once. Supported renderers pay no
+	 * per-frame glGetError cost after this diagnostic frame. */
+	if (diagnose)
+	{
+		while (qglGetError() != GL_NO_ERROR)
+		{
+		}
+		qglGetIntegerv(GL_READ_BUFFER, &read_buffer);
+		qglGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
+	}
 
 	/* --- common 2D state for the post pass --- */
 	qglDisable(GL_DEPTH_TEST);
@@ -206,6 +230,10 @@ R_Bloom(void)
 	/* 1. capture the rendered view into the screen texture (1:1) */
 	R_Bind(TEXNUM_BLOOMSCREEN);
 	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, v_x, v_y, v_w, v_h);
+	if (diagnose)
+	{
+		capture_error = qglGetError();
+	}
 
 	/* 2. downsample: render the captured view into the BLOOM_SIZE corner,
 	 *    then copy that into the effect texture. */
@@ -245,6 +273,10 @@ R_Bloom(void)
 
 	R_Bind(TEXNUM_BLOOMEFFECT);
 	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
+	if (diagnose)
+	{
+		downsample_error = qglGetError();
+	}
 
 	qglEnable(GL_BLEND);
 
@@ -260,6 +292,10 @@ R_Bloom(void)
 			R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, 1.0f, 1.0f);
 		}
 		qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
+		if (diagnose)
+		{
+			darken_error = qglGetError();
+		}
 	}
 
 	/* 4. separable-ish blur: additive offset taps in X then Y, re-copying
@@ -277,6 +313,10 @@ R_Bloom(void)
 		R_Bloom_SamplePass(-i, 0, w);
 	}
 	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
+	if (diagnose)
+	{
+		blur_x_error = qglGetError();
+	}
 
 	R_Bind(TEXNUM_BLOOMEFFECT);
 	qglColor4f(0.5f, 0.5f, 0.5f, 1.0f);
@@ -288,6 +328,10 @@ R_Bloom(void)
 		R_Bloom_SamplePass(0, -i, w);
 	}
 	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
+	if (diagnose)
+	{
+		blur_y_error = qglGetError();
+	}
 
 	/* 5. composite over the full view rectangle.
 	 *
@@ -321,6 +365,18 @@ R_Bloom(void)
 		qglColor4f(a, a, a, 1.0f);
 		R_Bloom_Quad(r_newrefdef.x, r_newrefdef.y,
 				r_newrefdef.width, r_newrefdef.height, 1.0f, 1.0f);
+	}
+
+	if (diagnose)
+	{
+		composite_error = qglGetError();
+		ri.Con_Printf(PRINT_ALL,
+			"Bloom GL diagnostics: read 0x%x, draw 0x%x, "
+			"capture 0x%x, downsample 0x%x, darken 0x%x, "
+			"blur-x 0x%x, blur-y 0x%x, composite 0x%x.\n",
+			read_buffer, draw_buffer, capture_error, downsample_error,
+			darken_error, blur_x_error, blur_y_error, composite_error);
+		bloom_diagnostics_pending = false;
 	}
 
 	/* 6. restore state. The caller runs R_SetGL2D next (HUD) and

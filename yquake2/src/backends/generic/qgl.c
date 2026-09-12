@@ -3640,6 +3640,33 @@ GetProcAddressGL(char *symbol)
 }
 
 /*
+ * Replace the two framebuffer-read functions after SDL has created the GL
+ * context. sdl12-compat can put SDL 1.2 fullscreen rendering in its own
+ * multisample FBO and returns wrappers from SDL_GL_GetProcAddress() that
+ * resolve that FBO before a copy or read. QGL_Init() runs before the context
+ * exists and loads these symbols directly from libGL, so the SDL backend must
+ * supply the context-aware addresses afterwards.
+ *
+ * Update both public qgl pointers and the backing dll pointers. GL logging
+ * calls through the latter and restores the former from them when disabled.
+ */
+qboolean
+QGL_RebindReadbackFunctions(void *copy_tex_sub_image_2d, void *read_pixels)
+{
+	if (!copy_tex_sub_image_2d || !read_pixels)
+	{
+		return false;
+	}
+
+	dllCopyTexSubImage2D = copy_tex_sub_image_2d;
+	dllReadPixels = read_pixels;
+	qglCopyTexSubImage2D = dllCopyTexSubImage2D;
+	qglReadPixels = dllReadPixels;
+
+	return true;
+}
+
+/*
  * This is responsible for binding our qgl function pointers to
  * the appropriate GL stuff.  In Windows this means doing a
  * LoadLibrary and a bunch of calls to GetProcAddress.  On other
@@ -4752,4 +4779,3 @@ GLimp_LogNewFrame(void)
 {
 	fprintf(glw_state.log_fp, "*** R_BeginFrame ***\n");
 }
-

@@ -65,6 +65,12 @@
 #ifndef GL_MULTISAMPLE
  #define GL_MULTISAMPLE 0x809D
 #endif
+#ifndef GL_SAMPLE_BUFFERS
+ #define GL_SAMPLE_BUFFERS 0x80A8
+#endif
+#ifndef GL_SAMPLES
+ #define GL_SAMPLES 0x80A9
+#endif
 
 /* GL_ARB_point_sprite — point-sprite mode + automatic texcoord
  * generation on point primitives. ARB extension from 2003 (GL 2.0
@@ -631,5 +637,6 @@ int GLimp_SetMode(int *pwidth, int *pheight, int mode, qboolean fullscreen);
 void GLimp_AppActivate(qboolean active);
 void GLimp_EnableLogging(qboolean enable);
 void GLimp_LogNewFrame(void);
+int GLimp_RebindReadbackFunctions(void);
 
 #endif

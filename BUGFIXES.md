@@ -4,6 +4,25 @@ Running log of real bugs found and fixed in this repo. Not a changelog of every
 commit — see `git log` for that. One entry per bug: symptom, root cause, fix
 commit.
 
+## 2026-09-12
+
+- **Enabling fixed-function bloom could turn the Apple Silicon fullscreen
+  image black.** sdl12-compat can render the SDL 1.2 logical surface through
+  an internal multisample framebuffer and supplies wrappers that resolve it
+  before `glCopyTexSubImage2D` or `glReadPixels`. QGL loaded those functions
+  directly from OpenGL before SDL created the context, so bloom copied from
+  the unresolved framebuffer. Fix: after `R_SetMode` creates the context,
+  detect sdl12-compat through its runtime symbol and replace both QGL readback
+  functions with the addresses returned by `SDL_GL_GetProcAddress`; genuine
+  SDL 1.2 keeps its original bindings. The user manually passed an earlier
+  candidate on Apple M5 and a Panther G5/Radeon 9600, with visible bloom and no
+  GL error in any bloom stage. The final candidate's G4 and G5 frames also
+  render correctly, but measured cost keeps bloom off on G3 and G4. Intel
+  visual coverage remains open: the GMA 950 mini had no attached display and
+  produced the same invalid readback with a prior build and with bloom off,
+  while the display-backed Radeon Pro 580X iMac's panel was asleep. Evidence:
+  `benchmarks/experiments/2026-09-12-bloom-readback/`. Refs #33.
+
 ## 2026-09-02
 
 - **`getaddrinfo()` on the main thread blocked the first launch on Wi-Fi,

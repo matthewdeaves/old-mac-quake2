@@ -119,6 +119,32 @@ XF86VidModeGamma x11_oldgamma;
 #endif
 
 /*
+ * sdl12-compat redirects fullscreen OpenGL into a logical-scaling FBO. Its
+ * SDL_GL_GetProcAddress() supplies wrappers that resolve a multisample FBO
+ * before framebuffer copies and reads. The engine's generic QGL loader runs
+ * before the context exists and therefore cannot select those wrappers.
+ *
+ * Return 0 for genuine SDL 1.2, 1 when the bridge is installed, and -1 when
+ * sdl12-compat is present but does not provide both required functions.
+ */
+int
+GLimp_RebindReadbackFunctions(void)
+{
+	void *copy_tex_sub_image_2d;
+	void *read_pixels;
+
+	if (!SDL_GL_GetProcAddress("SDL12COMPAT_GetWindow"))
+	{
+		return 0;
+	}
+
+	copy_tex_sub_image_2d = SDL_GL_GetProcAddress("glCopyTexSubImage2D");
+	read_pixels = SDL_GL_GetProcAddress("glReadPixels");
+
+	return QGL_RebindReadbackFunctions(copy_tex_sub_image_2d, read_pixels) ? 1 : -1;
+}
+
+/*
  * Initialzes the SDL OpenGL context
  */
 int
@@ -515,4 +541,3 @@ GLimp_Shutdown(void)
 
 	gl_state.hwgamma = false;
 }
-

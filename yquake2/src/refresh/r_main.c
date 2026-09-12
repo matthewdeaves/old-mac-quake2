@@ -1309,6 +1309,7 @@ R_Init(void *hinstance, void *hWnd)
 	char vendor_buffer[1000];
 	int err;
 	int j;
+	int sdl_readback_bridge;
 	extern float r_turbsin[256];
 
 	for (j = 0; j < 256; j++)
@@ -1366,6 +1367,29 @@ R_Init(void *hinstance, void *hWnd)
 		QGL_Shutdown();
 		ri.Con_Printf(PRINT_ALL, "ref_gl::R_Init() - could not R_SetMode()\n");
 		return -1;
+	}
+
+	/* sdl12-compat's fullscreen scaling path owns an internal FBO. Route
+	 * framebuffer copies and reads through its context-aware wrappers when
+	 * that runtime is present; genuine SDL 1.2 keeps the original QGL path. */
+	sdl_readback_bridge = GLimp_RebindReadbackFunctions();
+	if (sdl_readback_bridge < 0)
+	{
+		ri.Con_Printf(PRINT_ALL,
+			"sdl12-compat: GL readback wrappers unavailable; disabling bloom.\n");
+		ri.Cvar_Set("gl_bloom", "0");
+	}
+	else if (sdl_readback_bridge > 0)
+	{
+		GLint sample_buffers = 0;
+		GLint samples = 0;
+
+		qglGetIntegerv(GL_SAMPLE_BUFFERS, &sample_buffers);
+		qglGetIntegerv(GL_SAMPLES, &samples);
+		ri.Con_Printf(PRINT_ALL,
+			"sdl12-compat: routed GL readback through SDL "
+			"(sample buffers %d, samples %d).\n",
+			sample_buffers, samples);
 	}
 
 	ri.Vid_MenuInit();

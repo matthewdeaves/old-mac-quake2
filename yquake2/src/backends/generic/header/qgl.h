@@ -52,6 +52,8 @@
 
 qboolean QGL_Init(const char *dllname);
 void QGL_Shutdown(void);
+qboolean QGL_RebindReadbackFunctions(void *copy_tex_sub_image_2d,
+		void *read_pixels);
 
 extern void (APIENTRY *qglAccum)(GLenum op, GLfloat value);
 extern void (APIENTRY *qglAlphaFunc)(GLenum func, GLclampf ref);

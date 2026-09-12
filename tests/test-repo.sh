@@ -78,11 +78,11 @@ detect_unsafe_applications_install () {
 	local f hits=""
 	for f in "$1"/*.sh; do
 		[ -f "$f" ] || continue
-		grep -q 'DEST="/Applications/Quake2"' "$f" || continue
-		grep -q 'DEST_STAGE="/Applications/.Quake2.stage.\$\$"' "$f" &&
-		grep -q '\[ ! -e "\$DEST" \].*\[ ! -L "\$DEST" \]' "$f" &&
-		grep -q 'ditto "\$HOME/quake2-play/baseq2" "\$DEST_STAGE/baseq2"' "$f" &&
-		grep -q 'mv "\$DEST_STAGE" "\$DEST"' "$f" && continue
+		grep -qE '(DEST|REMOTE_DEST)="/Applications/Quake2"' "$f" || continue
+		grep -qE '(DEST_STAGE|REMOTE_STAGE)="/Applications/\.Quake2\.stage\.\$\$"' "$f" &&
+		grep -qE '\[ ! -e .*\$DEST.*\].*\[ ! -L .*\$DEST.*\]' "$f" &&
+		grep -qE 'ditto .*\$HOME/quake2-play/baseq2.*\$(DEST_STAGE|STAGE)/baseq2' "$f" &&
+		grep -qE 'mv .*\$(DEST_STAGE|STAGE).*\$DEST' "$f" && continue
 		hits="$hits $f"
 	done
 	[ -n "$hits" ] || return 1
@@ -124,11 +124,11 @@ selftest "legacy remote build layout" detect_legacy_remote_build_layout \
 	'REMOTE_PATH="oldmac/quake2"'
 selftest "unsafe Applications install" detect_unsafe_applications_install \
 	'DEST="/Applications/Quake2"' \
-	'DEST="/Applications/Quake2"
-DEST_STAGE="/Applications/.Quake2.stage.$$"
+	'REMOTE_DEST="/Applications/Quake2"
+REMOTE_STAGE="/Applications/.Quake2.stage.$$"
 [ ! -e "$DEST" ] && [ ! -L "$DEST" ]
-ditto "$HOME/quake2-play/baseq2" "$DEST_STAGE/baseq2"
-mv "$DEST_STAGE" "$DEST"'
+ditto "$HOME/quake2-play/baseq2" "$STAGE/baseq2"
+mv "$STAGE" "$DEST"'
 
 # --- the input must actually be there --------------------------------------
 echo

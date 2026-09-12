@@ -13,7 +13,7 @@
 #
 # usage: scripts/smoke-dmg.sh <machine> [demo]
 #   machine: yosemite | yosemite-tiger | sawtooth | quicksilver | mini-g4 |
-#            imac-g5 | mini-intel | imac-2019
+#            imac-g5 | mini-intel | imac-2019 | workstation
 #   demo:    demo1 (default) | demo2
 #
 # After this passes, the human starts a NEW GAME by hand — the timedemo proves
@@ -62,8 +62,40 @@ case "$HOST" in
                TIMEOUT=120; COOLDOWN=2 ;;
   mini-intel2) TIMEOUT=60;  COOLDOWN=1 ;;
   mini-sl)     TIMEOUT=60;  COOLDOWN=1 ;;
+  workstation) TIMEOUT=45;  COOLDOWN=1 ;;
   *) echo "unknown machine: $HOST" >&2; exit 2 ;;
 esac
+
+# The canonical picker treats `workstation` as a local target: SSH-to-self is
+# neither required nor reliable there. Keep one smoke path and vary only the
+# transport used to execute a shell fragment or retrieve its log.
+host_exec () {
+  if [ "$HOST" = workstation ]; then
+    /bin/sh -c "$1"
+  else
+    ssh "$HOST" "$1"
+  fi
+}
+host_fetch () {
+  local relative="$1" destination="$2"
+  if [ "$HOST" = workstation ]; then
+    cp "$HOME/$relative" "$destination"
+  else
+    scp -q "$HOST:$relative" "$destination"
+  fi
+}
+host_game_processes () {
+  host_exec '
+    ps ax -o pid=,ucomm= 2>/dev/null | while IFS= read -r line; do
+      pid=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*//; s/[[:space:]].*$//")
+      exe=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//")
+      base=${exe##*/}
+      case "$base" in
+        xash3d|xash3d.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm|alephone|alephone-ppc-test|AlephOne|Marathon)
+          printf "%s %s\n" "$pid" "$base" ;;
+      esac
+    done'
+}
 
 # Both are overridable. The per-machine defaults are tuned for this port's
 # demo at that machine's production settings, and a heavier config or a busy
@@ -86,7 +118,7 @@ esac
 # QuakeSpasm Q1 sister project) drive the same Macs. Launching a second
 # fullscreen game on a box already running one wedges both. Bail if anything
 # Quake-ish is live; FORCE=1 overrides a stale process.
-BUSY="$(ssh "$HOST" "ps ax 2>/dev/null | grep -iE 'quake2|quakespasm|q2ded|/quake' | grep -v grep || true")"
+BUSY="$(host_game_processes)"
 if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
   echo "[smoke $HOST] ABORT — $HOST is already running a game (shared bench):" >&2
   echo "$BUSY" | sed 's/^/    /' >&2
@@ -128,11 +160,14 @@ echo "[smoke $HOST] launching installed Quake2.app with PRODUCTION config (as a 
 # without requiring an fps line.
 if [ "$OPEN_ARGS" = 1 ]; then
   LAUNCH_CMD="open -n /Applications/Quake2/Quake2.app --args -nolauncher \\
-    +set logfile 2 +set timedemo 1 +demomap $DEMO.dm2"
+    +set logfile 2 \\
+    +gl_bloom +gl_msaa_samples +gl_mode +gl_customwidth +gl_customheight \\
+    +vid_fullscreen +vid_desktopfullscreen +gl_swapinterval \\
+    +set timedemo 1 +demomap $DEMO.dm2"
 else
   LAUNCH_CMD="open /Applications/Quake2/Quake2.app"
 fi
-ssh "$HOST" "
+host_exec "
   if killall -TERM quake2 2>/dev/null; then sleep 2; fi
   killall -KILL quake2 2>/dev/null || true
   sleep 1
@@ -162,9 +197,23 @@ ssh "$HOST" "
 
 # Pull the log and report.
 TMP=$(mktemp)
-scp -q "$HOST:.yq2/baseq2/qconsole.log" "$TMP" 2>/dev/null || { echo "[smoke $HOST] FAIL: no qconsole.log (engine never wrote one)"; rm -f "$TMP"; exit 1; }
+host_fetch ".yq2/baseq2/qconsole.log" "$TMP" 2>/dev/null || { echo "[smoke $HOST] FAIL: no qconsole.log (engine never wrote one)"; rm -f "$TMP"; exit 1; }
 
 FPS_LINE=$(grep -E 'frames.*seconds.*fps' "$TMP" 2>/dev/null | tail -1 || true)
+EFFECTIVE_CVARS="gl_bloom gl_msaa_samples gl_mode gl_customwidth gl_customheight vid_fullscreen vid_desktopfullscreen gl_swapinterval"
+EFFECTIVE_LINES=""
+MISSING_EFFECTIVE=""
+if [ "$OPEN_ARGS" = 1 ]; then
+  for cv in $EFFECTIVE_CVARS; do
+    line=$(grep -E "^\"$cv\" is \"" "$TMP" 2>/dev/null | tail -1 || true)
+    if [ -n "$line" ]; then
+      EFFECTIVE_LINES="${EFFECTIVE_LINES}${line}
+"
+    else
+      MISSING_EFFECTIVE="$MISSING_EFFECTIVE $cv"
+    fi
+  done
+fi
 # SDL 1.2 could not give us a fullscreen mode. On a Mac with no display attached
 # there are NO fullscreen modes at any size -- measured on mini-intel2
 # 2026-08-23, which refused 640x400 as well as its 1280x1024 desktop. That is a
@@ -181,6 +230,14 @@ echo "[smoke $HOST] renderer : ${REND_LINE:-<none>}"
 echo "[smoke $HOST] mode     : ${MODE_LINE:-<none>}"
 echo "[smoke $HOST] desktop  : ${DESKTOP_LINE:-<none>}"
 echo "[smoke $HOST] result   : ${FPS_LINE:-<NO FPS LINE>}"
+if [ "$OPEN_ARGS" = 1 ]; then
+  echo "[smoke $HOST] effective settings:"
+  printf '%s' "$EFFECTIVE_LINES" | sed 's/^/    /'
+  if [ -n "$MISSING_EFFECTIVE" ]; then
+    echo "[smoke $HOST] FAIL — live cvar read-back missing:$MISSING_EFFECTIVE" >&2
+    exit 4
+  fi
+fi
 
 if [ -n "$FPS_LINE" ]; then
   echo "[smoke $HOST] PASS — world rendered to completion on the production path"

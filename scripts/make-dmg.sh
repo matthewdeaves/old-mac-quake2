@@ -289,27 +289,27 @@ Rosetta 2.
 
 INSTALL
 -------
-1. Make a folder for the game. On Panther through Lion anywhere will do, e.g.
-   ~/Desktop/quake2/. On Apple Silicon and recent macOS use /Applications/quake2/
-   instead, for the reason in APPLE SILICON AND MODERN macOS below.
-2. Copy EVERYTHING from this disk image into that folder:
+1. If /Applications/Quake2 already exists, rename that whole folder as a dated
+   backup. Do not merge a new build into it.
+2. Make a fresh /Applications/Quake2 folder.
+3. Copy EVERYTHING from this disk image into that folder:
        Quake2.app
        ref_gl.so
        q2ded
        baseq2/        (contains game.so)
-3. Add your Quake II data — copy your retail pak files and player models:
-       ~/Desktop/quake2/baseq2/pak0.pak              (required — main game data)
-       ~/Desktop/quake2/baseq2/pak1.pak  pak2.pak    (3.20 point release)
-       ~/Desktop/quake2/baseq2/players/              (REQUIRED for player models
+4. Add your Quake II data — copy your retail pak files and player models:
+       /Applications/Quake2/baseq2/pak0.pak           (required — main game data)
+       /Applications/Quake2/baseq2/pak1.pak pak2.pak (3.20 point release)
+       /Applications/Quake2/baseq2/players/           (REQUIRED for player models
                                                       and skins — copy the whole
                                                       players/ folder from your
                                                       retail install. Without it
                                                       multiplayer models will be
                                                       missing or invisible.)
-       ~/Desktop/quake2/baseq2/video/                (cinematics — optional)
+       /Applications/Quake2/baseq2/video/             (cinematics — optional)
    Retail Quake II is on Steam and GOG. The players/ folder is inside your
    retail baseq2/ directory alongside the pak files.
-4. Double-click "Fix and Install.command" the first time (clears the download
+5. Double-click "Fix and Install.command" the first time (clears the download
    quarantine flag so Gatekeeper doesn't block the game, then launches it —
    opens a Terminal window, one click, no typing). After that, Quake2.app
    itself double-clicks normally.
@@ -320,18 +320,17 @@ INSTALL
    says so if you do run it.
 
 The final layout:
-   ~/Desktop/quake2/Quake2.app
-   ~/Desktop/quake2/ref_gl.so
-   ~/Desktop/quake2/q2ded
-   ~/Desktop/quake2/Fix and Install.command
-   ~/Desktop/quake2/clear-launch-quarantine.sh
-   ~/Desktop/quake2/baseq2/game.so
-   ~/Desktop/quake2/baseq2/pak0.pak (+ pak1, pak2, players/, video/)
+   /Applications/Quake2/Quake2.app
+   /Applications/Quake2/ref_gl.so
+   /Applications/Quake2/q2ded
+   /Applications/Quake2/Fix and Install.command
+   /Applications/Quake2/clear-launch-quarantine.sh
+   /Applications/Quake2/baseq2/game.so
+   /Applications/Quake2/baseq2/pak0.pak (+ pak1, pak2, players/, video/)
 
 APPLE SILICON AND MODERN macOS
 ------------------------------
-Put the game folder in /Applications, i.e. /Applications/quake2/, and run it
-from there.
+Put the game folder at /Applications/Quake2 and run it from there.
 
 That is not a style preference. macOS grants privacy permissions against a
 program's identity and location, and a game folder sitting on the Desktop or
@@ -340,14 +339,14 @@ access to it. /Applications is outside those locations, so the prompts stop.
 
 The bundle is ad-hoc signed, which gives it a stable identity for the same
 reason. Downloaded copies still carry the quarantine flag, so the first
-launch needs "Fix and Install.command" (see INSTALL step 4) — it clears the
+launch needs "Fix and Install.command" (see INSTALL step 5) — it clears the
 flag and launches in one double-click. (Not needed on Panther / Tiger / Lion.)
 
 Do not upgrade by copying the new files over an old install with cp. macOS
 caches the code-signature validation of the file that was there before, and the
 replacement then fails page validation and is killed at load with
-"CODESIGNING / Invalid Page". Delete the old Quake2.app, ref_gl.so, q2ded and
-baseq2/game.so first, or drag them to the Trash in Finder, then copy the new
+"CODESIGNING / Invalid Page". Rename the existing /Applications/Quake2 folder
+as a backup, create a fresh /Applications/Quake2, then copy the new
 ones in. Your pak files and saves are untouched either way.
 
 PER-MACHINE CONFIG

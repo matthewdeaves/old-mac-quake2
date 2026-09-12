@@ -91,7 +91,7 @@ fat `.app`) had a foot-gun: both wrote to the same `~/Desktop/quake2/` with
 `scripts/build.sh <target>` still exists for fast single-slice iteration but its
 output only feeds `build-fat.sh`.
 
-Target install layout, `~/Desktop/quake2/`:
+Target install layout, `/Applications/Quake2/`:
 
 ```
 Quake2.app/                 everything, incl. Contents/Resources/autoexec-*.cfg
@@ -104,10 +104,17 @@ baseq2/pak*.pak             the user's own data
 `SDLMain.m` chdirs the process to the `.app`'s parent directory on a Finder
 launch, so `basedir=.` resolves there.
 
-`deploy.sh` excludes `baseq2/players/` from its `--delete` sweep. The sweep used
-to wipe the four player-model directories (crakhor, cyborg, female, male) on
-every deploy; canonical source is mini-g4's `/Games/Quake 2/baseq2/players/`,
-cached in `.game-data/baseq2/players/`.
+Both install paths refuse an occupied `/Applications/Quake2`, build a complete
+same-volume `/Applications/.Quake2.stage.<pid>` tree, verify the staged runtime
+binaries, and publish it with one rename. They copy existing
+`~/quake2-play/baseq2` data into the stage without changing that legacy tree, so
+the old install remains rollback. An update needs an explicit named-backup flow;
+these scripts intentionally perform fresh installs only.
+
+`rsync --delete` is scoped to the staged `Quake2.app` bundle. It never sweeps
+the install root or `baseq2/`, avoiding the historical deletion of player-model
+directories (crakhor, cyborg, female, male). The canonical cache for those files
+is `.game-data/baseq2/players/`.
 
 ## Game data
 

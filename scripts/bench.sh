@@ -2,7 +2,7 @@
 # Run a Q2 timedemo benchmark on a target machine.
 # Assumes the bundle is already deployed (scripts/deploy.sh first).
 #
-# usage: scripts/bench.sh <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|g5-tiger|g5-panther|g5-desktop|quad-tiger|quad-leopard|mini-intel|imac-2019> <demo> <WxH> [runs]
+# usage: scripts/bench.sh <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|g5-tiger|g5-panther|g5-desktop|quad-tiger|quad-leopard|mini-intel|mini-intel2|mini-sl|imac-2019|workstation> <demo> <WxH> [runs]
 #   yosemite-tiger is the SAME Mac as yosemite on its 10.4 partition — one
 #   OS is booted at a time, so the two are never both live. Same for the
 #   three g5-* tower aliases (one PowerMac G5 Dual 2.7, one OS booted at a
@@ -55,7 +55,7 @@
 #   timestamp     UTC ISO-8601, captured at row-write time
 #   commit        short SHA
 #   build_type    fat | per-target | unknown — detected on the target
-#                 by which layout is in ~/quake2-play/
+#                 by which layout is in /Applications/Quake2/
 #   machine       ssh alias (yosemite, quicksilver, ...)
 #   cpu / gpu / os    hardcoded per-machine metadata (these are immutable
 #                 retro boxes — see the case-statement below for the
@@ -158,6 +158,12 @@ esac
 # archived vid_desktopfullscreen 1 on an iMac).
 VID_FS=1
 VID_DFS=0
+if [ "$TARGET" = workstation ]; then
+  # The production arm64 profile uses a same-mode desktop capture. The older
+  # mode-switch path has separately produced a black, stuck window on this
+  # class, so it is not a valid proxy for player settings.
+  VID_DFS=1
+fi
 if [ "$TARGET" = "imac-g5" ]; then
   G5_NATIVE_RES="1440x900"   # 17" iMac G5 panel; 20" model would be 1680x1050
   if [ "${G5_WINDOWED:-0}" = "1" ]; then
@@ -213,15 +219,48 @@ case "$TARGET" in
   quad-tiger)   HOST=quad-tiger;   TIMEOUT=90; COOLDOWN=2 ;;
   quad-leopard) HOST=quad-leopard; TIMEOUT=90; COOLDOWN=2 ;;
   mini-intel)  HOST=mini-intel;  TIMEOUT=60;  COOLDOWN=1 ;;
+  mini-intel2) HOST=mini-intel2; TIMEOUT=60;  COOLDOWN=1 ;;
+  mini-sl)     HOST=mini-sl;     TIMEOUT=60;  COOLDOWN=1 ;;
   imac-2019)   HOST=imac-2019;   TIMEOUT=45;  COOLDOWN=1 ;;
+  workstation) HOST=workstation; TIMEOUT=45;  COOLDOWN=1 ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac
+
+# `workstation` is the canonical picker's local target. All other aliases use
+# SSH, but the benchmark itself and its evidence format stay identical.
+host_exec () {
+  if [ "$HOST" = workstation ]; then
+    /bin/sh -c "$1"
+  else
+    ssh "$HOST" "$1"
+  fi
+}
+host_fetch () {
+  local relative="$1" destination="$2"
+  if [ "$HOST" = workstation ]; then
+    cp "$HOME/$relative" "$destination"
+  else
+    scp -q "$HOST:$relative" "$destination"
+  fi
+}
+host_game_processes () {
+  host_exec '
+    ps ax -o pid=,ucomm= 2>/dev/null | while IFS= read -r line; do
+      pid=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*//; s/[[:space:]].*$//")
+      exe=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//")
+      base=${exe##*/}
+      case "$base" in
+        xash3d|xash3d.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm|alephone|alephone-ppc-test|AlephOne|Marathon)
+          printf "%s %s\n" "$pid" "$base" ;;
+      esac
+    done'
+}
 
 # The bench fleet is SHARED — multiple Claude agents (this Q2 port + the
 # QuakeSpasm Q1 sister project) drive the same Macs. A second game on a box
 # already running one corrupts the measurement and can wedge a fullscreen box.
 # Bail if anything Quake-ish is live; FORCE=1 overrides a stale process.
-BUSY="$(ssh "$HOST" "ps ax 2>/dev/null | grep -iE 'quake2|quakespasm|q2ded|/quake' | grep -v grep || true")"
+BUSY="$(host_game_processes)"
 if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
   echo "[bench $HOST] ABORT — $HOST is already running a game (shared bench):" >&2
   echo "$BUSY" | sed 's/^/    /' >&2
@@ -270,16 +309,24 @@ case "$TARGET" in
   quad-tiger)   META_CPU="PPC 970MP x4 @ 2.5GHz"; META_GPU="NVIDIA GeForce 6600";     META_OS="10.4.x Tiger" ;;
   quad-leopard) META_CPU="PPC 970MP x4 @ 2.5GHz"; META_GPU="NVIDIA GeForce 6600";     META_OS="10.5.8 Leopard" ;;
   mini-intel)  META_CPU="Core 2 Duo @ 2.33GHz";META_GPU="Intel GMA 950 64MB";         META_OS="10.7.5 Lion" ;;
+  mini-intel2) META_CPU="Core 2 Duo @ 1.83GHz";META_GPU="Intel GMA 950 64MB";         META_OS="10.7.5 Lion" ;;
+  mini-sl)     META_CPU="Core 2 Duo @ 2.26GHz";META_GPU="NVIDIA GeForce 9400";        META_OS="10.6.8 Snow Leopard" ;;
   imac-2019)   META_CPU="i5-9600K @ 3.7GHz";   META_GPU="AMD Radeon Pro 580X 8GB";    META_OS="15.7 Sequoia" ;;
+  workstation)
+    META_CPU="$(sysctl -n machdep.cpu.brand_string 2>/dev/null || sysctl -n hw.model 2>/dev/null || echo 'Apple Silicon')"
+    META_GPU="$(system_profiler SPDisplaysDataType 2>/dev/null | awk -F': ' '/Chipset Model:/{print $2; exit}')"
+    META_GPU="${META_GPU:-Apple GPU}"
+    META_OS="$(sw_vers -productVersion 2>/dev/null || echo unknown)"
+    ;;
 esac
 
 # Detect which build flavour is on the host: fat universal binary lives
 # inside Quake2.app/Contents/MacOS/; per-target lives in the deploy root.
 # Captures the binary's actual Mach-O architectures via `file` so the
 # CSV row pins down exactly what was tested.
-BUILD_TYPE=$(ssh "$HOST" 'if [ -f ~/quake2-play/Quake2.app/Contents/MacOS/quake2 ]; then
+BUILD_TYPE=$(host_exec 'if [ -f /Applications/Quake2/Quake2.app/Contents/MacOS/quake2 ]; then
   echo "fat"
-elif [ -f ~/quake2-play/quake2 ]; then
+elif [ -f /Applications/Quake2/quake2 ]; then
   echo "per-target"
 else
   echo "unknown"
@@ -315,7 +362,7 @@ NOTES_CSV=$(echo "$NOTES_RAW" | tr ',' ';' | head -c 240)
 # the R300. Same TERM-grace-KILL policy as the run loop; costs nothing on a
 # normal exit because there is no engine left to find.
 bench_cleanup () {
-  ssh -o ConnectTimeout=10 "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 3; fi
+  host_exec "if killall -TERM quake2 2>/dev/null; then sleep 3; fi
     killall -KILL quake2 2>/dev/null
     true" 2>/dev/null || true
 }
@@ -350,12 +397,12 @@ for i in $(seq 1 $RUNS); do
   # fractional sleeps return instantly and would busy-spin.
   # Engine path auto-detect: fat deploys ship Quake2.app/Contents/MacOS/quake2;
   # per-target deploys ship a flat ./quake2 next to the binary. Both are
-  # invoked with CWD = ~/quake2-play/ so basedir=. picks up ref_gl.so
+  # invoked with CWD = /Applications/Quake2/ so basedir=. picks up ref_gl.so
   # and baseq2/ in the parent directory either way.
-  ssh "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
+  host_exec "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
     killall -KILL quake2 2>/dev/null || true
     sleep 1
-    cd ~/quake2-play
+    cd /Applications/Quake2
     rm -f ~/.yq2/baseq2/qconsole.log
     if [ -x ./Quake2.app/Contents/MacOS/quake2 ]; then
       ENGINE=./Quake2.app/Contents/MacOS/quake2
@@ -370,6 +417,9 @@ for i in $(seq 1 $RUNS); do
       +set logfile 2 \\
       +set timedemo 1 \\
       ${EXTRA:-} \\
+      +gl_bloom +gl_bloom_darken +gl_msaa_samples +gl_mode \\
+      +gl_customwidth +gl_customheight +vid_fullscreen \\
+      +vid_desktopfullscreen +gl_swapinterval \\
       +demomap $DEMO.dm2 > /dev/null 2>&1 &
     PID=\$!
     j=0
@@ -389,8 +439,26 @@ for i in $(seq 1 $RUNS); do
     true" 2>&1 | grep -v "^$" | tail -3 || true
 
   LOG_NAME="${COMMIT}_${TARGET}_${DEMO}_${RES}${CVAR_TAG}_run${i}.log"
-  scp -q "$HOST:.yq2/baseq2/qconsole.log" "$RAW_DIR/$LOG_NAME" || true
+  host_fetch ".yq2/baseq2/qconsole.log" "$RAW_DIR/$LOG_NAME" || true
+  EFFECTIVE_CVARS="gl_bloom gl_bloom_darken gl_msaa_samples gl_mode gl_customwidth gl_customheight vid_fullscreen vid_desktopfullscreen gl_swapinterval"
+  EFFECTIVE_SUMMARY=""
+  MISSING_EFFECTIVE=""
+  for cv in $EFFECTIVE_CVARS; do
+    line=$(grep -E "^\"$cv\" is \"" "$RAW_DIR/$LOG_NAME" 2>/dev/null | tail -1 || true)
+    if [ -n "$line" ]; then
+      value=$(printf '%s\n' "$line" | awk -F'"' '{print $4}')
+      EFFECTIVE_SUMMARY="${EFFECTIVE_SUMMARY}${cv}=${value} "
+    else
+      MISSING_EFFECTIVE="$MISSING_EFFECTIVE $cv"
+    fi
+  done
   FPS_VAL=$(grep -E 'frames.*seconds.*fps' "$RAW_DIR/$LOG_NAME" 2>/dev/null | tail -1 | awk -F': ' '{print $2}' | awk '{print $1}' || true)
+  if [ -n "$MISSING_EFFECTIVE" ]; then
+    echo "  -> missing live cvar read-back:$MISSING_EFFECTIVE" >&2
+    FPS_VAL=""
+  else
+    echo "  -> effective: ${EFFECTIVE_SUMMARY% }"
+  fi
   FPS+=("${FPS_VAL:-NA}")
   echo "  -> ${FPS_VAL:-NA} fps"
 done

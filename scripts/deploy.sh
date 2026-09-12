@@ -5,7 +5,9 @@
 # Usage:
 #   scripts/deploy.sh <target>
 #
-# Ships a self-contained Quake2.app bundle to ~/quake2-play/:
+# Stages a self-contained Quake2 install and atomically publishes it at
+# /Applications/Quake2. An existing destination is refused. The legacy
+# ~/quake2-play tree remains untouched as rollback and a game-data source.
 #   Quake2.app/
 #     Contents/Info.plist
 #     Contents/MacOS/quake2                  (fat: ppc750 + ppc7400 + ppc970 + i386 + x86_64 + arm64)
@@ -23,11 +25,8 @@
 # folder. The bundled per-machine cfg is picked at boot via CFBundle
 # (sysctl hw.model in Qcommon_Init) — see yquake2/src/common/misc.c.
 #
-# Single deploy mode by design: the previous per-target/fat dual mode
-# both wrote to ~/quake2-play/ with rsync --delete, so running the
-# wrong one clobbered the .app. Fat is the only canonical layout now.
-#
-# Idempotent — safe to re-run.
+# Single deploy mode by design. Fat is the only canonical layout now. An update
+# needs a separate named-backup flow; this script creates only a fresh install.
 
 set -euo pipefail
 
@@ -189,16 +188,26 @@ if [ ! -d "$BUILD_DIR" ] || [ ! -f "$BUILD_DIR/quake2" ]; then
   exit 1
 fi
 
+if ! ssh "$HOST" '[ ! -e /Applications/Quake2 ] && [ ! -L /Applications/Quake2 ]'; then
+  echo "[deploy $HOST] REFUSE: /Applications/Quake2 already exists; leaving it and ~/quake2-play untouched" >&2
+  exit 10
+fi
+
 # Stage layout locally, then rsync. Using a temp dir means we can ship
 # symlinks to SDL.framework slices cleanly without rsync flattening
 # them on the way out.
 STAGE=$(mktemp -d -t q2-deploy.XXXXXX)
-# Expanded NOW, not at signal time. The variable is assigned on the line above
-# and never reassigned, so both spellings behave identically here, and baking
-# the literal path in means an rm -rf trap cannot be redirected by a later
-# reassignment. Issue #22.
-# shellcheck disable=SC2064
-trap "rm -rf '$STAGE'" EXIT
+REMOTE_STAGE=""
+cleanup_deploy() {
+  rm -rf "$STAGE"
+  if [ -n "$REMOTE_STAGE" ]; then
+    ssh "$HOST" "rm -rf '$REMOTE_STAGE'; rm -f .q2-clear-launch-quarantine.sh" >/dev/null 2>&1 || true
+  fi
+}
+trap cleanup_deploy EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 echo "[deploy] stage Quake2.app bundle"
 APP="$STAGE/Quake2.app"
@@ -286,7 +295,7 @@ fi
 # ref_gl.so and baseq2/game.so ship OUTSIDE the bundle. Q2 resolves
 # ref_gl.so via basedir=. (the engine's CWD); SDLMain.m chdirs the
 # process to the .app's parent dir on Finder-launch, so basedir=.
-# = ~/quake2-play/ and Q2 finds ref_gl.so there. baseq2/ lives
+# = /Applications/Quake2/ and Q2 finds ref_gl.so there. baseq2/ lives
 # in the same dir for the same reason — Q2's gamedir search walks
 # basedir/baseq2/ for game.so + paks.
 cp "$BUILD_DIR/ref_gl.so"                 "$STAGE/"
@@ -294,140 +303,101 @@ cp "$BUILD_DIR/baseq2/game.so"            "$STAGE/baseq2/"
 cp "$BUILD_DIR/q2ded"                     "$STAGE/" 2>/dev/null || true
 [ -f "$STAGE/q2ded" ] && chmod +x "$STAGE/q2ded"
 
-echo "[deploy] ship to $HOST:~/quake2-play/"
-# --checksum to defeat the size+mtime heuristic that left a stale icon
-# on the QuakeSpasm sister project. On a few MB payload the extra
-# hashing cost is negligible.
-# --delete to keep the deploy dir tidy — wipes any stale artifacts from
-# a previous mode (e.g. switching from per-target → fat leaves the old
-# flat `quake2` + `SDL.framework/` behind otherwise). Excluding baseq2/
-# from the delete sweep so existing pak symlinks aren't nuked between
-# the rsync and the symlink step below.
-rsync -av --partial --checksum --delete \
-  --exclude='baseq2/pak*.pak' \
-  --exclude='baseq2/players/' \
-  $RSYNC_EXTRA \
+REMOTE_DEST="/Applications/Quake2"
+REMOTE_STAGE="/Applications/.Quake2.stage.$$"
+case "$REMOTE_STAGE" in
+  /Applications/.Quake2.stage.[0-9]*) ;;
+  *) echo "[deploy] unsafe staging path: $REMOTE_STAGE" >&2; exit 3 ;;
+esac
+
+echo "[deploy] prepare $HOST:$REMOTE_STAGE (legacy install remains rollback)"
+ssh "$HOST" "set -e
+  DEST='$REMOTE_DEST'
+  STAGE='$REMOTE_STAGE'
+  LEGACY=\"\$HOME/$GAME_DATA_DIR\"
+  [ ! -e \"\$DEST\" ] && [ ! -L \"\$DEST\" ] || { echo 'REFUSE: /Applications/Quake2 already exists' >&2; exit 10; }
+  [ ! -e \"\$STAGE\" ] && [ ! -L \"\$STAGE\" ] || { echo 'REFUSE: staging path exists' >&2; exit 11; }
+  mkdir \"\$STAGE\"
+  if [ -d \"\$HOME/quake2-play/baseq2\" ]; then
+    ditto \"\$HOME/quake2-play/baseq2\" \"\$STAGE/baseq2\"
+    echo '[deploy] copied ~/quake2-play/baseq2; rollback left untouched'
+  elif [ -d \"\$LEGACY\" ]; then
+    ditto \"\$LEGACY\" \"\$STAGE/baseq2\"
+    echo '[deploy] copied the host legacy baseq2; source left untouched'
+  else
+    mkdir \"\$STAGE/baseq2\"
+  fi
+  rm -f \"\$STAGE/baseq2/autoexec.cfg\""
+
+# Transfer only the owned runtime products. --delete is scoped to the staged app
+# bundle, never the destination root or copied game data.
+rsync -av --partial --checksum --delete $RSYNC_EXTRA \
   -e 'ssh -o ServerAliveInterval=15' \
-  "$STAGE/" "$HOST:quake2-play/" | tail -8
+  "$STAGE/Quake2.app/" "$HOST:$REMOTE_STAGE/Quake2.app/" | tail -8
+for rel in ref_gl.so baseq2/game.so q2ded; do
+  [ -f "$STAGE/$rel" ] || continue
+  rsync -a --partial --checksum $RSYNC_EXTRA \
+    -e 'ssh -o ServerAliveInterval=15' \
+    "$STAGE/$rel" "$HOST:$REMOTE_STAGE/$rel"
+done
 
-# Migration: previous deploys staged the per-machine cfg to
-# baseq2/autoexec.cfg and the engine picked it up via the gamedir fs.
-# It now ships inside Quake2.app/Contents/Resources/ and is loaded via
-# CFBundle. Wipe the stale file so the user doesn't end up with an
-# orphan baseq2/autoexec.cfg that won't be updated by future deploys.
-ssh "$HOST" 'rm -f ~/quake2-play/baseq2/autoexec.cfg 2>/dev/null' || true
-
-# Game-data step. Make the deploy dir self-contained — the user wants
-# ONE Q2 folder on the target with everything needed for the full game,
-# not a flat dir that secretly depends on aliases or symlinks back to
-# the original game install. So we copy paks rather than symlinking,
-# even when the host already has them elsewhere.
-#
-# Source preference order:
-#   1. workstation's .game-data/ (canonical — same paks pushed to every
-#      machine, so no per-machine drift)
-#   2. host's existing GAME_DATA_DIR (only used as a fallback if the
-#      workstation cache doesn't exist yet)
-#   3. nothing — error out with a hint
-echo "[deploy] resolve game data on $HOST (self-contained copies, not symlinks)"
+# Overlay the canonical workstation game data when present, while retaining all
+# other copied legacy content such as saves, mods, video and custom assets.
 if [ -f "$REPO_ROOT/.game-data/baseq2/pak0.pak" ]; then
-  echo "[deploy] copying paks + player models from workstation .game-data/ → $HOST:~/quake2-play/baseq2/"
-  # First clear any stale symlinks from a previous symlink-mode deploy
-  # so rsync writes real files (rsync follows symlinks for source but
-  # writes regular files for destination by default, so this is belt-
-  # and-suspenders — and also drops dangling links).
-  ssh "$HOST" "cd ~/quake2-play/baseq2 && find . -maxdepth 1 -name 'pak*.pak' -type l -delete 2>/dev/null; true"
+  ssh "$HOST" "cd '$REMOTE_STAGE/baseq2' && find . -maxdepth 1 -name 'pak*.pak' -type l -delete 2>/dev/null; true"
   rsync -av --partial --checksum $RSYNC_EXTRA \
     -e 'ssh -o ServerAliveInterval=15' \
     "$REPO_ROOT/.game-data/baseq2/pak0.pak" \
     "$REPO_ROOT/.game-data/baseq2/pak1.pak" \
     "$REPO_ROOT/.game-data/baseq2/pak2.pak" \
-    "$HOST:quake2-play/baseq2/" | tail -5
-  # Player models: needed as loose files — not just paks — for player
-  # skin selection. Protected from --delete above; shipped explicitly here.
+    "$HOST:$REMOTE_STAGE/baseq2/" | tail -5
   if [ -d "$REPO_ROOT/.game-data/baseq2/players" ]; then
     rsync -a --partial --checksum $RSYNC_EXTRA \
       -e 'ssh -o ServerAliveInterval=15' \
       "$REPO_ROOT/.game-data/baseq2/players/" \
-      "$HOST:quake2-play/baseq2/players/" | tail -3
+      "$HOST:$REMOTE_STAGE/baseq2/players/" | tail -3
   fi
-elif [ "$(ssh "$HOST" "[ -f '$GAME_DATA_DIR/pak0.pak' ] && echo yes || echo no")" = "yes" ]; then
-  # Workstation cache empty but host has paks elsewhere — copy in
-  # place via ssh+cp so we don't pull 200 MB across the network just
-  # to push it back to the same machine.
-  echo "[deploy] copying paks from $HOST:~/$GAME_DATA_DIR/ → ~/quake2-play/baseq2/"
-  ssh "$HOST" "cd ~/quake2-play/baseq2 &&
-    find . -maxdepth 1 -name 'pak*.pak' -type l -delete 2>/dev/null
-    for p in pak0 pak1 pak2; do
-      cp -f \"\$HOME/$GAME_DATA_DIR/\$p.pak\" \"\$p.pak\"
-    done
-    ls -la | grep pak"
-  # Also copy players from the original install on this host if present.
-  ssh "$HOST" "
-    SRC=\"\$HOME/$GAME_DATA_DIR/players\"
-    DST=\"\$HOME/quake2-play/baseq2/players\"
-    if [ -d \"\$SRC\" ]; then
-      mkdir -p \"\$DST\"
-      cp -rf \"\$SRC/\" \"\$DST/\"
-      echo '[deploy] player models copied from local source install'
-    fi"
-elif [ "$(ssh "$HOST" '[ -f ~/quake2-play/baseq2/pak0.pak ] && echo yes || echo no')" = "yes" ]; then
-  # The deploy dir already holds real paks from an earlier round. That IS
-  # the self-contained state this step exists to reach, so there is nothing
-  # to do — and nothing to warn about. Without this branch the script fell
-  # through to the error below and failed a perfectly good deploy whenever
-  # the workstation had no .game-data/ cache and the machine's ORIGINAL
-  # install directory ($GAME_DATA_DIR) had since been cleared out. The pak
-  # rsync above excludes pak*.pak from --delete precisely so this survives.
-  echo "[deploy] paks already present in $HOST:~/quake2-play/baseq2/ — nothing to copy"
-  ssh "$HOST" 'ls -la ~/quake2-play/baseq2/pak*.pak | sed "s|.*/||"' || true
-else
-  echo "deploy.sh: no game data on $HOST and none in .game-data/ — populate one" >&2
-  echo "  hint: rsync -av 'quicksilver:quake2-play/baseq2/pak*.pak' .game-data/baseq2/" >&2
+elif [ "$(ssh "$HOST" "[ -f '$REMOTE_STAGE/baseq2/pak0.pak' ] && echo yes || echo no")" != yes ]; then
+  echo "deploy.sh: no game data copied on $HOST and none in .game-data/" >&2
+  echo "  populate .game-data/baseq2 or the host's legacy install first" >&2
   exit 1
 fi
 
-# Finder bundle recognition. Empirically Tiger / Panther / Lion Finder
-# all treat a directory ending in `.app` as a package (single-icon,
-# double-clickable bundle) purely by extension, as long as Contents/
-# Info.plist resolves CFBundleIconFile to a real .icns. The HFS+
-# kHasBundle bit is a Carbon-era leftover for HFS-without-extensions
-# and is NOT required on our retro fleet (verified empirically on
-# quicksilver Tiger — icon renders without the bit ever being set).
-#
-# Post-deploy housekeeping:
-#   1. chmod +x the binary inside the bundle (rsync occasionally
-#      strips the +x bit depending on umask differences)
-#   2. touch the bundle + parent dir so Finder invalidates its
-#      icon cache and shows the new icon immediately instead of
-#      after a mount cycle / login
-#
-# If a future Mac in the fleet does need the bit (HFS-formatted volume,
-# extension-hidden setting, etc.), scripts/bundle/set-bundle-bit.c is
-# the documented C helper — compile as a universal binary and ship it.
-ssh "$HOST" 'APP=~/quake2-play/Quake2.app
-  chmod +x "$APP/Contents/MacOS/quake2" 2>/dev/null
-  touch "$APP" ~/quake2-play 2>/dev/null || true'
+ssh "$HOST" "rm -f '$REMOTE_STAGE/baseq2/autoexec.cfg'; test ! -e '$REMOTE_STAGE/baseq2/autoexec.cfg'"
 
-# Post-deploy verification: md5 the engine binary on the target and
-# compare to the local source. Catches silent rsync-skipped files
-# (we saw this on the QuakeSpasm sister project with a 298 KB stale
-# icns left in place by --partial).
-LOCAL_BIN="$BUILD_DIR/quake2"
-# Single-quoted on purpose: this tilde is expanded by the REMOTE shell inside
-# the ssh command below, not here. Expanding it locally would send this Mac's
-# home directory to the target. Issue #22.
-# shellcheck disable=SC2088
-REMOTE_BIN_PATH='~/quake2-play/Quake2.app/Contents/MacOS/quake2'
-LOCAL_BIN_MD5=$(md5sum "$LOCAL_BIN" | awk '{print $1}')
-REMOTE_BIN_MD5=$(ssh "$HOST" "if command -v md5 >/dev/null 2>&1; then
-  md5 -q $REMOTE_BIN_PATH 2>/dev/null
-else
-  md5sum $REMOTE_BIN_PATH 2>/dev/null | awk '{print \$1}'
-fi")
-if [ "$LOCAL_BIN_MD5" != "$REMOTE_BIN_MD5" ]; then
-  echo "[deploy] WARN: binary md5 mismatch (local $LOCAL_BIN_MD5 vs remote $REMOTE_BIN_MD5)" >&2
-fi
+verify_staged_file() {
+  local rel="$1" want got
+  want=$(md5sum "$STAGE/$rel" | awk '{print $1}')
+  got=$(ssh "$HOST" "md5 -q '$REMOTE_STAGE/$rel' 2>/dev/null")
+  [ "$want" = "$got" ] || {
+    echo "[deploy] FATAL: staged $rel differs from local bytes ($want != $got)" >&2
+    exit 7
+  }
+}
+verify_staged_file Quake2.app/Contents/MacOS/quake2
+verify_staged_file ref_gl.so
+verify_staged_file baseq2/game.so
+[ ! -f "$STAGE/q2ded" ] || verify_staged_file q2ded
+echo "[deploy] staged runtime binaries match the local build byte-for-byte"
 
-echo "[deploy] OK on $HOST"
-ssh "$HOST" 'ls -la ~/quake2-play/ | head -10'
+scp -pq "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:.q2-clear-launch-quarantine.sh"
+ssh "$HOST" "set -e
+  DEST='$REMOTE_DEST'
+  STAGE='$REMOTE_STAGE'
+  [ ! -e \"\$DEST\" ] && [ ! -L \"\$DEST\" ] || { echo 'REFUSE: destination appeared during staging' >&2; exit 10; }
+  chmod +x \"\$STAGE/Quake2.app/Contents/MacOS/quake2\" 2>/dev/null
+  sh \"\$HOME/.q2-clear-launch-quarantine.sh\" \"\$STAGE/Quake2.app\"
+  rm -f \"\$HOME/.q2-clear-launch-quarantine.sh\"
+  mv \"\$STAGE\" \"\$DEST\"
+  touch \"\$DEST/Quake2.app\" \"\$DEST\" 2>/dev/null || true"
+REMOTE_STAGE=""
+
+LOCAL_BIN_MD5=$(md5sum "$BUILD_DIR/quake2" | awk '{print $1}')
+REMOTE_BIN_MD5=$(ssh "$HOST" "md5 -q '$REMOTE_DEST/Quake2.app/Contents/MacOS/quake2' 2>/dev/null")
+[ "$LOCAL_BIN_MD5" = "$REMOTE_BIN_MD5" ] || {
+  echo "[deploy] FATAL: published binary md5 mismatch ($LOCAL_BIN_MD5 != $REMOTE_BIN_MD5)" >&2
+  exit 7
+}
+
+echo "[deploy] OK on $HOST at $REMOTE_DEST"
+ssh "$HOST" "ls -la '$REMOTE_DEST' | head -10"

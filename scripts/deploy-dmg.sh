@@ -97,7 +97,10 @@ install_via_local_mount_fallback() {
     hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true
     rmdir "$LMNT" 2>/dev/null || true
   }
-  trap cleanup_local_fallback EXIT HUP INT TERM
+  trap cleanup_local_fallback EXIT
+  trap 'exit 129' HUP
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
   hdiutil attach -nobrowse -readonly -mountpoint "$LMNT" "$DMG" >/dev/null
 
   ssh "$HOST" "set -e
@@ -130,6 +133,7 @@ install_via_local_mount_fallback() {
 
   ssh "$HOST" "set -e
     sh Desktop/clear-launch-quarantine.sh '$DEST_STAGE/Quake2.app'
+    [ ! -e '$DEST' ] && [ ! -L '$DEST' ] || { echo 'REFUSE: destination appeared during staging' >&2; exit 10; }
     mv '$DEST_STAGE' '$DEST'
     file '$DEST/Quake2.app/Contents/MacOS/quake2' 2>/dev/null | sed 's/.*: //'
     rm -f Desktop/clear-launch-quarantine.sh"
@@ -180,7 +184,10 @@ cleanup_remote_install() {
   rmdir "$MNT" 2>/dev/null || true
   rm -f "$HOME/Desktop/clear-launch-quarantine.sh"
 }
-trap cleanup_remote_install EXIT HUP INT TERM
+trap cleanup_remote_install EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 mkdir "$DEST_STAGE"
 if [ -d "$HOME/quake2-play/baseq2" ]; then
@@ -258,6 +265,10 @@ echo "  [verify] staged binaries match the image byte-for-byte ✅"
 
 # Same-volume rename publishes the verified directory in one step. The legacy
 # tree remains in place as rollback and is never renamed or deleted here.
+[ ! -e "$DEST" ] && [ ! -L "$DEST" ] || {
+  echo "REFUSE: destination appeared during staging: $DEST" >&2
+  exit 10
+}
 mv "$DEST_STAGE" "$DEST"
 DEST_STAGE=""
 
@@ -271,16 +282,6 @@ done
 [ "$detached" = yes ] || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
 rmdir "$MNT" 2>/dev/null || true
 trap - EXIT HUP INT TERM
-
-# Tidy: drop any OTHER Quake2-OldMac-*.dmg left on the Desktop from previous
-# rounds — keep only the one we just installed from. The bench Macs have small
-# disks and these images pile up across releases.
-for old in "$HOME"/Desktop/Quake2-OldMac-*.dmg; do
-  [ -e "$old" ] || continue
-  if [ "$(basename "$old")" != "$DMG_BASE" ]; then
-    rm -f "$old" && echo "removed old image $(basename "$old")"
-  fi
-done
 
 echo "installed into $DEST:"
 ls -la "$DEST" | awk '{print "  "$NF}' | grep -vE '^\s+\.$|^\s+\.\.$' | grep -v '^  $' || true

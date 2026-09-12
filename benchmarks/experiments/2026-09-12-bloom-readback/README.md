@@ -43,10 +43,12 @@ SHA-256 values above. The three legacy installs match the build by BSD MD5
 The source stamp includes the pre-existing, user-owned working-tree SDL
 framework binary (`MacOSX/SDL.framework/Versions/A/SDL`, SHA-256
 `5db4a0fd33a01f035745eb983f32f78536cd127f390364d41e0349d8d9678588`).
-This investigation neither altered nor stages that file. Consequently this is
-an unpublished test candidate, not an artifact reproducible solely from the
-bloom commit until that separate work-in-progress file is resolved by its
-owner.
+This investigation neither altered nor staged that file. The clean-worktree
+control below establishes that the canonical build recipe regenerates those
+exact SDL input bytes from tracked sources; the input does not depend on an
+unknown or unrecoverable private file. The already-tested candidate remains
+the unpublished candidate. Exact byte-for-byte reproduction of its signed
+final artifacts is a separate claim and is not established by that control.
 
 ### SDL input provenance and tracked-file control
 
@@ -58,6 +60,18 @@ re-fused a freshly signed sdl12-compat arm64 member into the tracked fat
 framework, changing the file to the same `5db4a0fd...` hash before computing
 the arm64 source stamp. The subsequent fat build passed with all six slices at
 stamp `4a74d93842df86c28be005d251a18fa211243370373da2c9981dbe62cf44be1c`.
+
+The control's final artifacts did not match the tested candidate's hashes:
+
+- `quake2`: `5079179ff3c0f81057e6356e88a9521997684d09fd1437df56d34d2f14afbe67`
+- `ref_gl.so`: `8cdb61f23c17491a40fe6e0eb9c71e3fe0fde4a74b84a0519d6b5357726a4cbd`
+- `baseq2/game.so`: `d99b28ab7b7d5a4dd1cf72fb9674a7bf94d620049ed03a8d37fba412c57148d7`
+- `q2ded`: `783dbbe61c8c11fdf2d26ba7d1237af79bd7e4b301b28d1ba08dd2094c5e2e77`
+
+Because the control used a different source stamp, this comparison does not
+isolate signing or build determinism. It proves the SDL input recipe and slice
+coverage, not exact final-artifact reproducibility, and does not replace the
+tested `71dc862a...` candidate.
 
 This establishes how the modified bytes were produced, but does not change
 their ownership or authorize committing them. It also means a canonical build

@@ -202,6 +202,7 @@ and output are in `workstation-vsync-discriminator.txt`.
 | `mini-sl` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Native x86-64 process on Snow Leopard 10.6.8. Production smoke passed on GeForce 9400 at 56.8 fps: bloom 0, 2x MSAA, mode 5 (800x500), desktop fullscreen and vsync 1. | Display-backed Snow Leopard gameplay pending. |
 | `yosemite-tiger` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g3` #1 passed on Rage 128; bloom remains off. | Final G3 gameplay pending. |
 | `g5-panther` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g5-panther` #1 passed on Radeon 9600; bloom remains on. | Final G5 gameplay pending. |
+| `imac-g5` | successor `943c256a` freshly installed; diagnostic `v2.11.1-dirty` tree retained at `~/quake2-play` | Jenkins `smoke-quake2-imac-g5` #1 was unstable: no renderer, mode, map or FPS line. The current candidate log stops after GL refresher initialization and shuts down audio, reproducing #66. | Blocked; do not send the user to launch this cell. |
 | `imac-2019` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-mini-intel` #2 passed on Radeon Pro 580X: bloom 1, 8x MSAA, desktop fullscreen, vsync 1, 72.7 fps. | Final Intel gameplay pending. |
 | `yosemite` (Panther) | not installed in this rollout | Canonical boot remains approval-blocked; no workaround attempted. | Untested. |
 

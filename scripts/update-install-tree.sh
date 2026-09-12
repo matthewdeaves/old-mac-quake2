@@ -5,7 +5,10 @@
 # new install, while a failed post-publish gate moves the candidate aside and
 # restores the original path.
 
-set -euo pipefail
+# Panther/Tiger ship Bash 2.05, whose `set` rejects pipefail. Every pipeline in
+# this target-side helper is either read-only inventory or checked by its final
+# consumer, so errexit + nounset provide the required failure boundary here.
+set -eu
 
 fail() {
   echo "[update-tree] FATAL: $*" >&2

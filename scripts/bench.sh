@@ -50,6 +50,9 @@
 #   BENCH_RAW_DIR override the raw qconsole.log directory. Default
 #                benchmarks/raw/ is ALSO git-tracked (old-mac-build-host#28);
 #                redirect this alongside BENCH_CSV, not just the CSV alone.
+#   BENCH_DESKTOP_FULLSCREEN 0 or 1; overrides vid_desktopfullscreen for
+#                non-R300 targets. Use 1 when measuring the shipped same-mode
+#                fullscreen path. The iMac G5 safety rail remains authoritative.
 #
 # CSV columns (results.csv):
 #   timestamp     UTC ISO-8601, captured at row-write time
@@ -157,8 +160,12 @@ esac
 # leftover config.cfg from a prior production launch (which may have
 # archived vid_desktopfullscreen 1 on an iMac).
 VID_FS=1
-VID_DFS=0
-if [ "$TARGET" = workstation ]; then
+case "${BENCH_DESKTOP_FULLSCREEN:-}" in
+  "") VID_DFS=0 ;;
+  0|1) VID_DFS="$BENCH_DESKTOP_FULLSCREEN" ;;
+  *) echo "bench.sh: BENCH_DESKTOP_FULLSCREEN must be 0 or 1" >&2; exit 2 ;;
+esac
+if [ "$TARGET" = workstation ] && [ -z "${BENCH_DESKTOP_FULLSCREEN:-}" ]; then
   # The production arm64 profile uses a same-mode desktop capture. The older
   # mode-switch path has separately produced a black, stuck window on this
   # class, so it is not a valid proxy for player settings.

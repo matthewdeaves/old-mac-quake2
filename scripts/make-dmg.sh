@@ -32,6 +32,9 @@
 #               The BINARY is always built on Lion (mini-intel) by build-fat.sh;
 #               DMG_HOST only runs the hdiutil packaging step on the staged tree.
 #               Override DMG_HOST=mini-g4 (also Tiger) if quicksilver is offline.
+#      Q2_BUILD_DIR  Existing verified fat-runtime directory to package instead
+#               of build/q2-fat. Intended for a documented config-only package;
+#               it must contain quake2, ref_gl.so, baseq2/game.so and q2ded.
 #
 # pre:   build/q2-fat present (scripts/build-fat.sh; built here if missing)
 # post:  dist/Quake2-OldMac-<version>.dmg
@@ -87,11 +90,21 @@ fi
 VOLNAME="Quake2 OldMac $VERSION"
 OUT="$REPO_ROOT/dist/Quake2-OldMac-$VERSION.dmg"
 
-BUILD_DIR="$REPO_ROOT/build/q2-fat"
+BUILD_DIR="${Q2_BUILD_DIR:-$REPO_ROOT/build/q2-fat}"
 if [ ! -f "$BUILD_DIR/quake2" ]; then
+  [ -z "${Q2_BUILD_DIR:-}" ] || {
+    echo "[make-dmg] Q2_BUILD_DIR lacks quake2: $BUILD_DIR" >&2
+    exit 1
+  }
   echo "[make-dmg] build/q2-fat missing — building it"
   scripts/build-fat.sh
 fi
+for required in quake2 ref_gl.so baseq2/game.so q2ded; do
+  [ -f "$BUILD_DIR/$required" ] || {
+    echo "[make-dmg] missing required runtime file: $BUILD_DIR/$required" >&2
+    exit 1
+  }
+done
 # Sanity: must be the multi-slice fat, not a stray single-arch binary. Use lipo
 # (reads the Mach header directly) rather than file(1): file's ppc subtype
 # names vary by host/toolchain — on an Apple-silicon workstation it renders
@@ -159,7 +172,10 @@ if [ -f "$BUILD_DIR/libSDL2-2.0.0.dylib" ]; then
   echo "[make-dmg] bundled libSDL2-2.0.0.dylib for the arm64 slice"
 else
   case " $ARCHS " in
-    *" arm64 "*) echo "[make-dmg] WARNING: arm64 slice present but no libSDL2-2.0.0.dylib to go with it; it will not start" >&2 ;;
+    *" arm64 "*)
+      echo "[make-dmg] FATAL: arm64 slice present but libSDL2-2.0.0.dylib is missing; native Apple Silicon launch would fail" >&2
+      exit 1
+      ;;
   esac
 fi
 
@@ -484,12 +500,7 @@ ssh "$DMG_HOST" "rm -rf '$REMOTE'" 2>/dev/null || true
 echo "[make-dmg] OK — $OUT (contents verified byte-identical to source)"
 ls -lh "$OUT"
 
-# Only ever one latest release in dist/ (user decision, 2026-08-28, answering
-# old-mac-quake3#22: "for now its fine so long as all repos only ever have 1
-# latest release"). Prune every other Quake2-OldMac-*.dmg now that this one is
-# built and verified — never before, so a failed build never deletes the last
-# known-good candidate.
-for old in "$REPO_ROOT"/dist/Quake2-OldMac-*.dmg; do
-  [ -e "$old" ] || continue
-  [ "$old" = "$OUT" ] || { rm -f "$old" && echo "[make-dmg] pruned old candidate $(basename "$old")"; }
-done
+# Candidate retention is deliberate. A newly packaged image may still fail a
+# machine or human gate even after content verification, so packaging must not
+# delete the previously tested rollback artifact. Release cleanup is a separate
+# explicit action after acceptance, never a side effect of make-dmg.sh.

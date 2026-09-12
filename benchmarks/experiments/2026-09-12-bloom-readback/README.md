@@ -195,10 +195,11 @@ and output are in `workstation-vsync-discriminator.txt`.
 
 | Alias | Installed package | Automated state | User gate |
 | --- | --- | --- | --- |
-| `workstation` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-bloom-fix-71dc862afcbd` | Normal launch reached `base2`; every bloom stage GL error 0. Production timedemo smoke incomplete; vsync discriminator recorded above. | Successor gameplay/appearance pending. |
+| `workstation` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-bloom-fix-71dc862afcbd` | User-requested normal launch reached `base2` and `base1`; every bloom stage reported GL error 0 and the engine shut down normally. Production timedemo smoke remains incomplete; vsync discriminator recorded above. | Successor visual verdict still pending. |
 | `quicksilver` | successor `943c256a` (PowerPC defaults unchanged); legacy data retained | Finder-equivalent smoke passed on Radeon 9000; bloom remains off. | Final gameplay pending. |
 | `mini-g4` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-20260912T211243Z-66b8a7b012cc` | Jenkins `smoke-quake2-mini-g4` #2 passed on Radeon 9200; bloom remains off. | Final gameplay pending. |
 | `mini-intel2` | successor `943c256a`; predecessor at `/Applications/Quake2.rollback-20260912T211451Z-66b8a7b012cc` | Jenkins `smoke-quake2-mini-intel` #1 passed on GMA 950: bloom 0, 8x MSAA, desktop fullscreen, vsync 1, 797.5 fps. Headless visual capture remains invalid. | Display-backed Intel gameplay pending. |
+| `mini-sl` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Native x86-64 process on Snow Leopard 10.6.8. Production smoke passed on GeForce 9400 at 56.8 fps: bloom 0, 2x MSAA, mode 5 (800x500), desktop fullscreen and vsync 1. | Display-backed Snow Leopard gameplay pending. |
 | `yosemite-tiger` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g3` #1 passed on Rage 128; bloom remains off. | Final G3 gameplay pending. |
 | `g5-panther` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-g5-panther` #1 passed on Radeon 9600; bloom remains on. | Final G5 gameplay pending. |
 | `imac-2019` | successor `943c256a` freshly installed; complete predecessor retained at `~/quake2-play` | Jenkins `smoke-quake2-mini-intel` #2 passed on Radeon Pro 580X: bloom 1, 8x MSAA, desktop fullscreen, vsync 1, 72.7 fps. | Final Intel gameplay pending. |

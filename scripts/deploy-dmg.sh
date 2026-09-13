@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install the release DMG onto a target Mac *exactly the way an end user would*:
-# copy the .dmg to the Desktop, mount it, then atomically publish a new
+# copy the .dmg under ~/oldmac/quake2/, mount it, then atomically publish a new
 # /Applications/Quake2 install. The previous ~/quake2-play tree remains an
 # untouched rollback and supplies the user's existing game data. This is the
 # deliberate DMG path (not
@@ -17,15 +17,18 @@
 #   version: e.g. v2.2.4  (default: newest dist/Quake2-OldMac-*.dmg)
 #
 # Preserves the user's complete baseq2 tree by copying it into the staged install
-# before overlaying the app and loose runtime libraries from the image. The
-# default fresh path refuses occupied /Applications/Quake2. Explicit --update
-# routes to the named-backup updater and requires an exact version.
+# before overlaying the app and loose runtime libraries from the image. An
+# occupied /Applications/Quake2 auto-detects and routes to update-dmg.sh's
+# named-backup updater (#76, same detection deploy.sh's #72 added) instead of
+# refusing, using the resolved version from the selected DMG. Explicit
+# --update still works directly and requires an exact version. The DMG stages
+# under ~/oldmac/quake2/, never ~/Desktop (user rule, #76/#75).
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Explicit occupied-install path. Keep the fresh installer's refusal as its
-# safety default; update-dmg.sh adds artifact preflight and a named rollback.
+# Explicit occupied-install path, same primitive the auto-detect below routes
+# to; update-dmg.sh adds artifact preflight and a named rollback.
 if [ "${1:-}" = --update ]; then
   shift
   exec "$REPO_ROOT/scripts/update-dmg.sh" "$@"
@@ -66,26 +69,33 @@ else
 fi
 DMG_BASE=$(basename "$DMG")
 
-# This migration only creates a fresh canonical install. Refuse before copying
-# even the DMG if the destination is occupied; an explicit update/rollback flow
-# must preserve and name the old destination first.
+# #76: auto-detect occupied vs fresh, same as deploy.sh's #72, instead of
+# refusing. An occupied destination already has a working, tested updater
+# (--update above) with named-backup rollback — route there with the version
+# resolved from the DMG we just picked, rather than making the caller retry
+# by hand. (This is also the fix for release-fanout-quake2's Jenkins job,
+# which calls this plain form: one call site now handles both cases.)
 if ! ssh "$HOST" '[ ! -e /Applications/Quake2 ] && [ ! -L /Applications/Quake2 ]'; then
-  echo "[deploy-dmg $HOST] REFUSE: /Applications/Quake2 already exists; leaving it and ~/quake2-play untouched" >&2
-  exit 10
+  RESOLVED_VERSION="${DMG_BASE#Quake2-OldMac-}"
+  RESOLVED_VERSION="${RESOLVED_VERSION%.dmg}"
+  echo "[deploy-dmg $HOST] /Applications/Quake2 already exists — routing to update-dmg.sh $RESOLVED_VERSION (#76)" >&2
+  exec "$REPO_ROOT/scripts/update-dmg.sh" "$HOST" "$RESOLVED_VERSION"
 fi
 
 # Panther (yosemite) ships rsync 2.5.x but scp is fine everywhere; use scp.
-echo "[deploy-dmg $HOST] copy $DMG_BASE to ~/Desktop/"
-ssh "$HOST" 'mkdir -p ~/Desktop'
-scp -q "$DMG" "$HOST:Desktop/$DMG_BASE"
+# Stages under ~/oldmac/quake2/, never ~/Desktop (user rule, #76/#75) —
+# matches update-dmg.sh's convention for the same artifact.
+echo "[deploy-dmg $HOST] copy $DMG_BASE to ~/oldmac/quake2/"
+ssh "$HOST" 'mkdir -p ~/oldmac/quake2'
+scp -q "$DMG" "$HOST:oldmac/quake2/$DMG_BASE"
 
 # Verify the .dmg arrived intact (md5 the local vs remote copy) — defence in
 # depth on top of make-dmg.sh's own end-to-end content check.
 LCL_MD5=$(md5sum "$DMG" | cut -d' ' -f1)
-RMT_MD5=$(ssh "$HOST" "md5 'Desktop/$DMG_BASE' | awk '{print \$NF}'")
+RMT_MD5=$(ssh "$HOST" "md5 'oldmac/quake2/$DMG_BASE' | awk '{print \$NF}'")
 [ "$LCL_MD5" = "$RMT_MD5" ] || { echo "[deploy-dmg $HOST] FATAL: scp corrupted the DMG ($LCL_MD5 != $RMT_MD5)" >&2; exit 1; }
-echo "[deploy-dmg $HOST] DMG on Desktop verified intact ($RMT_MD5)"
-scp -q "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:Desktop/clear-launch-quarantine.sh"
+echo "[deploy-dmg $HOST] DMG on ~/oldmac/quake2/ verified intact ($RMT_MD5)"
+scp -q "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:.q2-clear-launch-quarantine.sh"
 
 # Fallback for a target whose own hdiutil can't attach ANY disk image
 # (old-mac-build-host#41, quad-tiger: exhaustively diagnosed there as a
@@ -101,7 +111,7 @@ install_via_local_mount_fallback() {
   DEST_STAGE="/Applications/.Quake2.stage.$$"
   cleanup_local_fallback() {
     if [ -n "${DEST_STAGE:-}" ]; then
-      ssh "$HOST" "rm -rf '$DEST_STAGE'; rm -f Desktop/clear-launch-quarantine.sh" >/dev/null 2>&1 || true
+      ssh "$HOST" "rm -rf '$DEST_STAGE'; rm -f .q2-clear-launch-quarantine.sh 'oldmac/quake2/$DMG_BASE'" >/dev/null 2>&1 || true
     fi
     hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true
     rmdir "$LMNT" 2>/dev/null || true
@@ -141,11 +151,11 @@ install_via_local_mount_fallback() {
   echo "[deploy-dmg $HOST] [verify] staged binaries match the image byte-for-byte (local-mount fallback) ✅"
 
   ssh "$HOST" "set -e
-    sh Desktop/clear-launch-quarantine.sh '$DEST_STAGE/Quake2.app'
+    sh .q2-clear-launch-quarantine.sh '$DEST_STAGE/Quake2.app'
     [ ! -e '$DEST' ] && [ ! -L '$DEST' ] || { echo 'REFUSE: destination appeared during staging' >&2; exit 10; }
     mv '$DEST_STAGE' '$DEST'
     file '$DEST/Quake2.app/Contents/MacOS/quake2' 2>/dev/null | sed 's/.*: //'
-    rm -f Desktop/clear-launch-quarantine.sh"
+    rm -f .q2-clear-launch-quarantine.sh 'oldmac/quake2/$DMG_BASE'"
   DEST_STAGE=""
 
   hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true
@@ -181,7 +191,7 @@ mkdir -p "$MNT"
 # old-mac-build-host#41: quad-tiger's DiskImages/DiskArbitration stack fails
 # to attach ANY disk image — reboot, cold power-cycle, framework-version fix
 # all ruled out there, this is not a bug in this script.
-if ! hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$HOME/Desktop/$DMG_BASE" >/dev/null 2>&1; then
+if ! hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$HOME/oldmac/quake2/$DMG_BASE" >/dev/null 2>&1; then
   echo "  hdiutil attach failed on $(hostname -s 2>/dev/null || echo this host)" >&2
   rmdir "$MNT" 2>/dev/null || true
   exit 42
@@ -191,7 +201,7 @@ cleanup_remote_install() {
   [ -n "${DEST_STAGE:-}" ] && rm -rf "$DEST_STAGE"
   hdiutil detach "$MNT" >/dev/null 2>&1 || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
   rmdir "$MNT" 2>/dev/null || true
-  rm -f "$HOME/Desktop/clear-launch-quarantine.sh"
+  rm -f "$HOME/.q2-clear-launch-quarantine.sh"
 }
 trap cleanup_remote_install EXIT
 trap 'exit 129' HUP
@@ -227,7 +237,7 @@ _md5() { md5 "$1" 2>/dev/null | awk '{print $NF}'; }
 # Copy one file from mount→dest and VERIFY the installed bytes match the source,
 # retrying on mismatch. The G3 (yosemite) has 25-yr-old disk + non-ECC RAM and
 # silently corrupts copies (~700 KB of a 1.9 MB ref_gl.so flipped once — see
-# MISTAKES.md). deploy used to verify only the DMG-on-Desktop, never the final
+# MISTAKES.md). deploy used to verify only the DMG on arrival, never the final
 # installed file, so it shipped a corrupt renderer that loaded but misrendered.
 copy_verified() {
   src="$1"; dst="$2"
@@ -269,8 +279,8 @@ echo "  [verify] staged binaries match the image byte-for-byte ✅"
 # human's browser-downloaded release DMG does), and a readme telling a
 # person to run `xattr -dr` by hand is not a fix — issue #35/#34. Local step
 # on the target, not piped over ssh (see the script's own header).
-[ -x "$HOME/Desktop/clear-launch-quarantine.sh" ] && \
-  sh "$HOME/Desktop/clear-launch-quarantine.sh" "$DEST_STAGE/Quake2.app"
+[ -x "$HOME/.q2-clear-launch-quarantine.sh" ] && \
+  sh "$HOME/.q2-clear-launch-quarantine.sh" "$DEST_STAGE/Quake2.app"
 
 # Same-volume rename publishes the verified directory in one step. The legacy
 # tree remains in place as rollback and is never renamed or deleted here.
@@ -296,7 +306,7 @@ echo "installed into $DEST:"
 ls -la "$DEST" | awk '{print "  "$NF}' | grep -vE '^\s+\.$|^\s+\.\.$' | grep -v '^  $' || true
 echo "app binary archs:"
 file "$DEST/Quake2.app/Contents/MacOS/quake2" 2>/dev/null | sed 's/.*: //' || true
-rm -f "$HOME/Desktop/clear-launch-quarantine.sh"
+rm -f "$HOME/.q2-clear-launch-quarantine.sh" "$HOME/oldmac/quake2/$DMG_BASE"
 REMOTE_EOF
 then
   :

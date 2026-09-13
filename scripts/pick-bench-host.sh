@@ -113,6 +113,15 @@ set -uo pipefail
 
 LOCK=/tmp/.retro-build-lock
 STALE_SECS="${BENCH_LOCK_STALE_SECS:-5400}"
+# build-host#84: display-only, does not change reclaim behaviour at all --
+# a claim past this age with zero game/build processes gets a visible
+# warning in --status, well before it becomes STALE_SECS-reclaimable. User
+# report, 2026-09-13: a halflife deploy claim on imac-g5 sat idle 30 minutes
+# with no game process, invisible in --status because "busy" reads the same
+# whether real work or nothing is happening. Default matches what a normal
+# deploy actually takes (typically well under a minute) with headroom for a
+# slow one, not the 90-minute reclaim threshold.
+WARN_SECS="${BENCH_LOCK_WARN_SECS:-600}"
 WAIT_SECS="${BENCH_LOCK_WAIT:-0}"
 
 # Every engine name this fleet ships, by every name it runs under. Shared
@@ -134,7 +143,16 @@ WAIT_SECS="${BENCH_LOCK_WAIT:-0}"
 # build-host#79: `alephone-ppc-test` is 17 characters, one over Darwin's
 # MAXCOMLEN -- `ps -o ucomm=` truncates the real process to
 # `alephone-ppc-tes` (16), so the untruncated literal below never matched it.
-GAME_PROC_CASE='xash3d|xash3d.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm|alephone|alephone-ppc-tes|AlephOne|Marathon'
+#
+# Measured live on quicksilver, 2026-09-13 (user report via manager): PROCS
+# read 0 while two real "Aleph One" processes were running. CFBundleExecutable
+# for the shipped app is literally "Aleph One" -- WITH a space -- confirmed via
+# `PlistBuddy -c "Print :CFBundleExecutable" .../Aleph One.app/Contents/Info.plist`.
+# "AlephOne" (no space) below was never the real process name for the GUI app;
+# it matched nothing that actually runs. The other four ports' real
+# CFBundleExecutable names (xash3d, quake2, ioquake3, quakespasm) were checked
+# the same way and do match their entries.
+GAME_PROC_CASE='xash3d|xash3d.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm|alephone|alephone-ppc-tes|AlephOne|"Aleph One"|Marathon'
 
 # accept-new, never `no`. See note 2 above.
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new)
@@ -476,7 +494,7 @@ cmd_status() {
 	local errf
 	errf="$(mktemp "${TMPDIR:-/tmp}/pick-bench-probe.XXXXXX")" || errf=/dev/null
 	for h in $hosts; do
-		local out age procs os owner state want why
+		local out age procs os owner state want why warn
 		want="$(expect_os "$h")"
 		if ! out="$(probe "$h" "$errf")" || [ -z "$out" ]; then
 			why="$(why_probe_failed "$errf")"
@@ -504,9 +522,24 @@ cmd_status() {
 		os="$(echo "$out" | awk '{print $3}')"
 		owner="$(echo "$out" | cut -d' ' -f4-)"
 		state="$(classify "$age" "$procs" "$os" "$want")"
+		# Purely informational -- does not touch classify()'s free/stale/busy
+		# contract or any acquire/release/reclaim path. A claim can be
+		# genuinely busy (real work, correctly not stale) and still be worth
+		# a human glance if nothing has run on the host for a while.
+		warn=""
+		case "$age" in
+			''|*[!0-9-]*) : ;;
+			*) case "$procs" in
+				''|*[!0-9]*) : ;;
+				*) if [ "$age" -ge 0 ] && [ "$procs" -eq 0 ] \
+				      && [ "$age" -gt "$WARN_SECS" ] && [ "$age" -le "$STALE_SECS" ]; then
+					warn="  [idle $(fmt_age "$age"), no process -- claimed early?]"
+				   fi ;;
+			   esac ;;
+		esac
 		case "$age" in ''|*[!0-9-]*) age=- ;; *) [ "$age" -lt 0 ] && age=- || age="$(fmt_age "$age")" ;; esac
-		printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' \
-			"$h" "$state" "${os:--}" "${want:--}" "$age" "$procs" "${owner:--}"
+		printf '%-16s %-12s %-8s %-8s %-9s %-6s %s%s\n' \
+			"$h" "$state" "${os:--}" "${want:--}" "$age" "$procs" "${owner:--}" "$warn"
 	done
 	[ "$errf" = /dev/null ] || rm -f "$errf"
 }

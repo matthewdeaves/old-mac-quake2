@@ -49,6 +49,10 @@ set -uo pipefail
 LOCK=/tmp/.retro-build-lock
 BUILD_HOSTS="${BUILD_HOSTS:-mini-intel mini-intel2}"
 STALE_SECS="${BUILD_LOCK_STALE_SECS:-10800}"
+# build-host#84: display-only, same reasoning as pick-bench-host.sh's own
+# WARN_SECS -- a claim held with zero build-tool processes for this long
+# gets flagged in --status without becoming reclaimable any sooner.
+WARN_SECS="${BUILD_LOCK_WARN_SECS:-600}"
 WAIT_SECS="${BUILD_LOCK_WAIT:-0}"
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=6 -o StrictHostKeyChecking=accept-new)
 
@@ -191,7 +195,7 @@ cmd_status() {
 	local errf
 	printf '%-14s %-12s %-8s %-8s %-6s %s\n' HOST STATE OS LOCK-AGE PROCS OWNER
 	for h in $BUILD_HOSTS; do
-		local out age procs os owner state why
+		local out age procs os owner state why warn
 		errf="$(mktemp "${TMPDIR:-/tmp}/pick-build-probe.XXXXXX")" || errf=/dev/null
 		if ! out="$(probe "$h" "$errf")" || [ -z "$out" ]; then
 			why="$(why_probe_failed "$errf")"
@@ -205,8 +209,21 @@ cmd_status() {
 		os="$(echo "$out" | awk '{print $3}')"
 		owner="$(echo "$out" | cut -d' ' -f4-)"
 		state="$(classify "$h" "$age" "$procs" "$os")"
+		# Purely informational, see pick-bench-host.sh's own WARN_SECS comment --
+		# does not touch classify() or any acquire/release/reclaim path.
+		warn=""
+		case "$age" in
+			''|*[!0-9-]*) : ;;
+			*) case "$procs" in
+				''|*[!0-9]*) : ;;
+				*) if [ "$age" -ge 0 ] && [ "$procs" -eq 0 ] \
+				      && [ "$age" -gt "$WARN_SECS" ] && [ "$age" -le "$STALE_SECS" ]; then
+					warn="  [idle $(fmt_age "$age"), no process -- claimed early?]"
+				   fi ;;
+			   esac ;;
+		esac
 		case "$age" in ''|*[!0-9-]*) age=- ;; *) [ "$age" -lt 0 ] && age=- || age="$(fmt_age "$age")" ;; esac
-		printf '%-14s %-12s %-8s %-8s %-6s %s\n' "$h" "$state" "${os:--}" "$age" "$procs" "${owner:--}"
+		printf '%-14s %-12s %-8s %-8s %-6s %s%s\n' "$h" "$state" "${os:--}" "$age" "$procs" "${owner:--}" "$warn"
 	done
 }
 

@@ -186,6 +186,29 @@ The R300 display capture is never released. Always TERM, sleep, then KILL:
 
 ## Renderer features
 
+**2026-09-13, forcing 16-bit `gl_texturesolidmode`/`gl_texturealphamode`
+helped the G3, cost the G4 (#69).** #68 found `GL_EXT_paletted_texture` (and
+`GL_EXT_shared_texture_palette`) absent on both the G3's Rage 128 *and* the
+G4's Radeon 9200 driver — so `gl_ext_palettedtexture 1` is a no-op on both,
+and both fall through to `gl_texturesolidmode`/`gl_texturealphamode
+"default"`. On the G3 forcing `GL_RGB5`/`GL_RGBA4` explicitly was a clean
++13.3% (25.85 -> 29.30 fps, bit-identical x3). Tried the identical override
+on mini-g4: **-12.2% (40.25 -> 35.35 fps), and noisy (35.5/36.3/34.4) where
+the G3 legs were bit-identical.**
+
+*Why it went the other way:* "the extension this cvar targets is absent, so
+the cvar is a no-op either way" was the whole G3 justification, and it does
+NOT transfer to a different, newer driver on the same "no-op path" logic —
+the Rage 128's `"default"` internal-format choice happened to be worse than
+an explicit 16-bit request, but the RV280/Radeon 9200's `"default"` choice
+is apparently already efficient, and forcing a different format costs a
+conversion/swizzle step instead of saving bandwidth. Same absent-extension
+reasoning, opposite driver behaviour underneath it — bench every class
+separately, a G3 win from a shared-code-path GPU quirk is not evidence for
+the next class up. Reverted (EXTRA-only experiment, nothing committed to
+mini-g4's shipped cfg). Evidence: `benchmarks/results.csv`
+(`3f6cf8b9`/mini-g4 rows), issue #69.
+
 **2026-05-31, `gl_caustics` drew a grid of circles on water: brightness was a
 PRODUCT of gratings, not a SUM (fixed v2.2.6).** The overlay tiled a grid of
 soft round blobs across every water surface, on **both** the G5 (Radeon 9600 /

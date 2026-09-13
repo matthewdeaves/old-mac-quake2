@@ -221,12 +221,14 @@ try_acquire() {
 		return 1
 	fi
 	[ "$errf" = /dev/null ] || rm -f "$errf"
-	[ -z "$out" ] && return 1
 	age="$(echo "$out" | awk '{print $1}')"
 	procs="$(echo "$out" | awk '{print $2}')"
 	os="$(echo "$out" | awk '{print $3}')"
 	state="$(classify "$h" "$age" "$procs" "$os")"
-	usable "$state" || return 1
+	if ! usable "$state"; then
+		ACQUIRE_LAST_REASON="$state"
+		return 1
+	fi
 	# Only stamp claim= when there is a real nonce; an empty one would read as
 	# "this lock has a nonce" at release and defeat the old-format fallback.
 	CLAIM_TAG=""

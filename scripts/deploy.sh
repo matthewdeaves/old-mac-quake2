@@ -188,9 +188,11 @@ if [ ! -d "$BUILD_DIR" ] || [ ! -f "$BUILD_DIR/quake2" ]; then
   exit 1
 fi
 
-if ! ssh "$HOST" '[ ! -e /Applications/Quake2 ] && [ ! -L /Applications/Quake2 ]'; then
-  echo "[deploy $HOST] REFUSE: /Applications/Quake2 already exists; leaving it and ~/quake2-play untouched" >&2
-  exit 10
+if ssh "$HOST" '[ ! -e /Applications/Quake2 ] && [ ! -L /Applications/Quake2 ]'; then
+  OCCUPIED=no
+else
+  OCCUPIED=yes
+  echo "[deploy $HOST] /Applications/Quake2 already exists — upgrading in place with a rollback (#72)"
 fi
 
 # Stage layout locally, then rsync. Using a temp dir means we can ship
@@ -310,24 +312,39 @@ case "$REMOTE_STAGE" in
   *) echo "[deploy] unsafe staging path: $REMOTE_STAGE" >&2; exit 3 ;;
 esac
 
-echo "[deploy] prepare $HOST:$REMOTE_STAGE (legacy install remains rollback)"
-ssh "$HOST" "set -e
-  DEST='$REMOTE_DEST'
-  STAGE='$REMOTE_STAGE'
-  LEGACY=\"\$HOME/$GAME_DATA_DIR\"
-  [ ! -e \"\$DEST\" ] && [ ! -L \"\$DEST\" ] || { echo 'REFUSE: /Applications/Quake2 already exists' >&2; exit 10; }
-  [ ! -e \"\$STAGE\" ] && [ ! -L \"\$STAGE\" ] || { echo 'REFUSE: staging path exists' >&2; exit 11; }
-  mkdir \"\$STAGE\"
-  if [ -d \"\$HOME/quake2-play/baseq2\" ]; then
-    ditto \"\$HOME/quake2-play/baseq2\" \"\$STAGE/baseq2\"
-    echo '[deploy] copied ~/quake2-play/baseq2; rollback left untouched'
-  elif [ -d \"\$LEGACY\" ]; then
-    ditto \"\$LEGACY\" \"\$STAGE/baseq2\"
-    echo '[deploy] copied the host legacy baseq2; source left untouched'
-  else
-    mkdir \"\$STAGE/baseq2\"
-  fi
-  rm -f \"\$STAGE/baseq2/autoexec.cfg\""
+if [ "$OCCUPIED" = no ]; then
+  echo "[deploy] prepare $HOST:$REMOTE_STAGE (legacy install remains rollback)"
+  ssh "$HOST" "set -e
+    DEST='$REMOTE_DEST'
+    STAGE='$REMOTE_STAGE'
+    LEGACY=\"\$HOME/$GAME_DATA_DIR\"
+    [ ! -e \"\$DEST\" ] && [ ! -L \"\$DEST\" ] || { echo 'REFUSE: /Applications/Quake2 already exists' >&2; exit 10; }
+    [ ! -e \"\$STAGE\" ] && [ ! -L \"\$STAGE\" ] || { echo 'REFUSE: staging path exists' >&2; exit 11; }
+    mkdir \"\$STAGE\"
+    if [ -d \"\$HOME/quake2-play/baseq2\" ]; then
+      ditto \"\$HOME/quake2-play/baseq2\" \"\$STAGE/baseq2\"
+      echo '[deploy] copied ~/quake2-play/baseq2; rollback left untouched'
+    elif [ -d \"\$LEGACY\" ]; then
+      ditto \"\$LEGACY\" \"\$STAGE/baseq2\"
+      echo '[deploy] copied the host legacy baseq2; source left untouched'
+    else
+      mkdir \"\$STAGE/baseq2\"
+    fi
+    rm -f \"\$STAGE/baseq2/autoexec.cfg\""
+else
+  # #72: DEST is occupied. update-install-tree.sh (invoked at publish time
+  # below) preserves the CURRENT install's baseq2 itself, verified by its
+  # own manifest comparison, and never reads SOURCE/baseq2 — so there is
+  # nothing useful to stage here, and populating it from quake2-play/legacy
+  # or .game-data/ would just be bandwidth spent on data that gets thrown
+  # away. Leave STAGE/baseq2 empty; the update primitive owns it.
+  echo "[deploy] prepare $HOST:$REMOTE_STAGE (occupied — game data comes from the live install, #72)"
+  ssh "$HOST" "set -e
+    STAGE='$REMOTE_STAGE'
+    [ ! -e \"\$STAGE\" ] && [ ! -L \"\$STAGE\" ] || { echo 'REFUSE: staging path exists' >&2; exit 11; }
+    mkdir \"\$STAGE\"
+    mkdir \"\$STAGE/baseq2\""
+fi
 
 # Transfer only the owned runtime products. --delete is scoped to the staged app
 # bundle, never the destination root or copied game data.
@@ -343,7 +360,12 @@ done
 
 # Overlay the canonical workstation game data when present, while retaining all
 # other copied legacy content such as saves, mods, video and custom assets.
-if [ -f "$REPO_ROOT/.game-data/baseq2/pak0.pak" ]; then
+# #72: skipped when occupied — update-install-tree.sh preserves the live
+# install's baseq2 itself at publish time and never reads this path, so
+# populating it here would only spend bandwidth on data that gets discarded.
+if [ "$OCCUPIED" = yes ]; then
+  :
+elif [ -f "$REPO_ROOT/.game-data/baseq2/pak0.pak" ]; then
   ssh "$HOST" "cd '$REMOTE_STAGE/baseq2' && find . -maxdepth 1 -name 'pak*.pak' -type l -delete 2>/dev/null; true"
   rsync -av --partial --checksum $RSYNC_EXTRA \
     -e 'ssh -o ServerAliveInterval=15' \
@@ -382,14 +404,34 @@ echo "[deploy] staged runtime binaries match the local build byte-for-byte"
 
 scp -pq "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:.q2-clear-launch-quarantine.sh"
 ssh "$HOST" "set -e
-  DEST='$REMOTE_DEST'
   STAGE='$REMOTE_STAGE'
-  [ ! -e \"\$DEST\" ] && [ ! -L \"\$DEST\" ] || { echo 'REFUSE: destination appeared during staging' >&2; exit 10; }
   chmod +x \"\$STAGE/Quake2.app/Contents/MacOS/quake2\" 2>/dev/null
   sh \"\$HOME/.q2-clear-launch-quarantine.sh\" \"\$STAGE/Quake2.app\"
-  rm -f \"\$HOME/.q2-clear-launch-quarantine.sh\"
-  mv \"\$STAGE\" \"\$DEST\"
-  touch \"\$DEST/Quake2.app\" \"\$DEST\" 2>/dev/null || true"
+  rm -f \"\$HOME/.q2-clear-launch-quarantine.sh\""
+
+if [ "$OCCUPIED" = no ]; then
+  ssh "$HOST" "set -e
+    DEST='$REMOTE_DEST'
+    STAGE='$REMOTE_STAGE'
+    [ ! -e \"\$DEST\" ] && [ ! -L \"\$DEST\" ] || { echo 'REFUSE: destination appeared during staging' >&2; exit 10; }
+    mv \"\$STAGE\" \"\$DEST\"
+    touch \"\$DEST/Quake2.app\" \"\$DEST\" 2>/dev/null || true"
+else
+  # #72: hand off to the already-tested update primitive for the atomic
+  # swap + rollback. Staged as a $HOME dotfile, matching the
+  # clear-launch-quarantine.sh convention just above — never ~/Desktop.
+  scp -pq "$REPO_ROOT/scripts/update-install-tree.sh" "$HOST:.q2-update-install-tree.sh"
+  UPDATE_OUT=$(ssh "$HOST" "set -e
+    trap 'rm -f \"\$HOME/.q2-update-install-tree.sh\"' EXIT HUP INT TERM
+    bash \"\$HOME/.q2-update-install-tree.sh\" '$REMOTE_STAGE' '$REMOTE_DEST'
+    status=\$?
+    rm -rf '$REMOTE_STAGE'
+    exit \$status")
+  printf '%s\n' "$UPDATE_OUT"
+  ROLLBACK_PATH=$(printf '%s\n' "$UPDATE_OUT" | sed -n 's/^ROLLBACK_PATH=//p')
+  [ -n "$ROLLBACK_PATH" ] || { echo "[deploy] FATAL: update-install-tree.sh did not report a rollback path" >&2; exit 7; }
+  echo "[deploy] upgraded in place; rollback retained at $ROLLBACK_PATH"
+fi
 REMOTE_STAGE=""
 
 LOCAL_BIN_MD5=$(md5sum "$BUILD_DIR/quake2" | awk '{print $1}')

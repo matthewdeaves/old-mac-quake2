@@ -1,0 +1,60 @@
+iMac G5 filesystem discriminator, 2026-09-13
+
+Machine and production artifact
+  alias: imac-g5
+  OS: Mac OS X 10.5.8 Leopard
+  CPU: PowerPC 970FX 2.0 GHz, native ppc970 slice
+  GPU: ATI Radeon 9600 128 MB
+  installed path: /Applications/Quake2
+  version: bloom-fix-arm64-on-943c256a
+  engine MD5: 64e1bf9d72fea24b96d4416727a660b4
+  ref_gl.so MD5: 779aae8d06681e427250e196a9e9b96f
+  baseq2/game.so MD5: 3cbd3b2bd0e46f94906d761be9414f59
+  q2ded MD5: 9f1818383d998ad4fc04022e44ede4b4
+  pak0.pak MD5: 10c7315322a19804dbaadc1dbd88d6af
+
+All four runtime hashes match the read-only preflight of
+Quake2-OldMac-bloom-fix-arm64-on-943c256a.dmg. The DMG SHA-256 is
+8c507473a14ce4dd2b9d6b4078001e9ee7c7209bed3722e36565c465f41d2247 and
+contains ppc750, ppc7400, ppc970, x86_64, i386 and arm64 slices.
+
+Production profile
+  1440x900 native desktop fullscreen
+  bloom 0
+  MSAA 2
+  vsync 1 for normal play, disabled by the timedemo harness
+
+Canonical benchmark
+  Jenkins bench-quake2-imac-g5 build 2
+  demo1, 1440x900, one native-safe run
+  result: UNSTABLE, no FPS line
+  final qconsole lines:
+    ----- refresher initialization -----
+    Byte ordering: big endian
+    Input initialized.
+    Refresher build options:
+     + Retexturing support
+     - Gamma via X11
+    Refresh: Yamagi Quake II OpenGL Refresher
+
+Earlier direct three-run evidence is retained in benchmarks/results.csv and
+benchmarks/raw/943c256a_imac-g5_demo1_1440x900_run{1,3}.log. All three runs
+returned NA before renderer, mode, map or cvar readback.
+
+Filesystem discriminators using the same installed production binary
+  1. Explicit +set basedir /Applications/Quake2 still failed. stdout proved:
+       Added packfile '/Applications/Quake2/baseq2/pak0.pak' (3307 files).
+       Error: Couldn't load pics/colormap.pcx
+  2. A fresh temporary HOME, with no saved config or user data, failed at the
+     same point after indexing the same PAK. The temporary home was removed.
+  3. An isolated marker build showed ref_gl passed the exact
+     "pics/colormap.pcx" path to FS_LoadFile, which returned -1.
+
+This rules out deployment drift, a missing or unreadable PAK, the launch
+working directory, and saved user state. The remaining fault is in the
+ppc970 engine's PAK directory state or lookup on this Leopard machine.
+
+No fixed production build was deployed. Both canonical Lion build minis were
+unreachable. A ppc970 diagnostic engine built with the documented GCC 14
+fallback died before console initialization on the known-good G5 Panther
+control, so its results were rejected and it was not installed as production.

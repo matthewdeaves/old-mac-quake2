@@ -130,7 +130,11 @@ WAIT_SECS="${BENCH_LOCK_WAIT:-0}"
 # never make a host busy or select that agent for release cleanup. A fixed
 # list is not future-proof; matching an application marker is a fair
 # follow-up if another executable name appears.
-GAME_PROC_CASE='xash3d|xash3d.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm|alephone|alephone-ppc-test|AlephOne|Marathon'
+#
+# build-host#79: `alephone-ppc-test` is 17 characters, one over Darwin's
+# MAXCOMLEN -- `ps -o ucomm=` truncates the real process to
+# `alephone-ppc-tes` (16), so the untruncated literal below never matched it.
+GAME_PROC_CASE='xash3d|xash3d.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm|alephone|alephone-ppc-tes|AlephOne|Marathon'
 
 # accept-new, never `no`. See note 2 above.
 SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=8 -o StrictHostKeyChecking=accept-new)

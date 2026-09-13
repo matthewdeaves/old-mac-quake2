@@ -319,6 +319,7 @@ why_probe_failed() {
 	local err="" f="$1"
 	[ -r "$f" ] && err="$(cat "$f" 2>/dev/null)"
 	case "$err" in
+		*"Operation not permitted"*)                       echo sandbox-denied ;;
 		*"Connection refused"*)                       echo refused ;;
 		*"No route to host"*|*"Host is down"*|*"Network is unreachable"*) echo off ;;
 		*"Connection timed out"*|*"Operation timed out"*|*"timed out"*)   echo timeout ;;

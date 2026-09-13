@@ -75,7 +75,8 @@ CLAIM="${BENCH_LOCK_CLAIM:-}"
 # Probe one host. Prints: "<age> <nprocs> <owner...>"  (age -1 = unlocked)
 # Non-zero exit means unreachable.
 probe() {
-	ssh "${SSH_OPTS[@]}" "$1" '
+	local h="$1" errsink="${2:-/dev/null}"
+	ssh "${SSH_OPTS[@]}" "$h" '
 		L=/tmp/.retro-build-lock
 		if [ -d "$L" ]; then
 			now=`date +%s`
@@ -100,7 +101,27 @@ probe() {
 			| grep -vE "grep|makewhatis" | wc -l | tr -d " "`
 		os=`sw_vers -productVersion 2>/dev/null || echo unknown`
 		echo "$age $n $os $owner"
-	' 2>/dev/null
+	' 2>"$errsink"
+}
+
+# Distinguish a local execution-policy denial from a host that cannot be
+# reached.  The former is common when the caller's sandbox denies ssh and must
+# not trigger power/recovery decisions.
+why_probe_failed() {
+	local err="" f="$1"
+	[ -r "$f" ] && err="$(cat "$f" 2>/dev/null)"
+	case "$err" in
+		*"Operation not permitted"*) echo sandbox-denied ;;
+		*"Connection refused"*) echo refused ;;
+		*"No route to host"*|*"Host is down"*|*"Network is unreachable"*) echo off ;;
+		*"Connection timed out"*|*"Operation timed out"*|*"timed out"*) echo timeout ;;
+		*"Permission denied"*|*"Too many authentication failures"*|*"No supported authentication"*) echo auth ;;
+		*"Could not resolve"*|*"Name or service not known"*|*"nodename nor servname"*) echo dns ;;
+		*"Unable to negotiate"*|*"no matching"*) echo crypto ;;
+		*"REMOTE HOST IDENTIFICATION HAS CHANGED"*|*"Host key verification failed"*) echo hostkey ;;
+		"") echo unreachable ;;
+		*) echo unreachable ;;
+	esac
 }
 
 # Expected booted OS per host, major.minor. Any host NOT listed here defaults to
@@ -167,13 +188,18 @@ fmt_age() {
 }
 
 cmd_status() {
+	local errf
 	printf '%-14s %-12s %-8s %-8s %-6s %s\n' HOST STATE OS LOCK-AGE PROCS OWNER
 	for h in $BUILD_HOSTS; do
-		local out age procs os owner state
-		if ! out="$(probe "$h")" || [ -z "$out" ]; then
-			printf '%-14s %-12s %-8s %-8s %-6s %s\n' "$h" unreachable - - - -
+		local out age procs os owner state why
+		errf="$(mktemp "${TMPDIR:-/tmp}/pick-build-probe.XXXXXX")" || errf=/dev/null
+		if ! out="$(probe "$h" "$errf")" || [ -z "$out" ]; then
+			why="$(why_probe_failed "$errf")"
+			printf '%-14s %-12s %-8s %-8s %-6s %s\n' "$h" "$why" - - - -
+			[ "$errf" = /dev/null ] || rm -f "$errf"
 			continue
 		fi
+		[ "$errf" = /dev/null ] || rm -f "$errf"
 		age="$(echo "$out" | awk '{print $1}')"
 		procs="$(echo "$out" | awk '{print $2}')"
 		os="$(echo "$out" | awk '{print $3}')"
@@ -186,8 +212,15 @@ cmd_status() {
 
 # Try to claim $1. Returns 0 on success.
 try_acquire() {
-	local h="$1" label="$2" out age procs os state
-	out="$(probe "$h")" || return 1
+	local h="$1" label="$2" out age procs os state errf
+	errf="$(mktemp "${TMPDIR:-/tmp}/pick-build-acquire.XXXXXX")" || errf=/dev/null
+	out="$(probe "$h" "$errf")"
+	if [ $? -ne 0 ] || [ -z "$out" ]; then
+		ACQUIRE_LAST_REASON="$(why_probe_failed "$errf")"
+		[ "$errf" = /dev/null ] || rm -f "$errf"
+		return 1
+	fi
+	[ "$errf" = /dev/null ] || rm -f "$errf"
 	[ -z "$out" ] && return 1
 	age="$(echo "$out" | awk '{print $1}')"
 	procs="$(echo "$out" | awk '{print $2}')"
@@ -231,6 +264,7 @@ cmd_acquire() {
 		sleep 10
 	done
 	echo "pick-build-host: no free Intel build host in '$BUILD_HOSTS'" >&2
+	[ -n "${ACQUIRE_LAST_REASON:-}" ] && echo "  last probe reason: $ACQUIRE_LAST_REASON" >&2
 	echo "  (see: scripts/pick-build-host.sh --status)" >&2
 	return 1
 }

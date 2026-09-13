@@ -11,6 +11,14 @@ setup_fixture() {
   ROOT="$TMP/$CASE"
   SOURCE="$ROOT/source"
   DEST="$ROOT/Quake2"
+  # Scope rollback/failed placement into this case's own throwaway tree
+  # instead of the real $HOME/oldmac — same filesystem as DEST, so the
+  # helper's same-volume restore check still passes. Per-case (not one
+  # shared dir across all fixtures below) because every fixture's fake
+  # engine content is byte-identical, so two cases landing in the same
+  # wall-clock second would otherwise compute the same rollback name and
+  # collide.
+  export Q2_UPDATE_ROLLBACK_ROOT="$ROOT/rollbacks"
   mkdir -p "$SOURCE/Quake2.app/Contents/MacOS" "$SOURCE/baseq2"
   mkdir -p "$DEST/Quake2.app/Contents/MacOS" "$DEST/baseq2/players/male"
   printf 'new-engine\n' > "$SOURCE/Quake2.app/Contents/MacOS/quake2"
@@ -33,7 +41,7 @@ if Q2_UPDATE_ALLOW_TEST_ROOT=1 Q2_UPDATE_FAIL_STAGE=1 "$HELPER" "$SOURCE" "$DEST
 fi
 grep -q '^old-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
 grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
-[ -z "$(find "$ROOT" -maxdepth 1 -type d -name 'Quake2.rollback-*' -print)" ]
+[ -z "$(find "$Q2_UPDATE_ROLLBACK_ROOT" -maxdepth 1 -type d -name 'Quake2.rollback-*' -print 2>/dev/null)" ]
 
 setup_fixture after_backup_fail
 if Q2_UPDATE_ALLOW_TEST_ROOT=1 Q2_UPDATE_FAIL_AFTER_BACKUP=1 "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output" 2>&1; then
@@ -42,7 +50,7 @@ if Q2_UPDATE_ALLOW_TEST_ROOT=1 Q2_UPDATE_FAIL_AFTER_BACKUP=1 "$HELPER" "$SOURCE"
 fi
 grep -q '^old-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
 grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
-[ -z "$(find "$ROOT" -maxdepth 1 -type d -name 'Quake2.rollback-*' -print)" ]
+[ -z "$(find "$Q2_UPDATE_ROLLBACK_ROOT" -maxdepth 1 -type d -name 'Quake2.rollback-*' -print 2>/dev/null)" ]
 
 setup_fixture post_fail
 if Q2_UPDATE_ALLOW_TEST_ROOT=1 Q2_UPDATE_FAIL_POSTPUBLISH=1 "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output" 2>&1; then
@@ -51,7 +59,7 @@ if Q2_UPDATE_ALLOW_TEST_ROOT=1 Q2_UPDATE_FAIL_POSTPUBLISH=1 "$HELPER" "$SOURCE" 
 fi
 grep -q '^old-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
 grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
-[ -n "$(find "$ROOT" -maxdepth 1 -type d -name 'Quake2.failed-update-*' -print)" ]
+[ -n "$(find "$Q2_UPDATE_ROLLBACK_ROOT" -maxdepth 1 -type d -name 'Quake2.failed-update-*' -print 2>/dev/null)" ]
 
 setup_fixture success
 Q2_UPDATE_ALLOW_TEST_ROOT=1 "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output"

@@ -120,9 +120,11 @@ before contacting the target. It inventories the occupied install, checks free
 space, copies the complete install to a same-volume stage, preserves every
 non-runtime `baseq2` file and replaces only the packaged runtime. Verified
 promotion leaves the complete predecessor at a unique
-`/Applications/Quake2.rollback-<timestamp>-<hash>` path. Pre-promotion failure
-leaves the original untouched; a failing post-promotion gate moves the rejected
-candidate aside and restores the original. It never reuses or removes an older
+`~/oldmac/quake2/rollbacks/Quake2.rollback-<timestamp>-<hash>` path — never
+loose in `/Applications`, which holds only the current install (user rule,
+issue #75). Pre-promotion failure leaves the original untouched; a failing
+post-promotion gate moves the rejected candidate aside (same rollbacks
+directory) and restores the original. It never reuses or removes an older
 backup. A named rollback can be restored with:
 
 ```

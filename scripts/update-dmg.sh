@@ -9,7 +9,7 @@ if [ "${1:-}" = --restore ]; then
   HOST=${2:?usage: update-dmg.sh --restore <machine> <rollback-path>}
   ROLLBACK=${3:?usage: update-dmg.sh --restore <machine> <rollback-path>}
   case "$ROLLBACK" in
-    /Applications/Quake2.rollback-*) ;;
+    */oldmac/quake2/rollbacks/Quake2.rollback-*) ;;
     *) echo "refusing non-update rollback path: $ROLLBACK" >&2; exit 2 ;;
   esac
   case "$ROLLBACK" in
@@ -20,13 +20,14 @@ if [ "${1:-}" = --restore ]; then
     export RETRO_BENCH_LOCK="$HOST"
     exec "$PICK" --run "$HOST" "restore-dmg" -- "$0" "$@"
   fi
-  scp -q "$REPO_ROOT/scripts/update-install-tree.sh" "$HOST:Desktop/q2-update-install-tree.sh"
+  # Staged as a $HOME dotfile, never ~/Desktop (user rule).
+  scp -q "$REPO_ROOT/scripts/update-install-tree.sh" "$HOST:.q2-update-install-tree.sh"
   ssh "$HOST" bash -s "$ROLLBACK" <<'RESTORE_EOF'
 set -e
 ROLLBACK=$1
-trap 'rm -f "$HOME/Desktop/q2-update-install-tree.sh"' EXIT HUP INT TERM
-bash "$HOME/Desktop/q2-update-install-tree.sh" --restore "$ROLLBACK" /Applications/Quake2
-rm -f "$HOME/Desktop/q2-update-install-tree.sh"
+trap 'rm -f "$HOME/.q2-update-install-tree.sh"' EXIT HUP INT TERM
+bash "$HOME/.q2-update-install-tree.sh" --restore "$ROLLBACK" /Applications/Quake2
+rm -f "$HOME/.q2-update-install-tree.sh"
 trap - EXIT HUP INT TERM
 RESTORE_EOF
   exit 0
@@ -99,13 +100,15 @@ ssh "$HOST" '[ -d /Applications/Quake2/Quake2.app ] && [ ! -L /Applications/Quak
 }
 
 echo "[update-dmg $HOST] copy and verify $DMG_BASE"
-ssh "$HOST" 'mkdir -p ~/Desktop'
-scp -q "$DMG" "$HOST:Desktop/$DMG_BASE"
-scp -q "$REPO_ROOT/scripts/update-install-tree.sh" "$HOST:Desktop/q2-update-install-tree.sh"
+# ~/oldmac/quake2, never ~/Desktop (user rule: deploy DMGs/scratch go under
+# ~/oldmac/, /Applications holds only the live install).
+ssh "$HOST" 'mkdir -p ~/oldmac/quake2'
+scp -q "$DMG" "$HOST:oldmac/quake2/$DMG_BASE"
+scp -q "$REPO_ROOT/scripts/update-install-tree.sh" "$HOST:.q2-update-install-tree.sh"
 # DMG_BASE is basename(1) of our own `Quake2-OldMac-$VERSION.dmg` path and is
 # intentionally expanded locally; the remote md5 output is parsed locally.
 # shellcheck disable=SC2029
-REMOTE_MD5=$(ssh "$HOST" md5 "Desktop/$DMG_BASE" | awk '{print $NF}')
+REMOTE_MD5=$(ssh "$HOST" md5 "oldmac/quake2/$DMG_BASE" | awk '{print $NF}')
 [ "$REMOTE_MD5" = "$DMG_MD5" ] || {
   echo "[update-dmg $HOST] FATAL: remote DMG mismatch $REMOTE_MD5 != $DMG_MD5" >&2
   exit 1
@@ -114,20 +117,21 @@ REMOTE_MD5=$(ssh "$HOST" md5 "Desktop/$DMG_BASE" | awk '{print $NF}')
 ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
 set -e
 DMG_BASE=$1
+DMG_PATH="$HOME/oldmac/quake2/$DMG_BASE"
 MOUNT="$HOME/q2-update-mnt.$$"
 cleanup_remote() {
   hdiutil detach "$MOUNT" >/dev/null 2>&1 || hdiutil detach -force "$MOUNT" >/dev/null 2>&1 || true
   rmdir "$MOUNT" 2>/dev/null || true
-  rm -f "$HOME/Desktop/q2-update-install-tree.sh"
+  rm -f "$HOME/.q2-update-install-tree.sh" "$DMG_PATH"
 }
 trap cleanup_remote EXIT HUP INT TERM
 [ ! -e "$MOUNT" ] || { echo "occupied update mount: $MOUNT" >&2; exit 11; }
 mkdir "$MOUNT"
-hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$HOME/Desktop/$DMG_BASE" >/dev/null
-bash "$HOME/Desktop/q2-update-install-tree.sh" "$MOUNT" /Applications/Quake2
+hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$DMG_PATH" >/dev/null
+bash "$HOME/.q2-update-install-tree.sh" "$MOUNT" /Applications/Quake2
 hdiutil detach "$MOUNT" >/dev/null
 rmdir "$MOUNT"
-rm -f "$HOME/Desktop/q2-update-install-tree.sh"
+rm -f "$HOME/.q2-update-install-tree.sh" "$DMG_PATH"
 trap - EXIT HUP INT TERM
 REMOTE_EOF
 

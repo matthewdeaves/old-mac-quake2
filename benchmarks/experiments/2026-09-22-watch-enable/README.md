@@ -52,3 +52,12 @@ Neither build sends the `meta` packet (level name and item table) on a normal
 `+map` load. `CL_WatchLink_Meta` is called only from the delayed-precache
 branch in `cl_main.c`, not from `CL_PrepRefresh`'s normal call sites
 (`cl_download.c:417`, `cl_main.c:460`).
+
+## Follow-up: #82 fixed (f3cb4e94)
+
+`CL_WatchLink_Meta` now runs at the end of `CL_PrepRefresh`, which every
+map-load path calls. Same B case, arm64 build at source stamp `3a7450d1f539`
+(engine MD5 `5f159c8cfafb01e77fc4d5047ade2d99`): 26 packets, **1 meta**, 21 vitals, 4 events. Before the
+fix, both builds sent 0 meta. `logs/B2-meta-fix.*`. The same run logged the
+#79 probe on this unmapped M5: "capability tier, unrecognised GPU: keeping the
+conservative baseline".

@@ -29,7 +29,7 @@ Smokes use the production config, sound disabled, system output muted.
 | mini-g4 | 10.4.11 Tiger | ATI Radeon 9200 | ppc7400 | Jenkins `smoke-quake2-mini-g4` #3 | PASS, new game started (#35) |
 | imac-g5 | 10.5.8 Leopard | ATI Radeon 9600 | ppc970 | Jenkins `smoke-quake2-imac-g5` #5 | PASS, native 1440x900, new game started (#35) |
 | mini-sl | 10.6.8 Snow Leopard | NVIDIA GeForce 9400 | x86_64 | Jenkins `smoke-quake2-mini-sl` #4 | PASS, demo1 29.8 fps, vsync on |
-| imac-2019 | 15.7.9 Sequoia | AMD Radeon Pro 580X | x86_64 | Jenkins `smoke-quake2-mini-intel` #5 (FLEET_HOST imac-2019) | PASS, demo1 76.3 fps at 1920x1080 |
+| imac-2019 | 15.7.9 Sequoia | AMD Radeon Pro 580X | x86_64 | Jenkins `smoke-quake2-mini-intel` #5 (FLEET_HOST imac-2019) | **NOT VALID, see below.** Logged 689 frames, 76.3 fps at 1920x1080, but the console was locked |
 | workstation | 26.6.2 | Apple M5 | arm64 | `scripts/smoke-dmg.sh workstation` | PASS, demo1 59.4 fps, vsync on |
 
 Smoke fps is a vsync-on production launch, not a benchmark.
@@ -46,7 +46,21 @@ locally under a `pick-bench-host.sh --run workstation` claim,
 were re-appended to the bundled `autoexec-controls.cfg`, and the second smoke
 passed with them in place.
 
+## Correction, 2026-09-22 19:45: the imac-2019 smoke is untested, not a pass
+
+imac-2019's console locked when its display slept at 17:52 and stayed locked
+until 19:35 (old-mac-build-host#88, from its pmset and unified logs). Smoke #5
+finished at 18:01, inside that window: WindowServer logged the quake2
+fullscreen capture into the locked session at 18:00:53. The engine rendered
+the timedemo, but nothing could have been on screen, so the precondition of
+a visible, unlocked display failed. **The required imac-2019 release smoke is
+therefore still outstanding for v2.12.0.** A re-run at 19:39, after checking
+`CGSSessionScreenIsLocked` was absent, did not start: buildhost held the host
+for the #88 fix. The engine on imac-2019 is still the release binary
+(`2f7874dd…`).
+
 ## Not covered
+
 
 - yosemite-tiger (G3 on Tiger): not booted, since only one partition runs at a time.
 - mini-intel (GMA 950, Lion): off. mini-intel2 was building for another repo.

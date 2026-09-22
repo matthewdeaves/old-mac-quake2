@@ -1,0 +1,10 @@
+Started smoke-quake2-mini-intel #6
+Started from command line by admin
+Running as SYSTEM
+Building remotely on mini-intel (bench build smoke capture both) in workspace /home/matt/jenkins/agents/mini-intel/workspace/smoke-quake2-mini-intel
+[smoke-quake2-mini-intel] $ /bin/bash /tmp/jenkins7585965942358374529.sh
+pick-bench-host: imac-2019 is not available (busy)
+  (see: scripts/pick-bench-host.sh --status imac-2019)
+Build step 'Execute shell' changed build result to UNSTABLE
+Finished: UNSTABLE
+Completed smoke-quake2-mini-intel #6 : UNSTABLE

@@ -1,0 +1,81 @@
+=== cppcheck (src/refresh) ===
+src/refresh/files/pcx.c:49:3: warning: Either the condition 'palette' is redundant or there is possible null pointer dereference: palette. [nullPointerRedundantCheck]
+ *palette = NULL;
+  ^
+src/refresh/files/pcx.c:88:6: note: Assuming that condition 'palette' is not redundant
+ if (palette)
+     ^
+src/refresh/files/pcx.c:49:3: note: Null pointer dereference
+ *palette = NULL;
+  ^
+src/refresh/r_geometry.c:95:42: warning: Buffer is accessed out of bounds: p->verts [bufferAccessOutOfBounds]
+  memcpy(m->vertices + nv * VERTEXSIZE, p->verts,
+                                         ^
+src/refresh/r_geometry.c:92:19: note: Assuming that condition 'p->numverts>16384/3' is not redundant
+  if (p->numverts > WORLD_INDEX_BATCH / 3) continue;
+                  ^
+src/refresh/r_geometry.c:95:42: note: Buffer overrun
+  memcpy(m->vertices + nv * VERTEXSIZE, p->verts,
+                                         ^
+src/refresh/r_light.c:272:17: warning: Identical condition '(back<0)==side', second condition is always false [identicalConditionAfterEarlyExit]
+ if ((back < 0) == side)
+                ^
+src/refresh/r_light.c:254:17: note: If condition '(back<0)==side' is true, the function will return/exit
+ if ((back < 0) == side)
+                ^
+src/refresh/r_light.c:272:17: note: Testing identical condition '(back<0)==side'
+ if ((back < 0) == side)
+                ^
+src/refresh/r_mesh.c:351:21: portability: Casting between signed int * and float * which have an incompatible binary data representation. [invalidPointerCast]
+     qglTexCoord2f(((float *)order)[0], ((float *)order)[1]);
+                    ^
+src/refresh/r_mesh.c:351:42: portability: Casting between signed int * and float * which have an incompatible binary data representation. [invalidPointerCast]
+     qglTexCoord2f(((float *)order)[0], ((float *)order)[1]);
+                                         ^
+src/refresh/r_mesh.c:416:21: portability: Casting between signed int * and float * which have an incompatible binary data representation. [invalidPointerCast]
+     qglTexCoord2f(((float *)order)[0], ((float *)order)[1]);
+                    ^
+src/refresh/r_mesh.c:416:42: portability: Casting between signed int * and float * which have an incompatible binary data representation. [invalidPointerCast]
+     qglTexCoord2f(((float *)order)[0], ((float *)order)[1]);
+                                         ^
+src/refresh/r_misc.c:325:23: warning: If resource allocation fails, then there is a possible null pointer dereference: f [nullPointerOutOfResources]
+ fwrite(buffer, 1, c, f);
+                      ^
+src/refresh/r_misc.c:324:11: note: Assuming allocation function fails
+ f = fopen(checkname, "wb");
+          ^
+src/refresh/r_misc.c:324:11: note: Assignment 'f=fopen(checkname,"wb")', assigned value is 0
+ f = fopen(checkname, "wb");
+          ^
+src/refresh/r_misc.c:325:23: note: Null pointer dereference
+ fwrite(buffer, 1, c, f);
+                      ^
+src/refresh/r_warp.c:677:12: warning: Either the condition 'k<0' is redundant or the array 'b[3]' is accessed at index -1, which is out of bounds. [negativeIndex]
+   v[j] = b[k - 1];
+           ^
+src/refresh/r_warp.c:671:9: note: Assuming that condition 'k<0' is not redundant
+  if (k < 0)
+        ^
+src/refresh/r_warp.c:677:12: note: Negative array index
+   v[j] = b[k - 1];
+           ^
+
+=== clang -fsyntax-only -Wextra -Wshadow -Wundef -Wpointer-arith (src/refresh) ===
+1 warning generated.
+9 warnings generated.
+src/refresh/files/md2.c:53:16: warning: comparison of integers of different signs: 'int' and 'unsigned long' [-Wsign-compare]
+src/refresh/files/tga.c:420:21: warning: comparison of integers of different signs: 'int' and 'unsigned int' [-Wsign-compare]
+src/refresh/r_bloom.c:176:46: warning: declaration shadows a variable in the global scope [-Wshadow]
+src/refresh/r_decal.c:464:15: warning: passing 'const vec_t *' (aka 'const float *') to parameter of type 'vec_t *' (aka 'float *') discards qualifiers [-Wincompatible-pointer-types-discards-qualifiers]
+src/refresh/r_image.c:186:14: warning: comparison of integers of different signs: 'GLenum' (aka 'unsigned int') and 'int' [-Wsign-compare]
+src/refresh/r_image.c:218:11: warning: comparison of integers of different signs: 'GLenum' (aka 'unsigned int') and 'int' [-Wsign-compare]
+src/refresh/r_image.c:249:13: warning: comparison of integers of different signs: 'GLenum' (aka 'unsigned int') and 'int' [-Wsign-compare]
+src/refresh/r_image.c:273:16: warning: comparison of integers of different signs: 'int' and 'unsigned long' [-Wsign-compare]
+src/refresh/r_image.c:329:16: warning: comparison of integers of different signs: 'int' and 'unsigned long' [-Wsign-compare]
+src/refresh/r_image.c:351:16: warning: comparison of integers of different signs: 'int' and 'unsigned long' [-Wsign-compare]
+src/refresh/r_image.c:690:35: warning: comparison of integers of different signs: 'int' and 'unsigned long' [-Wsign-compare]
+src/refresh/r_image.c:851:8: warning: comparison of integers of different signs: 'int' and 'unsigned long' [-Wsign-compare]
+src/refresh/r_image.c:963:7: warning: declaration shadows a local variable [-Wshadow]
+src/refresh/r_model.c:925:16: warning: comparison of integers of different signs: 'int' and 'unsigned long' [-Wsign-compare]
+
+[analyze] done.

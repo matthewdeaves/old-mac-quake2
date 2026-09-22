@@ -1,0 +1,2 @@
+MD5 (/Applications/Quake2/ref_gl.so) = dcfde8e72664968edd16f15f298d785b
+MD5 (/Users/mini/.yq2/baseq2/config.cfg) = 01604d6f6c2b583bd9fcfeb25756914a

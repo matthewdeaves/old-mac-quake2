@@ -1,0 +1,2 @@
+MD5 (/Users/mini/oldmac/quake2/scene-resolve.uwYLzR/config.cfg) = 01604d6f6c2b583bd9fcfeb25756914a
+MD5 (/Users/mini/oldmac/quake2/scene-resolve.uwYLzR/original.so) = dcfde8e72664968edd16f15f298d785b

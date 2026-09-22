@@ -1,0 +1,20 @@
+self-test: prove each detector works before trusting it
+  ok    one-arg source_stamp_compute: detector fires on bad, silent on good
+  ok    emptiness lock guard: detector fires on bad, silent on good
+  ok    install without cfg cleanup: detector fires on bad, silent on good
+  ok    legacy remote build layout: detector fires on bad, silent on good
+  ok    unsafe Applications install: detector fires on bad, silent on good
+
+input
+  ok    scripts/ readable, 23 shell scripts
+
+invariants
+  ok    no one-argument source_stamp_compute; the shared file can be synced
+  ok    every bench-lock guard compares against its target
+  ok    every deploy path clears a stale baseq2/autoexec.cfg
+  ok    remote build mirror, logs and fat stage stay under ~/oldmac/quake2
+  ok    /Applications/Quake2 installs are staged, collision-safe and preserve rollback data
+update-install fixtures: PASS
+  ok    occupied-install updater preserves data and restores failed or selected rollbacks
+
+all repo invariants hold

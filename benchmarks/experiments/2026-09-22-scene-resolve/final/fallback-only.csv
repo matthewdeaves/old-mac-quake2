@@ -1,0 +1,2 @@
+timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_fps,median_fps,notes
+2026-09-22T14:28:36Z,594c5d0b,fat,mini-sl,Core 2 Duo @ 2.26GHz,NVIDIA GeForce 9400,10.6.8 Snow Leopard,demo1,1920x1080,69.9,NA,NA,69.9,CORRECTNESS ONLY: scene-resolve bloom-off fallback | mode=fullscreen EXTRA=+set gl_scene_resolve 1 +exec q2_scene_trial.cfg | Add opt-in full-scene MSAA resolve experiment

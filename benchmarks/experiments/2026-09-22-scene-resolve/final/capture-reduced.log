@@ -1,0 +1,38 @@
+[screenshot mini-sl] native-res same-mode CAPTURE (R300-safe or unconfirmed GPU; shots at native res)
+[screenshot] staging autoshot.cfg on mini-sl (10 shots)
+[screenshot]   cfg size: 649 lines
+[screenshot] launch quake2 → timedemo demo1.dm2 → capture series → quit
+quake00.tga
+quake01.tga
+quake02.tga
+quake03.tga
+quake04.tga
+quake05.tga
+quake06.tga
+quake07.tga
+quake08.tga
+quake09.tga
+[screenshot] fetch TGAs
+[screenshot] convert TGAs → PNGs (magick)
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-00.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-01.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-02.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-03.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-04.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-05.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-06.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-07.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-08.png
+  /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-09.png
+[screenshot] OK —       10 PNGs
+-rw-r--r--  1 matt  wheel  1771653 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-00.png
+-rw-r--r--  1 matt  wheel  1920793 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-01.png
+-rw-r--r--  1 matt  wheel  1708274 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-02.png
+-rw-r--r--  1 matt  wheel  1778975 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-03.png
+-rw-r--r--  1 matt  wheel  1031802 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-04.png
+-rw-r--r--  1 matt  wheel  2173030 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-05.png
+-rw-r--r--  1 matt  wheel  1930787 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-06.png
+-rw-r--r--  1 matt  wheel  1297271 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-07.png
+-rw-r--r--  1 matt  wheel  1591762 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-08.png
+-rw-r--r--  1 matt  wheel  1467644 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl-09.png
+-rw-r--r--  1 matt  wheel  1930787 Sep 22 15:28 /private/tmp/q2-scene-resolve-sep22/final/frames-reduced/mini-sl.png

@@ -1,0 +1,29 @@
+diff --git a/yquake2/src/refresh/r_misc.c b/yquake2/src/refresh/r_misc.c
+index f5c246b5..1c057880 100644
+--- a/yquake2/src/refresh/r_misc.c
++++ b/yquake2/src/refresh/r_misc.c
+@@ -290,8 +290,17 @@ R_ScreenShot(void)
+ 	 */
+ 	buffer[17] = 0x20;
+ 
+-	qglReadPixels(0, 0, vid.width, vid.height, GL_RGB,
+-			GL_UNSIGNED_BYTE, buffer + 18);
++	/* TEMPORARY visual-validation build: read the displayed buffer. */
++	{
++		GLint previous_read;
++		qglGetIntegerv(GL_READ_BUFFER, &previous_read);
++		qglReadBuffer(GL_FRONT);
++		qglReadPixels(0, 0, vid.width, vid.height, GL_RGB,
++				GL_UNSIGNED_BYTE, buffer + 18);
++		ri.Con_Printf(PRINT_ALL, "Front capture: render time %.3f, error 0x%x\n",
++			r_newrefdef.time, qglGetError());
++		qglReadBuffer(previous_read);
++	}
+ 
+ 	{
+ 		int row_bytes = vid.width * 3;
+@@ -398,4 +407,3 @@ R_SetDefaultState(void)
+ 		R_SetTexturePalette(d_8to24table);
+ 	}
+ }
+-

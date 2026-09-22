@@ -1,0 +1,1 @@
+MD5 (/Applications/Quake2/ref_gl.so) = c42a0347aea2556e65f65f44d7c8f17a

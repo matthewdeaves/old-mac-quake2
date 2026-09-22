@@ -1,0 +1,674 @@
+==> [2/4] staging SDL.framework with a fresh arm64 member
+/Users/matt/Documents/old-mac-quake2/build/arm64/.sdl12-arm64.dylib: replacing existing signature
+    SDL.framework members: x86_64 i386 ppc arm64  (was: x86_64 i386 ppc  + shim)
+==> [3/4] building quake2, q2ded, ref_gl.so, game.so (arm64, macOS 11.0)
+===> Building quake2
+===> Building q2ded
+===> Building ref_gl.so
+===> Building baseq2/game.so
+/Applications/Xcode.app/Contents/Developer/usr/bin/make release/q2ded
+/Applications/Xcode.app/Contents/Developer/usr/bin/make release/quake2
+/Applications/Xcode.app/Contents/Developer/usr/bin/make release/baseq2/game.so
+/Applications/Xcode.app/Contents/Developer/usr/bin/make release/ref_gl.so
+===> CC src/common/clientserver.c
+===> CC src/common/crc.c
+===> CC src/common/argproc.c
+===> CC src/common/collision.c
+===> CC src/common/cmdparser.c
+===> CC src/common/cvar.c
+===> CC src/backends/generic/qgl.c
+===> CC src/backends/generic/qal.c
+===> CC src/common/shared/flash.c
+===> CC src/backends/sdl/input.c
+===> CC src/backends/generic/vid.c
+===> CC src/common/shared/rand.c
+===> CC src/common/filesystem.c
+===> CC src/common/glob.c
+===> CC src/common/md4.c
+===> CC src/backends/sdl/refresh.c
+===> CC src/refresh/r_draw.c
+===> CC src/common/misc.c
+===> CC src/common/shared/shared.c
+===> CC src/backends/sdl/cd.c
+===> CC src/common/movemsg.c
+src/common/filesystem.c:1909:20: warning: comparison of array 'search->path' not equal to a null pointer is always true [-Wtautological-pointer-compare]
+ 1909 |                 else if (search->path != NULL)
+      |                          ~~~~~~~~^~~~    ~~~~
+===> CC src/common/netchan.c
+===> CC src/common/pmove.c
+===> CC src/backends/sdl/sound.c
+===> CC src/refresh/r_fog.c
+===> CC src/common/szone.c
+===> CC src/refresh/r_image.c
+===> CC src/game/g_ai.c
+===> CC src/client/cl_cin.c
+===> CC src/common/zone.c
+===> CC src/common/shared/rand.c
+1 warning generated.
+===> CC src/common/shared/shared.c
+===> CC src/common/unzip/ioapi.c
+===> CC src/game/g_chase.c
+===> CC src/common/unzip/unzip.c
+===> CC src/server/sv_cmd.c
+===> CC src/client/cl_console.c
+===> CC src/game/g_cmds.c
+===> CC src/client/cl_download.c
+src/common/unzip/ioapi.c:68:18: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+   68 | voidpf ZCALLBACK fopen_file_func (opaque, filename, mode)
+      |                  ^
+src/common/unzip/ioapi.c:90:17: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+   90 | uLong ZCALLBACK fread_file_func (opaque, stream, buf, size)
+      |                 ^
+src/common/unzip/ioapi.c:102:17: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  102 | uLong ZCALLBACK fwrite_file_func (opaque, stream, buf, size)
+      |                 ^
+src/common/unzip/ioapi.c:113:16: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  113 | long ZCALLBACK ftell_file_func (opaque, stream)
+      |                ^
+src/common/unzip/ioapi.c:122:16: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  122 | long ZCALLBACK fseek_file_func (opaque, stream, offset, origin)
+      |                ^
+src/common/unzip/ioapi.c:149:15: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  149 | int ZCALLBACK fclose_file_func (opaque, stream)
+      |               ^
+src/common/unzip/ioapi.c:158:15: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  158 | int ZCALLBACK ferror_file_func (opaque, stream)
+      |               ^
+src/common/unzip/ioapi.c:167:6: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  167 | void fill_fopen_filefunc (pzlib_filefunc_def)
+      |      ^
+src/common/unzip/unzip.c:174:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  174 | local int unzlocal_getByte(pzlib_filefunc_def,filestream,pi)
+      |           ^
+src/common/unzip/unzip.c:204:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  204 | local int unzlocal_getShort (pzlib_filefunc_def,filestream,pX)
+      |           ^
+src/common/unzip/unzip.c:232:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  232 | local int unzlocal_getLong (pzlib_filefunc_def,filestream,pX)
+      |           ^
+src/common/unzip/unzip.c:265:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  265 | local int strcmpcasenosensitive_internal (fileName1,fileName2)
+      |           ^
+src/common/unzip/unzip.c:308:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  308 | extern int ZEXPORT unzStringFileNameCompare (fileName1,fileName2,iCaseSensitivity)
+      |                    ^
+src/common/unzip/unzip.c:334:13: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  334 | local uLong unzlocal_SearchCentralDir(pzlib_filefunc_def,filestream)
+      |             ^
+8 warnings generated.
+src/common/unzip/unzip.c:400:24: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  400 | extern unzFile ZEXPORT unzOpen2 (path, pzlib_filefunc_def)
+      |                        ^
+src/common/unzip/unzip.c:506:24: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  506 | extern unzFile ZEXPORT unzOpen (path)
+      |                        ^
+src/common/unzip/unzip.c:517:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  517 | extern int ZEXPORT unzClose (file)
+      |                    ^
+src/common/unzip/unzip.c:538:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  538 | extern int ZEXPORT unzGetGlobalInfo (file,pglobal_info)
+      |                    ^
+src/common/unzip/unzip.c:554:12: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  554 | local void unzlocal_DosDateToTmuDate (ulDosDate, ptm)
+      |            ^
+src/common/unzip/unzip.c:583:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  583 | local int unzlocal_GetCurrentFileInfoInternal (file,
+      |           ^
+src/common/unzip/unzip.c:758:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  758 | extern int ZEXPORT unzGetCurrentFileInfo (file,
+      |                    ^
+src/common/unzip/unzip.c:782:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  782 | extern int ZEXPORT unzGoToFirstFile (file)
+      |                    ^
+src/common/unzip/unzip.c:804:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  804 | extern int ZEXPORT unzGoToNextFile (file)
+      |                    ^
+src/common/unzip/unzip.c:838:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  838 | extern int ZEXPORT unzLocateFile (file, szFileName, iCaseSensitivity)
+      |                    ^
+src/common/unzip/unzip.c:917:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  917 | extern int ZEXPORT unzGetFilePos(file, file_pos)
+      |                    ^
+src/common/unzip/unzip.c:935:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  935 | extern int ZEXPORT unzGoToFilePos(file, file_pos)
+      |                    ^
+src/common/unzip/unzip.c:971:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  971 | local int unzlocal_CheckCurrentFileCoherencyHeader (s,piSizeVar,
+      |           ^
+src/common/unzip/unzip.c:1066:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1066 | extern int ZEXPORT unzOpenCurrentFile3 (file, method, level, raw, password)
+      |                    ^
+===> CC src/server/sv_conless.c
+src/common/unzip/unzip.c:1244:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1244 | extern int ZEXPORT unzOpenCurrentFile (file===> CC src/refresh/r_light.c
+)
+      |                    ^
+src/common/unzip/unzip.c:1250:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1250 | extern int ZEXPORT unzOpenCurrentFilePassword (file, password)
+      |                    ^
+src/common/unzip/unzip.c:1257:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1257 | extern int ZEXPORT unzOpenCurrentFile2 (file,method,level,raw)
+      |                    ^
+src/common/unzip/unzip.c:1276:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1276 | extern int ZEXPORT unzReadCurrentFile  (file, buf, len)
+      |                    ^
+src/common/unzip/unzip.c:1484:24: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1484 | extern z_off_t ZEXPORT unztell (file)
+      |                        ^
+src/common/unzip/unzip.c:1504:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1504 | extern int ZEXPORT unzeof (file)
+      |                    ^
+src/common/unzip/unzip.c:1537:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1537 | extern int ZEXPORT unzGetLocalExtrafield (file,buf,len)
+      |                    ^
+src/common/unzip/unzip.c:1588:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1588 | extern int ZEXPORT unzCloseCurrentFile (file)
+      |                    ^
+src/common/unzip/unzip.c:1635:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1635 | extern int ZEXPORT unzGetGlobalComment (file, szComment, uSizeBuf)
+      |                    ^
+src/common/unzip/unzip.c:1666:22: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1666 | extern uLong ZEXPORT unzGetOffset (file)
+      |                      ^
+src/common/unzip/unzip.c:1682:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1682 | extern int ZEXPORT unzSetOffset (file, pos)
+      |                    ^
+===> CC src/client/cl_effects.c
+===> CC src/game/g_combat.c
+===> CC src/refresh/r_lightmap.c
+===> CC src/server/sv_entities.c
+===> CC src/refresh/r_bloom.c
+===> CC src/game/g_func.c
+===> CC src/server/sv_game.c
+src/server/sv_entities.c:504:6: warning: variable 'c_fullsend' set but not used [-Wunused-but-set-variable]
+  504 |         int c_fullsend;
+      |             ^
+===> CC src/client/cl_entities.c
+31 warnings generated.
+===> CC src/refresh/r_scene.c
+===> CC src/game/g_items.c
+1 warning generated.
+===> CC src/client/cl_input.c
+src/client/cl_entities.c:774:7: warning: using floating point absolute value function 'fabs' when argument is of integer type [-Wabsolute-value]
+  774 |         if ((fabs(ops->pmove.origin[0] - ps->pmove.origin[0]) > 256 * 8) ||
+      |              ^
+src/client/cl_entities.c:774:7: note: use function 'abs' instead
+  774 |         if ((fabs(ops->pmove.origin[0] - ps->pmove.origin[0]) > 256 * 8) ||
+      |              ^~~~
+      |              abs
+===> CC src/server/sv_init.c
+===> CC src/refresh/r_buffer.c
+===> CC src/refresh/r_geometry.c
+1 warning generated.
+===> CC src/refresh/r_decal.c
+===> CC src/client/cl_inventory.c
+===> CC src/refresh/r_main.c
+===> CC src/client/cl_keyboard.c
+===> CC src/client/cl_lights.c
+===> CC src/server/sv_main.c
+===> CC src/refresh/r_mesh.c
+src/refresh/r_decal.c:464:15: warning: passing 'const vec_t *' (aka 'const float *') to parameter of type 'vec_t *' (aka 'float *') discards qualifiers [-Wincompatible-pointer-types-discards-qualifiers]
+  464 |         CrossProduct(normal, right, up);
+      |                      ^~~~~~
+src/refresh/header/../../client/header/../../common/header/shared.h:162:26: note: passing argument to parameter 'v1' here
+  162 | void CrossProduct(vec3_t v1, vec3_t v2, vec3_t cross);
+      |                          ^
+===> CC src/game/g_main.c
+===> CC src/client/cl_main.c
+===> CC src/game/g_misc.c
+===> CC src/server/sv_save.c
+===> CC src/client/cl_network.c
+===> CC src/game/g_monster.c
+===> CC src/server/sv_send.c
+===> CC src/game/g_phys.c
+1 warning generated.
+===> CC src/refresh/r_misc.c
+===> CC src/client/cl_parse.c
+===> CC src/game/g_spawn.c
+===> CC src/client/cl_particles.c
+===> CC src/refresh/r_model.c
+===> CC src/server/sv_user.c
+===> CC src/refresh/r_scrap.c
+===> CC src/client/cl_prediction.c
+===> CC src/server/sv_world.c
+===> CC src/game/g_svcmds.c
+===> CC src/refresh/r_surf.c
+===> CC src/game/g_target.c
+===> CC src/game/g_trigger.c
+===> CC src/backends/unix/main.c
+===> CC src/client/cl_screen.c
+===> CC src/game/g_turret.c
+===> CC src/client/cl_sysreport.c
+===> CC src/game/g_utils.c
+===> CC src/backends/unix/network.c
+src/client/cl_screen.c:623:10: warning: cast to smaller integer type 'int' from 'struct image_s *' [-Wpointer-to-int-cast]
+  623 |                 return (INT)a->skin - (INT)b->skin;
+      |                        ^~~~~~~~~~~~
+src/client/cl_screen.c:623:25: warning: cast to smaller integer type 'int' from 'struct image_s *' [-Wpointer-to-int-cast]
+  623 |                 return (INT)a->skin - (INT)b->skin;
+      |                                       ^~~~~~~~~~~~
+src/client/cl_screen.c:627:10: warning: cast to smaller integer type 'int' from 'struct model_s *' [-Wpointer-to-int-cast]
+  627 |                 return (INT)a->model - (INT)b->model;
+      |                        ^~~~~~~~~~~~~
+src/client/cl_screen.c:627:26: warning: cast to smaller integer type 'int' from 'struct model_s *' [-Wpointer-to-int-cast]
+  627 |                 return (INT)a->model - (INT)b->model;
+      |                                        ^~~~~~~~~~~~~
+===> CC src/refresh/r_warp.c
+===> CC src/client/cl_tempentities.c
+===> CC src/backends/unix/signalhandler.c
+===> CC src/game/g_weapon.c
+===> CC src/client/cl_view.c
+===> CC src/backends/unix/system.c
+===> CC src/refresh/files/md2.c
+===> CC src/game/monster/berserker/berserker.c
+===> CC src/client/cl_watchlink.c
+4 warnings generated.
+===> CC src/backends/unix/shared/hunk.c
+===> CC src/client/menu/menu.c
+===> CC src/game/monster/boss2/boss2.c
+===> CC src/refresh/files/pcx.c
+===> CC src/client/menu/qmenu.c
+===> CC src/game/monster/boss3/boss3.c
+===> CC src/refresh/files/sp2.c
+===> CC src/game/monster/boss3/boss31.c
+src/client/menu/menu.c:517:6: warning: variable 'totalheight' set but not used [-Wunused-but-set-variable]
+  517 |         int totalheight = 0;
+      |             ^
+===> CC src/refresh/files/tga.c
+===> LD release/q2ded
+===> CC src/game/monster/boss3/boss32.c
+===> CC src/refresh/files/jpeg.c
+===> CC src/game/monster/brain/brain.c
+ld: warning: reducing alignment of section __DATA,__common from 0x8000 to 0x4000 because it exceeds segment maximum alignment
+===> CC src/game/monster/chick/chick.c
+===> CC src/client/menu/videomenu.c
+===> CC src/refresh/files/wal.c
+===> CC src/client/sound/ogg.c
+===> CC src/client/sound/openal.c
+===> CC src/game/monster/flipper/flipper.c
+===> CC src/game/monster/float/float.c
+===> CC src/common/shared/shared.c
+===> CC src/client/sound/sound.c
+===> CC src/client/sound/wave.c
+===> CC src/backends/unix/shared/hunk.c
+===> CC src/common/argproc.c
+===> CC src/game/monster/flyer/flyer.c
+===> CC src/common/clientserver.c
+===> CC src/game/monster/gladiator/gladiator.c
+===> CC src/common/collision.c
+===> CC src/common/crc.c
+===> CC src/common/cmdparser.c
+===> CC src/game/monster/gunner/gunner.c
+===> CC src/game/monster/hover/hover.c
+===> CC src/game/monster/infantry/infantry.c
+===> CC src/game/monster/insane/insane.c
+===> CC src/game/monster/medic/medic.c
+===> CC src/common/cvar.c
+===> CC src/game/monster/misc/move.c
+===> CC src/common/filesystem.c
+===> CC src/common/glob.c
+===> CC src/game/monster/mutant/mutant.c
+===> CC src/game/monster/parasite/parasite.c
+1 warning generated.
+src/game/monster/misc/move.c:559:30: warning: using integer absolute value function 'abs' when argument is of floating point type [-Wabsolute-value]
+  559 |         if (((randk() & 3) & 1) || (abs(deltay) > abs(deltax)))
+      |                                     ^
+src/game/monster/misc/move.c:559:30: note: use function 'fabsf' instead
+  559 |         if (((randk() & 3) & 1) || (abs(deltay) > abs(deltax)))
+      |                                     ^~~
+      |                                     fabsf
+src/game/monster/misc/move.c:559:44: warning: using integer absolute value function 'abs' when argument is of floating point type [-Wabsolute-value]
+  559 |         if (((randk() & 3) & 1) || (abs(deltay) > abs(deltax)))
+      |                                                   ^
+src/game/monster/misc/move.c:559:44: note: use function 'fabsf' instead
+  559 |         if (((randk() & 3) & 1) || (abs(deltay) > abs(deltax)))
+      |                                                   ^~~
+      |                                                   fabsf
+===> CC src/game/monster/soldier/soldier.c
+===> CC src/common/movemsg.c
+===> CC src/common/md4.c
+src/common/filesystem.c:1909:20: warning: comparison of array 'search->path' not equal to a null pointer is always true [-Wtautological-pointer-compare]
+ 1909 |                 else if (search->path != NULL)
+      |                          ~~~~~~~~^~~~    ~~~~
+===> CC src/game/monster/supertank/supertank.c
+2 warnings generated.
+===> CC src/game/monster/tank/tank.c
+===> CC src/common/misc.c
+===> CC src/game/player/client.c
+===> CC src/common/netchan.c
+===> CC src/game/player/hud.c
+===> CC src/common/pmove.c
+===> CC src/common/szone.c
+===> CC src/game/player/trail.c
+===> CC src/game/player/view.c
+===> CC src/common/zone.c
+===> CC src/game/player/weapon.c
+===> CC src/common/shared/flash.c
+===> CC src/common/shared/rand.c
+===> CC src/game/savegame/savegame.c
+1 warning generated.
+===> CC src/common/shared/shared.c
+===> CC src/common/unzip/ioapi.c
+===> CC src/common/unzip/unzip.c
+===> CC src/server/sv_cmd.c
+===> CC src/server/sv_conless.c
+===> CC src/server/sv_entities.c
+===> CC src/server/sv_game.c
+src/common/unzip/ioapi.c:68:18: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+   68 | voidpf ZCALLBACK fopen_file_func (opaque, filename, mode)
+      |                  ^
+src/common/unzip/ioapi.c:90:17: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+   90 | uLong ZCALLBACK fread_file_func (opaque, stream, buf, size)
+      |                 ^
+src/common/unzip/ioapi.c:102:17: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  102 | uLong ZCALLBACK fwrite_file_func (opaque, stream, buf, size)
+      |                 ^
+src/common/unzip/ioapi.c:113:16: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  113 | long ZCALLBACK ftell_file_func (opaque, stream)
+      |                ^
+src/common/unzip/ioapi.c:122:16: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  122 | long ZCALLBACK fseek_file_func (opaque, stream, offset, origin)
+      |                ^
+src/common/unzip/ioapi.c:149:15: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  149 | int ZCALLBACK fclose_file_func (opaque, stream)
+      |               ^
+src/common/unzip/ioapi.c:158:15: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  158 | int ZCALLBACK ferror_file_func (opaque, stream)
+      |               ^
+src/common/unzip/ioapi.c:167:6: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  167 | void fill_fopen_filefunc (pzlib_filefunc_def)
+      |      ^
+8 warnings generated.
+src/common/unzip/unzip.c:174:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  174 | local int unzlocal_getByte(pzlib_filefunc_def,filestream,pi)
+      |           ^
+src/common/unzip/unzip.c:204:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  204 | local int unzlocal_getShort (pzlib_filefunc_def,filestream,pX)
+      |           ^
+src/common/unzip/unzip.c:232:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  232 | local int unzlocal_getLong (pzlib_filefunc_def,filestream,pX)
+      |           ^
+src/common/unzip/unzip.c:265:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  265 | local int strcmpcasenosensitive_internal (fileName1,fileName2)
+      |           ^
+src/common/unzip/unzip.c:308:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  308 | extern int ZEXPORT unzStringFileNameCompare (fileName1,fileName2,iCaseSensitivity)
+      |                    ^
+===> CC src/server/sv_init.c
+src/common/unzip/unzip.c:334:13: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  334 | local uLong unzlocal_SearchCentralDir(pzlib_filefunc_def,filestream)
+      |             ^
+src/common/unzip/unzip.c:400:24: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  400 | extern unzFile ZEXPORT unzOpen2 (path, pzlib_filefunc_def)
+      |                        ^
+src/common/unzip/unzip.c:506:24: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  506 | extern unzFile ZEXPORT unzOpen (path)
+      |                        ^
+src/common/unzip/unzip.c:517:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  517 | extern int ZEXPORT unzClose (file)
+      |                    ^
+src/common/unzip/unzip.c:538:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  538 | extern int ZEXPORT unzGetGlobalInfo (file,pglobal_info)
+      |                    ^
+src/common/unzip/unzip.c:554:12: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  554 | local void unzlocal_DosDateToTmuDate (ulDosDate, ptm)
+      |            ^
+src/common/unzip/unzip.c:583:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  583 | local int unzlocal_GetCurrentFileInfoInternal (file,
+      |           ^
+src/common/unzip/unzip.c:758:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  758 | extern int ZEXPORT unzGetCurrentFileInfo (file,
+      |                    ^
+src/common/unzip/unzip.c:782:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  782 | extern int ZEXPORT unzGoToFirstFile (file)
+      |                    ^
+src/common/unzip/unzip.c:804:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  804 | extern int ZEXPORT unzGoToNextFile (file)
+      |                    ^
+src/common/unzip/unzip.c:838:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  838 | extern int ZEXPORT unzLocateFile (file, szFileName, iCaseSensitivity)
+      |                    ^
+src/common/unzip/unzip.c:917:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  917 | extern int ZEXPORT unzGetFilePos(file, file_pos)
+      |                    ^
+src/common/unzip/unzip.c:935:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  935 | extern int ZEXPORT unzGoToFilePos(file, file_pos)
+      |                    ^
+src/common/unzip/unzip.c:971:11: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+  971 | local int unzlocal_CheckCurrentFileCoherencyHeader (s,piSizeVar,
+      |           ^
+src/common/unzip/unzip.c:1066:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1066 | extern int ZEXPORT unzOpenCurrentFile3 (file, method, level, raw, password)
+      |                    ^
+src/common/unzip/unzip.c:1244:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1244 | extern int ZEXPORT unzOpenCurrentFile (file)
+      |                    ^
+src/common/unzip/unzip.c:1250:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1250 | extern int ZEXPORT unzOpenCurrentFilePassword (file, password)
+      |                    ^
+src/common/unzip/unzip.c:1257:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1257 | extern int ZEXPORT unzOpenCurrentFile2 (file,method,level,raw)
+      |                    ^
+src/common/unzip/unzip.c:1276:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1276 | extern int ZEXPORT unzReadCurrentFile  (file, buf, len)
+      |                    ^
+src/common/unzip/unzip.c:1484:24: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1484 | extern z_off_t ZEXPORT unztell (file)
+      |                        ^
+src/common/unzip/unzip.c:1504:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1504 | extern int ZEXPORT unzeof (file)
+      |                    ^
+src/common/unzip/unzip.c:1537:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1537 | extern int ZEXPORT unzGetLocalExtrafield (file,buf,len)
+      |                    ^
+src/common/unzip/unzip.c:1588:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1588 | extern int ZEXPORT unzCloseCurrentFile (file)
+      |                    ^
+src/common/unzip/unzip.c:1635:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1635 | extern int ZEXPORT unzGetGlobalComment (file, szComment, uSizeBuf)
+      |                    ^
+src/common/unzip/unzip.c:1666:22: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1666 | extern uLong ZEXPORT unzGetOffset (file)
+      |                      ^
+src/common/unzip/unzip.c:1682:20: warning: a function definition without a prototype is deprecated in all versions of C and is not supported in C23 [-Wdeprecated-non-prototype]
+ 1682 | extern int ZEXPORT unzSetOffset (file, pos)
+      |                    ^
+===> CC src/server/sv_main.c
+===> LD release/baseq2/game.so
+src/server/sv_entities.c:504:6: warning: variable 'c_fullsend' set but not used [-Wunused-but-set-variable]
+  504 |         int c_fullsend;
+      |             ^
+===> CC src/server/sv_save.c
+===> CC src/server/sv_send.c
+===> CC src/server/sv_user.c
+1 warning generated.
+===> CC src/server/sv_world.c
+===> CC src/backends/unix/main.c
+===> CC src/backends/unix/network.c
+===> CC src/backends/unix/signalhandler.c
+===> CC src/backends/unix/system.c
+===> CC src/backends/unix/shared/hunk.c
+31 warnings generated.
+===> CC src/backends/sdl_osx/SDLMain.m
+src/backends/sdl_osx/SDLMain.m:294:45: warning: 'NSAlternateKeyMask' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  294 |     [menuItem setKeyEquivalentModifierMask:(NSAlternateKeyMask|NSCommandKeyMask)];
+      |                                             ^~~~~~~~~~~~~~~~~~
+      |                                             NSEventModifierFlagOption
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSEvent.h:184:35: note: 'NSAlternateKeyMask' has been explicitly marked deprecated here
+  184 | static const NSEventModifierFlags NSAlternateKeyMask          API_DEPRECATED_WITH_REPLACEMENT("NSEventModifierFlagOption", macos(10.0,10.12)) = NSEventModifierFlagOption;
+      |                                   ^
+src/backends/sdl_osx/SDLMain.m:294:64: warning: 'NSCommandKeyMask' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  294 |     [menuItem setKeyEquivalentModifierMask:(NSAlternateKeyMask|NSCommandKeyMask)];
+      |                                                                ^~~~~~~~~~~~~~~~
+      |                                                                NSEventModifierFlagCommand
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSEvent.h:185:35: note: 'NSCommandKeyMask' has been explicitly marked deprecated here
+  185 | static const NSEventModifierFlags NSCommandKeyMask            API_DEPRECATED_WITH_REPLACEMENT("NSEventModifierFlagCommand", macos(10.0,10.12)) = NSEventModifierFlagCommand;
+      |                                   ^
+src/backends/sdl_osx/SDLMain.m:381:24: warning: sending 'SDLMain *' to parameter of incompatible type 'id<NSApplicationDelegate> _Nullable'
+  381 |     [NSApp setDelegate:sdlMain];
+      |                        ^~~~~~~
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSApplication.h:199:54: note: passing argument to parameter 'delegate' here
+  199 | @property (nullable, weak) id<NSApplicationDelegate> delegate;
+      |                                                      ^
+src/backends/sdl_osx/SDLMain.m:745:51: warning: 'NSLeftTextAlignment' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  745 |         frame:NSMakeRect(boxX, y, boxW, 18) align:NSLeftTextAlignment]];
+      |                                                   ^~~~~~~~~~~~~~~~~~~
+      |                                                   NSTextAlignmentLeft
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSText.h:212:30: note: 'NSLeftTextAlignment' has been explicitly marked deprecated here
+  212 | static const NSTextAlignment NSLeftTextAlignment API_DEPRECATED_WITH_REPLACEMENT("NSTextAlignmentLeft", macos(10.0,10.12))  = NSTextAlignmentLeft;
+      |                              ^
+src/backends/sdl_osx/SDLMain.m:761:95: warning: 'NSLeftTextAlignment' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  761 |         [doc addSubview:[self label:@"Resolution" frame:NSMakeRect(boxX+16,r0+3,170,18) align:NSLeftTextAlignment]];
+      |                                                                                               ^~~~~~~~~~~~~~~~~~~
+      |                                                                                               NSTextAlignmentLeft
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSText.h:212:30: note: 'NSLeftTextAlignment' has been explicitly marked deprecated here
+  212 | static const NSTextAlignment NSLeftTextAlignment API_DEPRECATED_WITH_REPLACEMENT("NSTextAlignmentLeft", macos(10.0,10.12))  = NSTextAlignmentLeft;
+      |                              ^
+src/backends/sdl_osx/SDLMain.m:769:40: warning: 'NSSwitchButton' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  769 |         [fullscreenCheck setButtonType:NSSwitchButton];
+      |                                        ^~~~~~~~~~~~~~
+      |                                        NSButtonTypeSwitch
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSButtonCell.h:143:27: note: 'NSSwitchButton' has been explicitly marked deprecated here
+  143 | static const NSButtonType NSSwitchButton API_DEPRECATED_WITH_REPLACEMENT("NSButtonTypeSwitch", macos(10.0,10.14)) = NSButtonTypeSwitch;
+      |                           ^
+src/backends/sdl_osx/SDLMain.m:775:42: warning: 'NSOnState' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  775 |         [fullscreenCheck setState:fsOn ? NSOnState : NSOffState];
+      |                                          ^~~~~~~~~
+      |                                          NSControlStateValueOn
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSCell.h:355:34: note: 'NSOnState' has been explicitly marked deprecated here
+  355 | static const NSControlStateValue NSOnState API_DEPRECATED_WITH_REPLACEMENT("NSControlStateValueOn", macos(10.0,10.14)) = NSControlStateValueOn;
+      |                                  ^
+src/backends/sdl_osx/SDLMain.m:775:54: warning: 'NSOffState' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  775 |         [fullscreenCheck setState:fsOn ? NSOnState : NSOffState];
+      |                                                      ^~~~~~~~~~
+      |                                                      NSControlStateValueOff
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSCell.h:354:34: note: 'NSOffState' has been explicitly marked deprecated here
+  354 | static const NSControlStateValue NSOffState API_DEPRECATED_WITH_REPLACEMENT("NSControlStateValueOff", macos(10.0,10.14)) = NSControlStateValueOff;
+      |                                  ^
+src/backends/sdl_osx/SDLMain.m:817:34: warning: 'NSSwitchButton' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  817 |                 [b setButtonType:NSSwitchButton];
+      |                                  ^~~~~~~~~~~~~~
+      |                                  NSButtonTypeSwitch
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSButtonCell.h:143:27: note: 'NSSwitchButton' has been explicitly marked deprecated here
+  143 | static const NSButtonType NSSwitchButton API_DEPRECATED_WITH_REPLACEMENT("NSButtonTypeSwitch", macos(10.0,10.14)) = NSButtonTypeSwitch;
+      |                           ^
+src/backends/sdl_osx/SDLMain.m:822:35: warning: 'NSOnState' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  822 |                 [b setState: on ? NSOnState : NSOffState];
+      |                                   ^~~~~~~~~
+      |                                   NSControlStateValueOn
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSCell.h:355:34: note: 'NSOnState' has been explicitly marked deprecated here
+  355 | static const NSControlStateValue NSOnState API_DEPRECATED_WITH_REPLACEMENT("NSControlStateValueOn", macos(10.0,10.14)) = NSControlStateValueOn;
+      |                                  ^
+src/backends/sdl_osx/SDLMain.m:822:47: warning: 'NSOffState' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  822 |                 [b setState: on ? NSOnState : NSOffState];
+      |                                               ^~~~~~~~~~
+      |                                               NSControlStateValueOff
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSCell.h:354:34: note: 'NSOffState' has been explicitly marked deprecated here
+  354 | static const NSControlStateValue NSOffState API_DEPRECATED_WITH_REPLACEMENT("NSControlStateValueOff", macos(10.0,10.14)) = NSControlStateValueOff;
+      |                                  ^
+src/backends/sdl_osx/SDLMain.m:847:81: warning: 'NSRightTextAlignment' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  847 |                 ro = [self label:rs frame:NSMakeRect(boxX+438,ry+1,60,18) align:NSRightTextAlignment];
+      |                                                                                 ^~~~~~~~~~~~~~~~~~~~
+      |                                                                                 NSTextAlignmentRight
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSText.h:213:30: note: 'NSRightTextAlignment' has been explicitly marked deprecated here
+  213 | static const NSTextAlignment NSRightTextAlignment API_DEPRECATED_WITH_REPLACEMENT("NSTextAlignmentRight", macos(10.0,10.12))  = NSTextAlignmentRight;
+      |                              ^
+src/backends/sdl_osx/SDLMain.m:848:93: warning: 'NSLeftTextAlignment' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  848 |                 [doc addSubview:[self label:lab frame:NSMakeRect(boxX+16,ry+1,176,18) align:NSLeftTextAlignment]];
+      |                                                                                             ^~~~~~~~~~~~~~~~~~~
+      |                                                                                             NSTextAlignmentLeft
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSText.h:212:30: note: 'NSLeftTextAlignment' has been explicitly marked deprecated here
+  212 | static const NSTextAlignment NSLeftTextAlignment API_DEPRECATED_WITH_REPLACEMENT("NSTextAlignmentLeft", macos(10.0,10.12))  = NSTextAlignmentLeft;
+      |                              ^
+src/backends/sdl_osx/SDLMain.m:882:93: warning: 'NSLeftTextAlignment' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  882 |                 [doc addSubview:[self label:lab frame:NSMakeRect(boxX+16,ry+3,176,18) align:NSLeftTextAlignment]];
+      |                                                                                             ^~~~~~~~~~~~~~~~~~~
+      |                                                                                             NSTextAlignmentLeft
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSText.h:212:30: note: 'NSLeftTextAlignment' has been explicitly marked deprecated here
+  212 | static const NSTextAlignment NSLeftTextAlignment API_DEPRECATED_WITH_REPLACEMENT("NSTextAlignmentLeft", macos(10.0,10.12))  = NSTextAlignmentLeft;
+      |                              ^
+src/backends/sdl_osx/SDLMain.m:905:20: warning: 'NSTitledWindowMask' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  905 |         styleMask:(NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask)
+      |                    ^~~~~~~~~~~~~~~~~~
+      |                    NSWindowStyleMaskTitled
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSWindow.h:1046:32: note: 'NSTitledWindowMask' has been explicitly marked deprecated here
+ 1046 | static const NSWindowStyleMask NSTitledWindowMask API_DEPRECATED_WITH_REPLACEMENT("NSWindowStyleMaskTitled", macos(10.0,10.12)) = NSWindowStyleMaskTitled;
+      |                                ^
+src/backends/sdl_osx/SDLMain.m:905:41: warning: 'NSClosableWindowMask' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  905 |         styleMask:(NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask)
+      |                                         ^~~~~~~~~~~~~~~~~~~~
+      |                                         NSWindowStyleMaskClosable
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSWindow.h:1047:32: note: 'NSClosableWindowMask' has been explicitly marked deprecated here
+ 1047 | static const NSWindowStyleMask NSClosableWindowMask API_DEPRECATED_WITH_REPLACEMENT("NSWindowStyleMaskClosable", macos(10.0,10.12)) = NSWindowStyleMaskClosable;
+      |                                ^
+src/backends/sdl_osx/SDLMain.m:905:64: warning: 'NSMiniaturizableWindowMask' is deprecated: first deprecated in macOS 10.12 [-Wdeprecated-declarations]
+  905 |         styleMask:(NSTitledWindowMask | NSClosableWindowMask | NSMiniaturizableWindowMask)
+      |                                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~
+      |                                                                NSWindowStyleMaskMiniaturizable
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSWindow.h:1048:32: note: 'NSMiniaturizableWindowMask' has been explicitly marked deprecated here
+ 1048 | static const NSWindowStyleMask NSMiniaturizableWindowMask API_DEPRECATED_WITH_REPLACEMENT("NSWindowStyleMaskMiniaturizable", macos(10.0,10.12)) = NSWindowStyleMaskMiniaturizable;
+      |                                ^
+src/backends/sdl_osx/SDLMain.m:924:50: warning: 'NSRoundedBezelStyle' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  924 |     [quit setTitle:@"Quit"]; [quit setBezelStyle:NSRoundedBezelStyle];
+      |                                                  ^~~~~~~~~~~~~~~~~~~
+      |                                                  NSBezelStylePush
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSButtonCell.h:155:27: note: 'NSRoundedBezelStyle' has been explicitly marked deprecated here
+  155 | static const NSBezelStyle NSRoundedBezelStyle API_DEPRECATED_WITH_REPLACEMENT("NSBezelStylePush", macos(10.0,10.14)) = NSBezelStylePush;
+      |                           ^
+src/backends/sdl_osx/SDLMain.m:929:61: warning: 'NSRoundedBezelStyle' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  929 |     [bench setTitle:@"Run Benchmark"]; [bench setBezelStyle:NSRoundedBezelStyle];
+      |                                                             ^~~~~~~~~~~~~~~~~~~
+      |                                                             NSBezelStylePush
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSButtonCell.h:155:27: note: 'NSRoundedBezelStyle' has been explicitly marked deprecated here
+  155 | static const NSBezelStyle NSRoundedBezelStyle API_DEPRECATED_WITH_REPLACEMENT("NSBezelStylePush", macos(10.0,10.14)) = NSBezelStylePush;
+      |                           ^
+src/backends/sdl_osx/SDLMain.m:935:52: warning: 'NSRoundedBezelStyle' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  935 |     [play setTitle:@"Launch"]; [play setBezelStyle:NSRoundedBezelStyle];
+      |                                                    ^~~~~~~~~~~~~~~~~~~
+      |                                                    NSBezelStylePush
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSButtonCell.h:155:27: note: 'NSRoundedBezelStyle' has been explicitly marked deprecated here
+  155 | static const NSBezelStyle NSRoundedBezelStyle API_DEPRECATED_WITH_REPLACEMENT("NSBezelStylePush", macos(10.0,10.14)) = NSBezelStylePush;
+      |                           ^
+src/backends/sdl_osx/SDLMain.m:986:46: warning: 'NSOnState' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+  986 |     [a addObject:([fullscreenCheck state] == NSOnState) ? @"1" : @"0"];
+      |                                              ^~~~~~~~~
+      |                                              NSControlStateValueOn
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSCell.h:355:34: note: 'NSOnState' has been explicitly marked deprecated here
+  355 | static const NSControlStateValue NSOnState API_DEPRECATED_WITH_REPLACEMENT("NSControlStateValueOn", macos(10.0,10.14)) = NSControlStateValueOn;
+      |                                  ^
+src/backends/sdl_osx/SDLMain.m:1004:35: warning: 'NSOnState' is deprecated: first deprecated in macOS 10.14 [-Wdeprecated-declarations]
+ 1004 |             cur = ([ctl state] == NSOnState) ? @"1" : @"0";
+      |                                   ^~~~~~~~~
+      |                                   NSControlStateValueOn
+/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks/AppKit.framework/Headers/NSCell.h:355:34: note: 'NSOnState' has been explicitly marked deprecated here
+  355 | static const NSControlStateValue NSOnState API_DEPRECATED_WITH_REPLACEMENT("NSControlStateValueOn", macos(10.0,10.14)) = NSControlStateValueOn;
+      |                                  ^
+===> LD release/ref_gl.so
+22 warnings generated.
+===> LD release/quake2
+ld: warning: reducing alignment of section __DATA,__common from 0x8000 to 0x4000 because it exceeds segment maximum alignment
+==> [4/4] sign and verify
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/quake2: replacing existing signature
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/quake2: valid on disk
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/quake2: satisfies its Designated Requirement
+    quake2  arm64
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/q2ded: replacing existing signature
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/q2ded: valid on disk
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/q2ded: satisfies its Designated Requirement
+    q2ded  arm64
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/ref_gl.so: replacing existing signature
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/ref_gl.so: valid on disk
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/ref_gl.so: satisfies its Designated Requirement
+    ref_gl.so  arm64
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/baseq2/game.so: replacing existing signature
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/baseq2/game.so: valid on disk
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/baseq2/game.so: satisfies its Designated Requirement
+    game.so  arm64
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/libSDL2-2.0.0.dylib: replacing existing signature
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/libSDL2-2.0.0.dylib: valid on disk
+/Users/matt/Documents/old-mac-quake2/build/arm64/release/libSDL2-2.0.0.dylib: satisfies its Designated Requirement
+    libSDL2-2.0.0.dylib  arm64
+==> source stamp 1fca212880d5
+==> done -> build/arm64/release/
+    quake2 q2ded ref_gl.so baseq2/game.so libSDL2-2.0.0.dylib
+    fuse with scripts/build-fat.sh

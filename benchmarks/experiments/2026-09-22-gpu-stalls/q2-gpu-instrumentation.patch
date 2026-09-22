@@ -1,0 +1,210 @@
+diff --git a/yquake2/src/backends/sdl/refresh.c b/yquake2/src/backends/sdl/refresh.c
+index 10dd840e..d2961798 100644
+--- a/yquake2/src/backends/sdl/refresh.c
++++ b/yquake2/src/backends/sdl/refresh.c
+@@ -462,7 +462,9 @@ GLimp_InitGraphics(qboolean fullscreen)
+ void
+ GLimp_EndFrame(void)
+ {
++	R_GPUProfileMark(13);
+ 	SDL_GL_SwapBuffers();
++	R_GPUProfileEnd();
+ }
+ 
+ /*
+diff --git a/yquake2/src/refresh/header/local.h b/yquake2/src/refresh/header/local.h
+index 6ce8968a..0e7d1d48 100644
+--- a/yquake2/src/refresh/header/local.h
++++ b/yquake2/src/refresh/header/local.h
+@@ -473,6 +473,9 @@ void R_InitShellTexture(void);
+ void R_InitCausticTexture(void);
+ void R_InitBloomTextures(void);
+ void R_Bloom(void);
++/* Temporary diagnostic instrumentation; not a shipping renderer feature. */
++void R_GPUProfileMark(int stage);
++void R_GPUProfileEnd(void);
+ void Draw_InitLocal(void);
+ void R_SubdivideSurface(msurface_t *fa);
+ qboolean R_CullBox(vec3_t mins, vec3_t maxs);
+diff --git a/yquake2/src/refresh/r_bloom.c b/yquake2/src/refresh/r_bloom.c
+index 6aceda59..d0ce39ee 100644
+--- a/yquake2/src/refresh/r_bloom.c
++++ b/yquake2/src/refresh/r_bloom.c
+@@ -254,6 +254,7 @@ R_Bloom(void)
+ 	{
+ 		capture_error = qglGetError();
+ 	}
++	R_GPUProfileMark(5);
+ 
+ 	/* 2. downsample: render the captured view into the BLOOM_SIZE corner,
+ 	 *    then copy that into the effect texture. */
+@@ -297,6 +298,7 @@ R_Bloom(void)
+ 	{
+ 		downsample_error = qglGetError();
+ 	}
++	R_GPUProfileMark(6);
+ 
+ 	qglEnable(GL_BLEND);
+ 
+@@ -318,6 +320,7 @@ R_Bloom(void)
+ 		}
+ 	}
+ 
++	R_GPUProfileMark(7);
+ 	/* 4. separable-ish blur: additive offset taps in X then Y, re-copying
+ 	 *    the accumulator between axes. */
+ 	blur = 1.0f;
+@@ -337,6 +340,7 @@ R_Bloom(void)
+ 	{
+ 		blur_x_error = qglGetError();
+ 	}
++	R_GPUProfileMark(8);
+ 
+ 	R_Bind(TEXNUM_BLOOMEFFECT);
+ 	qglColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+@@ -352,6 +356,7 @@ R_Bloom(void)
+ 	{
+ 		blur_y_error = qglGetError();
+ 	}
++	R_GPUProfileMark(9);
+ 
+ 	/* 5. composite over the full view rectangle.
+ 	 *
+@@ -373,6 +378,7 @@ R_Bloom(void)
+ 	qglColor4f(1, 1, 1, 1);
+ 	R_Bind(TEXNUM_BLOOMSCREEN);
+ 	R_Bloom_RestoreScene();
++	R_GPUProfileMark(10);
+ 
+ 	/* 5b. add the bloom */
+ 	qglEnable(GL_BLEND);
+@@ -398,6 +404,7 @@ R_Bloom(void)
+ 		bloom_diagnostics_pending = false;
+ 	}
+ 
++	R_GPUProfileMark(11);
+ 	/* 6. restore state. The caller runs R_SetGL2D next (HUD) and
+ 	 *    R_SetupGL next frame, but leave things tidy regardless. */
+ 	qglColor4f(1, 1, 1, 1);
+diff --git a/yquake2/src/refresh/r_main.c b/yquake2/src/refresh/r_main.c
+index 89dfa4bd..e54d34ec 100644
+--- a/yquake2/src/refresh/r_main.c
++++ b/yquake2/src/refresh/r_main.c
+@@ -25,6 +25,76 @@
+  */
+ 
+ #include "header/local.h"
++#include <mach/mach_time.h>
++
++/* DIAGNOSTIC ONLY. Mode1 serializes boundaries with Finish; mode2 records
++ * asynchronous CPU submission. Neither is a pure GPU timer. */
++static cvar_t *gl_gpu_profile;
++static qboolean gpu_profile_active;
++static int gpu_profile_mode, gpu_profile_frames, gpu_profile_warmup;
++static double gpu_profile_last, gpu_profile_total[15];
++static const char *gpu_profile_names[15] = {
++	"prior", "setup", "world", "entities_shadows", "effects",
++	"capture", "downsample", "darken", "blur_x", "blur_y",
++	"restore", "composite", "bloom_tail", "hud", "swap"
++};
++
++static double
++R_GPUProfileClock(void)
++{
++	static mach_timebase_info_data_t timebase;
++	if (!timebase.denom) mach_timebase_info(&timebase);
++	return (double)mach_absolute_time() * timebase.numer / timebase.denom / 1000000.0;
++}
++
++void
++R_GPUProfileMark(int stage)
++{
++	double now;
++	if (!gpu_profile_active) return;
++	R_ApplyGLBuffer();
++	if (gpu_profile_mode == 1) qglFinish();
++	now = R_GPUProfileClock();
++	if (gpu_profile_warmup >= 20) gpu_profile_total[stage] += now - gpu_profile_last;
++	gpu_profile_last = now;
++}
++
++static void
++R_GPUProfileBegin(void)
++{
++	int mode = (int)gl_gpu_profile->value;
++	gpu_profile_active = mode > 0 && !(r_newrefdef.rdflags & RDF_NOWORLDMODEL);
++	if (!gpu_profile_active) return;
++	if (gpu_profile_mode != mode)
++	{
++		GLint samples = 0, buffers = 0;
++		gpu_profile_mode = mode;
++		gpu_profile_frames = gpu_profile_warmup = 0;
++		memset(gpu_profile_total, 0, sizeof(gpu_profile_total));
++		qglGetIntegerv(0x80A8, &buffers);
++		qglGetIntegerv(0x80A9, &samples);
++		ri.Con_Printf(PRINT_ALL, "GPU_PROFILE mode=%d sample_buffers=%d samples=%d\n", mode, buffers, samples);
++	}
++	gpu_profile_last = R_GPUProfileClock();
++	R_GPUProfileMark(0);
++}
++
++void
++R_GPUProfileEnd(void)
++{
++	int stage;
++	if (!gpu_profile_active) return;
++	R_GPUProfileMark(14);
++	gpu_profile_active = false;
++	if (gpu_profile_warmup++ < 20) return;
++	if (++gpu_profile_frames < 120) return;
++	for (stage = 0; stage < 15; stage++)
++		ri.Con_Printf(PRINT_ALL, "GPU_PROFILE mode=%d frames=%d stage=%s ms=%.4f\n",
++			gpu_profile_mode, gpu_profile_frames, gpu_profile_names[stage],
++			gpu_profile_total[stage] / gpu_profile_frames);
++	memset(gpu_profile_total, 0, sizeof(gpu_profile_total));
++	gpu_profile_frames = 0;
++}
+ 
+ #define NUM_BEAM_SEGS 6
+ 
+@@ -955,6 +1025,7 @@ R_RenderView(refdef_t *fd)
+ 	}
+ 
+ 	r_newrefdef = *fd;
++	R_GPUProfileBegin();
+ 
+ 	if (!r_worldmodel && !(r_newrefdef.rdflags & RDF_NOWORLDMODEL))
+ 	{
+@@ -983,10 +1054,13 @@ R_RenderView(refdef_t *fd)
+ 	R_MarkLeaves(); /* done here so we know if we're in water */
+ 
+ 	R_SetFog();     /* yquake2-ppc Phase C — enable GL_FOG for 3D pass if gl_fog cvar is set */
++	R_GPUProfileMark(1);
+ 
+ 	R_DrawWorld();
++	R_GPUProfileMark(2);
+ 
+ 	R_DrawEntitiesOnList();
++	R_GPUProfileMark(3);
+ 
+ 	R_RenderDlights();
+ 
+@@ -999,8 +1073,10 @@ R_RenderView(refdef_t *fd)
+ 	R_Flash();
+ 
+ 	R_UnsetFog();   /* disable GL_FOG before 2D HUD pass so HUD isn't fogged */
++	R_GPUProfileMark(4);
+ 
+ 	R_Bloom();      /* yquake2-ppc — fixed-function light bloom post-process */
++	R_GPUProfileMark(12);
+ 
+ 	if (gl_speeds->value)
+ 	{
+@@ -1192,6 +1268,7 @@ R_Register(void)
+ 	gl_lightmap = ri.Cvar_Get("gl_lightmap", "0", 0);
+ 	gl_shadows = ri.Cvar_Get("gl_shadows", "0", CVAR_ARCHIVE);
+ 	gl_stencilshadow = ri.Cvar_Get("gl_stencilshadow", "0", CVAR_ARCHIVE);
++	gl_gpu_profile = ri.Cvar_Get("gl_gpu_profile", "0", 0);
+ 	gl_glows = ri.Cvar_Get("gl_glows", "1", CVAR_ARCHIVE);
+ 	gl_trans_lighting = ri.Cvar_Get("gl_trans_lighting", "1", CVAR_ARCHIVE);
+ 	gl_caustics = ri.Cvar_Get("gl_caustics", "1", CVAR_ARCHIVE);

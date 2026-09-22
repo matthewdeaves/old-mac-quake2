@@ -1,0 +1,169 @@
+[build-fat] claimed build host: mini-intel2 (held for g3/g4/g5/i386 + lipo)
+[build-fat] sub-build 1/5: g3
+[build] sync sources Ubuntu → mini-intel2:oldmac/quake2/
+[build] compile g3 on mini-intel2 (vmin=10.3)
+total 2744
+drwxr-xr-x   6 mini  staff     204 Sep 22 15:21 .
+drwxr-xr-x  14 mini  staff     476 Sep 22 15:20 ..
+drwxr-xr-x   3 mini  staff     102 Sep 22 15:21 baseq2
+-rwxr-xr-x   1 mini  staff  260344 Sep 22 15:20 q2ded
+-rwxr-xr-x   1 mini  staff  638984 Sep 22 15:20 quake2
+-rwxr-xr-x   1 mini  staff  496588 Sep 22 15:21 ref_gl.so
+[build] fetch → build/q2-g3/
+[build] source stamp 1fca212880d5
+[build] cpusubtype OK: quake2 = ppc750 (9)
+[build] cpusubtype OK: q2ded = ppc750 (9)
+[build] cpusubtype OK: ref_gl.so = ppc750 (9)
+[build] cpusubtype OK: baseq2/game.so = ppc750 (9)
+[build] artifacts:
+build/q2-g3/SOURCE-STAMP:   ASCII text
+build/q2-g3/baseq2:         directory
+build/q2-g3/q2ded:          Mach-O executable ppc_650
+build/q2-g3/quake2:         Mach-O executable ppc_650
+build/q2-g3/ref_gl.so:      Mach-O dynamically linked shared library ppc_650
+build/q2-g3/baseq2/game.so: Mach-O dynamically linked shared library ppc_650
+[build-fat] sub-build 2/5: g4
+[build] sync sources Ubuntu → mini-intel2:oldmac/quake2/
+[build] compile g4 on mini-intel2 (vmin=10.3)
+total 2744
+drwxr-xr-x   6 mini  staff     204 Sep 22 15:21 .
+drwxr-xr-x  14 mini  staff     476 Sep 22 15:21 ..
+drwxr-xr-x   3 mini  staff     102 Sep 22 15:21 baseq2
+-rwxr-xr-x   1 mini  staff  260344 Sep 22 15:21 q2ded
+-rwxr-xr-x   1 mini  staff  638984 Sep 22 15:21 quake2
+-rwxr-xr-x   1 mini  staff  496608 Sep 22 15:21 ref_gl.so
+[build] fetch → build/q2-g4/
+[build] source stamp 1fca212880d5
+[build] quake2 cpusubtype is '0', re-stamping → ppc7400 (10)
+[build] cpusubtype OK: quake2 = ppc7400 (10)
+[build] q2ded cpusubtype is '0', re-stamping → ppc7400 (10)
+[build] cpusubtype OK: q2ded = ppc7400 (10)
+[build] ref_gl.so cpusubtype is '0', re-stamping → ppc7400 (10)
+[build] cpusubtype OK: ref_gl.so = ppc7400 (10)
+[build] baseq2/game.so cpusubtype is '0', re-stamping → ppc7400 (10)
+[build] cpusubtype OK: baseq2/game.so = ppc7400 (10)
+[build] artifacts:
+build/q2-g4/SOURCE-STAMP:   ASCII text
+build/q2-g4/baseq2:         directory
+build/q2-g4/q2ded:          Mach-O executable ppc_7400
+build/q2-g4/quake2:         Mach-O executable ppc_7400
+build/q2-g4/ref_gl.so:      Mach-O dynamically linked shared library ppc_7400
+build/q2-g4/baseq2/game.so: Mach-O dynamically linked shared library ppc_7400
+[build-fat] sub-build 3/5: g5
+[build] sync sources Ubuntu → mini-intel2:oldmac/quake2/
+[build] compile g5 on mini-intel2 (vmin=10.3)
+total 2872
+drwxr-xr-x   6 mini  staff     204 Sep 22 15:22 .
+drwxr-xr-x  14 mini  staff     476 Sep 22 15:21 ..
+drwxr-xr-x   3 mini  staff     102 Sep 22 15:22 baseq2
+-rwxr-xr-x   1 mini  staff  276700 Sep 22 15:22 q2ded
+-rwxr-xr-x   1 mini  staff  675304 Sep 22 15:22 quake2
+-rwxr-xr-x   1 mini  staff  512852 Sep 22 15:22 ref_gl.so
+[build] fetch → build/q2-g5/
+[build] source stamp 1fca212880d5
+[build] quake2 cpusubtype is '0', re-stamping → ppc970 (100)
+[build] cpusubtype OK: quake2 = ppc970 (100)
+[build] q2ded cpusubtype is '0', re-stamping → ppc970 (100)
+[build] cpusubtype OK: q2ded = ppc970 (100)
+[build] ref_gl.so cpusubtype is '0', re-stamping → ppc970 (100)
+[build] cpusubtype OK: ref_gl.so = ppc970 (100)
+[build] baseq2/game.so cpusubtype is '0', re-stamping → ppc970 (100)
+[build] cpusubtype OK: baseq2/game.so = ppc970 (100)
+[build] artifacts:
+build/q2-g5/SOURCE-STAMP:   ASCII text
+build/q2-g5/baseq2:         directory
+build/q2-g5/q2ded:          Mach-O executable ppc_970
+build/q2-g5/quake2:         Mach-O executable ppc_970
+build/q2-g5/ref_gl.so:      Mach-O dynamically linked shared library ppc_970
+build/q2-g5/baseq2/game.so: Mach-O dynamically linked shared library ppc_970
+[build-fat] sub-build 4/5: lion (on mini-intel2)
+[build] sync sources Ubuntu → mini-intel2:oldmac/quake2/
+[build] compile lion on mini-intel2 (vmin=10.6)
+total 2936
+drwxr-xr-x   6 mini  staff     204 Sep 22 15:22 .
+drwxr-xr-x  14 mini  staff     476 Sep 22 15:22 ..
+drwxr-xr-x   3 mini  staff     102 Sep 22 15:23 baseq2
+-rwxr-xr-x   1 mini  staff  295424 Sep 22 15:22 q2ded
+-rwxr-xr-x   1 mini  staff  701232 Sep 22 15:22 quake2
+-rwxr-xr-x   1 mini  staff  495928 Sep 22 15:22 ref_gl.so
+[build] fetch → build/q2-lion/
+[build] source stamp 1fca212880d5
+[build] artifacts:
+build/q2-lion/SOURCE-STAMP:   ASCII text
+build/q2-lion/baseq2:         directory
+build/q2-lion/q2ded:          Mach-O 64-bit executable x86_64
+build/q2-lion/quake2:         Mach-O 64-bit executable x86_64
+build/q2-lion/ref_gl.so:      Mach-O 64-bit dynamically linked shared library x86_64
+build/q2-lion/baseq2/game.so: Mach-O 64-bit dynamically linked shared library x86_64
+[build-fat] sub-build 5/5: i386
+[build] sync sources Ubuntu → mini-intel2:oldmac/quake2/
+[build] compile i386 on mini-intel2 (vmin=10.4)
+total 2536
+drwxr-xr-x   6 mini  staff     204 Sep 22 15:23 .
+drwxr-xr-x  14 mini  staff     476 Sep 22 15:23 ..
+drwxr-xr-x   3 mini  staff     102 Sep 22 15:23 baseq2
+-rwxr-xr-x   1 mini  staff  247028 Sep 22 15:23 q2ded
+-rwxr-xr-x   1 mini  staff  601844 Sep 22 15:23 quake2
+-rwxr-xr-x   1 mini  staff  444136 Sep 22 15:23 ref_gl.so
+[build] fetch → build/q2-i386/
+[build] source stamp 1fca212880d5
+[build] artifacts:
+build/q2-i386/SOURCE-STAMP:   ASCII text
+build/q2-i386/baseq2:         directory
+build/q2-i386/q2ded:          Mach-O executable i386
+build/q2-i386/quake2:         Mach-O executable i386
+build/q2-i386/ref_gl.so:      Mach-O dynamically linked shared library i386
+build/q2-i386/baseq2/game.so: Mach-O dynamically linked shared library i386
+[build-fat] arm64 slice present: fusing SIX
+[build-fat] source stamp 1fca212880d5
+[build-fat] all 6 slices built from the same source
+[build-fat] lipo -create on mini-intel2 (g3 g4 g5 lion i386 arm64)
+[lipo] quake2:
+Architectures in the fat file: fat/quake2 are: ppc750 ppc7400 ppc970 x86_64 i386 (cputype (16777228) cpusubtype (0)) 
+[lipo] q2ded:
+Architectures in the fat file: fat/q2ded are: ppc750 ppc7400 ppc970 x86_64 i386 (cputype (16777228) cpusubtype (0)) 
+[lipo] ref_gl.so:
+Architectures in the fat file: fat/ref_gl.so are: ppc750 ppc7400 ppc970 x86_64 i386 (cputype (16777228) cpusubtype (0)) 
+[lipo] baseq2/game.so:
+Architectures in the fat file: fat/baseq2/game.so are: ppc750 ppc7400 ppc970 x86_64 i386 (cputype (16777228) cpusubtype (0)) 
+[build-fat] fetch → build/q2-fat/
+[build-fat] sanity:
+build/q2-fat/SOURCE-STAMP:        ASCII text
+build/q2-fat/baseq2:              directory
+build/q2-fat/libSDL2-2.0.0.dylib: Mach-O 64-bit dynamically linked shared library arm64
+build/q2-fat/q2ded:               Mach-O universal binary with 6 architectures: [ppc_650:
+- Mach-O executable ppc_650] [ppc_7400:
+- Mach-O executable ppc_7400] [ppc_970:
+- Mach-O executable ppc_970] [x86_64:Mach-O 64-bit executable x86_64] [i386] [arm64]
+build/q2-fat/q2ded (for architecture cputype (18) cpusubtype (9)):	Mach-O executable ppc_650
+build/q2-fat/q2ded (for architecture cputype (18) cpusubtype (10)):	Mach-O executable ppc_7400
+build/q2-fat/q2ded (for architecture cputype (18) cpusubtype (100)):	Mach-O executable ppc_970
+build/q2-fat/q2ded (for architecture x86_64):	Mach-O 64-bit executable x86_64
+build/q2-fat/q2ded (for architecture i386):	Mach-O executable i386
+build/q2-fat/q2ded (for architecture arm64):	Mach-O 64-bit executable arm64
+build/q2-fat/quake2:              Mach-O universal binary with 6 architectures: [ppc_650:
+- Mach-O executable ppc_650] [ppc_7400:
+- Mach-O executable ppc_7400] [ppc_970] [x86_64] [i386] [arm64]
+build/q2-fat/quake2 (for architecture cputype (18) cpusubtype (9)):	Mach-O executable ppc_650
+build/q2-fat/quake2 (for architecture cputype (18) cpusubtype (10)):	Mach-O executable ppc_7400
+build/q2-fat/quake2 (for architecture cputype (18) cpusubtype (100)):	Mach-O executable ppc_970
+build/q2-fat/quake2 (for architecture x86_64):	Mach-O 64-bit executable x86_64
+build/q2-fat/quake2 (for architecture i386):	Mach-O executable i386
+build/q2-fat/quake2 (for architecture arm64):	Mach-O 64-bit executable arm64
+build/q2-fat/ref_gl.so:           Mach-O universal binary with 6 architectures: [ppc_650:Mach-O dynamically linked shared library ppc_650] [ppc_7400:Mach-O dynamically linked shared library ppc_7400] [ppc_970:Mach-O dynamically linked shared library ppc_970] [x86_64] [i386] [arm64]
+build/q2-fat/ref_gl.so (for architecture cputype (18) cpusubtype (9)):	Mach-O dynamically linked shared library ppc_650
+build/q2-fat/ref_gl.so (for architecture cputype (18) cpusubtype (10)):	Mach-O dynamically linked shared library ppc_7400
+build/q2-fat/ref_gl.so (for architecture cputype (18) cpusubtype (100)):	Mach-O dynamically linked shared library ppc_970
+build/q2-fat/ref_gl.so (for architecture x86_64):	Mach-O 64-bit dynamically linked shared library x86_64
+build/q2-fat/ref_gl.so (for architecture i386):	Mach-O dynamically linked shared library i386
+build/q2-fat/ref_gl.so (for architecture arm64):	Mach-O 64-bit dynamically linked shared library arm64
+build/q2-fat/baseq2/game.so:      Mach-O universal binary with 6 architectures: [ppc_650:Mach-O dynamically linked shared library ppc_650] [ppc_7400:Mach-O dynamically linked shared library ppc_7400] [ppc_970] [x86_64] [i386] [arm64]
+build/q2-fat/baseq2/game.so (for architecture cputype (18) cpusubtype (9)):	Mach-O dynamically linked shared library ppc_650
+build/q2-fat/baseq2/game.so (for architecture cputype (18) cpusubtype (10)):	Mach-O dynamically linked shared library ppc_7400
+build/q2-fat/baseq2/game.so (for architecture cputype (18) cpusubtype (100)):	Mach-O dynamically linked shared library ppc_970
+build/q2-fat/baseq2/game.so (for architecture x86_64):	Mach-O 64-bit dynamically linked shared library x86_64
+build/q2-fat/baseq2/game.so (for architecture i386):	Mach-O dynamically linked shared library i386
+build/q2-fat/baseq2/game.so (for architecture arm64):	Mach-O 64-bit dynamically linked shared library arm64
+[build-fat] all four products carry: arm64 i386 ppc7400 ppc750 ppc970 x86_64 
+[build-fat] fat stamped 1fca212880d5
+[build-fat] OK

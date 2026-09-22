@@ -1,0 +1,3 @@
+MD5 (/Users/mini/oldmac/quake2/gpu-cost.qHvH8z/config.cfg) = 01604d6f6c2b583bd9fcfeb25756914a
+MD5 (/Applications/Quake2/ref_gl.so) = dcfde8e72664968edd16f15f298d785b
+MD5 (/Applications/Quake2/Quake2.app/Contents/MacOS/quake2) = 55dc759b67f770a1f1f0ede4e3636b82

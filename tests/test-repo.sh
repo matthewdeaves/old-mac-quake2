@@ -222,6 +222,51 @@ else
 	pass "Cocoa surface setup is not driven by recurring window updates"
 fi
 
+# Issue #79. Every hw.model overlay must declare the GPU it was measured on,
+# or R_Init cannot verify it and drops that machine to the capability tier.
+detect_undeclared_overlays () { # $1 = misc.c, $2 = bundle dir
+	local cfg hits=""
+	for cfg in $(grep -oE '"autoexec-[a-z0-9-]+" *\}' "$1" | grep -oE 'autoexec-[a-z0-9-]+' | sort -u); do
+		grep -qE '^set q2_overlay_gpu "[a-z0-9 ]+"$' "$2/$cfg.cfg" 2>/dev/null || hits="$hits $cfg"
+	done
+	[ -n "$hits" ] || return 1
+	printf '%s\n' $hits
+}
+ov_tmp="$(mktemp -d)"
+printf '{ "PowerMac1,1", "autoexec-good" },\n{ "PowerMac3,1", "autoexec-bad" },\n' > "$ov_tmp/misc.c"
+printf 'set q2_overlay_gpu "rage 128"\n' > "$ov_tmp/autoexec-good.cfg"
+printf 'set gl_bloom 0\n' > "$ov_tmp/autoexec-bad.cfg"
+if [ "$(detect_undeclared_overlays "$ov_tmp/misc.c" "$ov_tmp")" != autoexec-bad ]; then
+	fail "overlay GPU detector did not isolate the undeclared fixture"
+elif undeclared="$(detect_undeclared_overlays "$REPO_ROOT/yquake2/src/common/misc.c" "$REPO_ROOT/scripts/bundle")"; then
+	fail "overlays without q2_overlay_gpu: $undeclared"
+else
+	pass "every hw.model overlay declares the GPU it was measured on"
+fi
+rm -rf "$ov_tmp"
+
+# Issue #81. The build mirror's rsync --delete targets ~/oldmac/quake2, where a
+# mini that is also an install target keeps its staged DMG and rollbacks.
+keep_tmp="$(mktemp -d)"
+mkdir -p "$keep_tmp/src/yquake2" "$keep_tmp/dst/rollbacks/Quake2.rollback-x" "$keep_tmp/dst/yquake2"
+: > "$keep_tmp/src/yquake2/kept.c"
+: > "$keep_tmp/dst/Quake2-OldMac-vX.dmg"
+: > "$keep_tmp/dst/rollbacks/Quake2.rollback-x/quake2"
+: > "$keep_tmp/dst/yquake2/stale.c"
+if ! grep -q -- "REMOTE_KEEP_EXCLUDES=(--exclude=/rollbacks/ --exclude='/\*.dmg')" "$REPO_ROOT/scripts/build.sh" ||
+	! grep -q -- '"\${REMOTE_KEEP_EXCLUDES\[@\]}"' "$REPO_ROOT/scripts/build.sh"; then
+	fail "build.sh source mirror does not protect staged DMGs and rollbacks"
+elif ! rsync -a --delete --exclude=/rollbacks/ --exclude='/*.dmg' "$keep_tmp/src/" "$keep_tmp/dst/"; then
+	fail "rsync protect-rule fixture could not run"
+elif [ ! -e "$keep_tmp/dst/Quake2-OldMac-vX.dmg" ] || [ ! -e "$keep_tmp/dst/rollbacks/Quake2.rollback-x/quake2" ]; then
+	fail "rsync --delete removed a staged DMG or rollback"
+elif [ -e "$keep_tmp/dst/yquake2/stale.c" ] || [ ! -e "$keep_tmp/dst/yquake2/kept.c" ]; then
+	fail "protect rules stopped the mirror deleting stale sources"
+else
+	pass "build mirror keeps staged DMGs and rollbacks, still deletes stale sources"
+fi
+rm -rf "$keep_tmp"
+
 echo
 [ "$FAILED" = 0 ] && echo "all repo invariants hold" || echo "repo invariants FAILED"
 exit "$FAILED"

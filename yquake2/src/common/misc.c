@@ -531,13 +531,14 @@ Qcommon_Init(int argc, char **argv)
 		 * it nudges those effect cvars on for recognised-capable GPU
 		 * families (r_main.c). Queued through Cbuf like the cfg layers so
 		 * a cmdline +set (early commands, below) still overrides it.
-		 * Mapped machines never set this, so their hand-benched overlay
-		 * values always stand (ADR 0010).
+		 * MAPPED machines run the probe too (issue #79): 2 marks "an
+		 * overlay ran". Each overlay declares the GPU it was measured on
+		 * (q2_overlay_gpu); the renderer keeps the hand-benched values
+		 * only when the live GL_RENDERER matches, and otherwise drops to
+		 * the capability tier. A model number is identity, not capability,
+		 * so it refines the probe rather than replacing it (ADR 0010).
 		 */
-		if (!mapped)
-		{
-			Cbuf_AddText("set q2_autotier 1\n");
-		}
+		Cbuf_AddText(mapped ? "set q2_autotier 2\n" : "set q2_autotier 1\n");
 	}
 #endif
 

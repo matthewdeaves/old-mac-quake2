@@ -1339,6 +1339,87 @@ R_ApplyShadowDefaults(const char *renderer)
 		ri.Cvar_Set("gl_clear_combined", measured ? "1" : "0");
 }
 
+/* Runtime capability tier (#32, #79). q2_autotier comes from common/misc.c:
+ * 1 = no per-machine overlay ran, 2 = one did and declared the GPU it was
+ * measured on in q2_overlay_gpu (a lowercase GL_RENDERER substring). A
+ * matching overlay keeps its hand-benched values. A mismatch (swapped card,
+ * a model number shared by several GPUs) means those values were never
+ * measured here, so the fill-heavy extras go off and the cheap per-frame
+ * effects follow the GPU family, as on unmapped hardware. Draw-time cvars
+ * only: never a video-mode cvar, which would reload the refresh DLL (fatal
+ * on the Rage 128, misc.c). Cleared after use so an in-session vid_restart
+ * does not re-clobber a value the player changed at the console. */
+static void
+R_ApplyCapabilityTier(const char *renderer)
+{
+	int tier = (int)ri.Cvar_Get("q2_autotier", "0", 0)->value;
+	const char *expect = ri.Cvar_Get("q2_overlay_gpu", "", 0)->string;
+	qboolean mismatch;
+
+	if (tier != 1 && tier != 2)
+	{
+		return;
+	}
+
+	if (tier == 2 && expect[0] && strstr(renderer, expect))
+	{
+		ri.Con_Printf(PRINT_ALL,
+			"...mapped machine, GPU matches its overlay (%s): keeping the measured profile\n", expect);
+		ri.Cvar_Set("q2_autotier", "0");
+		return;
+	}
+
+	mismatch = tier == 2;
+	if (mismatch)
+	{
+		ri.Con_Printf(PRINT_ALL,
+			"...mapped machine, overlay measured on '%s' but GL_RENDERER is '%s': capability fallback\n",
+			expect[0] ? expect : "(undeclared)", renderer);
+		ri.Cvar_Set("gl_bloom", "0");
+		ri.Cvar_Set("gl_stencilshadow", "0");
+	}
+
+	/* Family evidence: Radeon 9000/9200/9600 measured ~free for all three
+	 * (quicksilver / mini-g4 / imac-g5); every Radeon is at least R100-class
+	 * with multitex + texgen, and GeForce has both back to the GF2 MX.
+	 * Rage 128 measured free for trans_lighting + caustics on yosemite, but
+	 * glows is untested on that driver, so it stays off there. */
+	if (strstr(renderer, "radeon") || strstr(renderer, "geforce"))
+	{
+		ri.Cvar_Set("gl_glows", "1");
+		ri.Cvar_Set("gl_trans_lighting", "1");
+		ri.Cvar_Set("gl_caustics", "1");
+		ri.Con_Printf(PRINT_ALL,
+			"...capability tier, Radeon/GeForce family: glows, trans_lighting, caustics on\n");
+	}
+	else if (strstr(renderer, "rage 128"))
+	{
+		if (mismatch)
+		{
+			ri.Cvar_Set("gl_glows", "0");
+		}
+		ri.Cvar_Set("gl_trans_lighting", "1");
+		ri.Cvar_Set("gl_caustics", "1");
+		ri.Con_Printf(PRINT_ALL,
+			"...capability tier, Rage 128: trans_lighting, caustics on\n");
+	}
+	else if (mismatch)
+	{
+		ri.Cvar_Set("gl_glows", "0");
+		ri.Cvar_Set("gl_trans_lighting", "0");
+		ri.Cvar_Set("gl_caustics", "0");
+		ri.Con_Printf(PRINT_ALL,
+			"...capability tier, unrecognised GPU: cheap effects off\n");
+	}
+	else
+	{
+		ri.Con_Printf(PRINT_ALL,
+			"...capability tier, unrecognised GPU: keeping the conservative baseline\n");
+	}
+
+	ri.Cvar_Set("q2_autotier", "0");
+}
+
 int
 R_Init(void *hinstance, void *hWnd)
 {
@@ -1504,27 +1585,7 @@ R_Init(void *hinstance, void *hWnd)
 	 * cleared after applying so an in-session vid_restart doesn't
 	 * re-clobber a value the player changed at the console.
 	 */
-	if (ri.Cvar_Get("q2_autotier", "0", 0)->value)
-	{
-		if (strstr(renderer_buffer, "radeon") ||
-			strstr(renderer_buffer, "geforce"))
-		{
-			ri.Cvar_Set("gl_glows", "1");
-			ri.Cvar_Set("gl_trans_lighting", "1");
-			ri.Cvar_Set("gl_caustics", "1");
-			ri.Con_Printf(PRINT_ALL,
-				"...unmapped machine, capable GPU family: enabling glows, trans_lighting, caustics\n");
-		}
-		else if (strstr(renderer_buffer, "rage 128"))
-		{
-			ri.Cvar_Set("gl_trans_lighting", "1");
-			ri.Cvar_Set("gl_caustics", "1");
-			ri.Con_Printf(PRINT_ALL,
-				"...unmapped machine, Rage 128: enabling trans_lighting, caustics\n");
-		}
-
-		ri.Cvar_Set("q2_autotier", "0");
-	}
+	R_ApplyCapabilityTier(renderer_buffer);
 
 	ri.Cvar_Set("scr_drawall", "0");
 	gl_config.allow_cds = true;

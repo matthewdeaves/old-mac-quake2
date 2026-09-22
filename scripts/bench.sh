@@ -393,6 +393,14 @@ if [ -n "${EXTRA:-}" ]; then
   CVAR_TAG="_$CVAR_SLUG"
 fi
 
+# A locked or shielded console makes a launched game run behind loginwindow and
+# capture black (old-mac-build-host#88). That is untested, not a measurement.
+if [ "$HOST" = workstation ]; then
+  "$(dirname "$_PICK")/gui-precondition.sh" || exit 1
+else
+  "$(dirname "$_PICK")/gui-precondition.sh" "$HOST" || exit 1
+fi
+
 declare -a FPS
 for i in $(seq 1 $RUNS); do
   echo "[bench $TARGET $DEMO $RES] run $i/$RUNS"

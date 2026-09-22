@@ -126,6 +126,14 @@ if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
   exit 2
 fi
 
+# A locked or shielded console makes a launched game run behind loginwindow and
+# capture black (old-mac-build-host#88). That is untested, not a pass or a fail.
+if [ "$HOST" = workstation ]; then
+  "$(dirname "$_PICK")/gui-precondition.sh" || exit 1
+else
+  "$(dirname "$_PICK")/gui-precondition.sh" "$HOST" || exit 1
+fi
+
 echo "[smoke $HOST] launching installed Quake2.app with PRODUCTION config (as a human would), demo=$DEMO"
 # NB: production launch — no -noarchautoexec, no vid/res override.
 # TERM-before-KILL always: SIGTERM lets SDL restore the captured display — a

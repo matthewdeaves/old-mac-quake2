@@ -166,6 +166,9 @@ echo "[screenshot]   cfg size: $LINES lines"
 
 scp -q "$STAGE_CFG" "$HOST:/Applications/Quake2/baseq2/autoshot.cfg"
 
+# A locked or shielded console captures black (old-mac-build-host#88).
+"$(dirname "$_PICK")/gui-precondition.sh" "$HOST" || exit 1
+
 echo "[screenshot] launch quake2 → timedemo demo1.dm2 → capture series → quit"
 # Engine path auto-detect: fat deploys ship Quake2.app/Contents/MacOS/quake2;
 # per-target deploys ship a flat ./quake2 next to the binary. Both are

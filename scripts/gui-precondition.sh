@@ -34,9 +34,23 @@ set -uo pipefail
 PROBE='
 command -v ioreg >/dev/null 2>&1 || { echo "probe: no ioreg"; exit 2; }
 if command -v caffeinate >/dev/null 2>&1; then caffeinate -u -t 2; sleep 2; woke=yes; else woke="no caffeinate"; fi
+# 10.5+ ioreg takes -n NAME -d1 / -r. Tiger (and Panther) ioreg does not: it
+# prints usage, which made the lock check always read "no" there (quake3,
+# 2026-09-22). Fall back to the whole -l tree, where the Root node, and so
+# IOConsoleUsers, comes first.
+if ioreg -n Root -d1 2>/dev/null | grep -q "IOConsoleUsers"; then
+	root=$(ioreg -n Root -d1 2>/dev/null)
+	dw=$(ioreg -n IODisplayWrangler -r -d1 2>/dev/null | grep "CurrentPowerState" | head -1)
+else
+	all=$(ioreg -l 2>/dev/null)
+	root=$(printf "%s\n" "$all" | sed -n 1,80p)
+	dw=$(printf "%s\n" "$all" | awk "/IODisplayWrangler/{f=1} f && /CurrentPowerState/{print; exit}")
+fi
+# Fail closed: no console-session record means we cannot say it is unlocked.
+printf "%s\n" "$root" | grep -q "IOConsoleUsers" || { echo "probe: cannot read the console session (ioreg)"; exit 2; }
 lock=no
-ioreg -n Root -d1 | grep -q "\"CGSSessionScreenIsLocked\"=Yes" && lock=yes
-disp=$(ioreg -n IODisplayWrangler -r -d1 2>/dev/null | sed -n "s/.*\"CurrentPowerState\"=\([0-9]*\).*/\1/p" | head -1)
+printf "%s\n" "$root" | grep -q "\"CGSSessionScreenIsLocked\" *= *Yes" && lock=yes
+disp=$(printf "%s\n" "$dw" | sed -n "s/.*\"CurrentPowerState\" *= *\([0-9][0-9]*\).*/\1/p" | head -1)
 echo "probe: wake=$woke locked=$lock display_power=${disp:-none}"
 [ "$lock" = yes ] && exit 3
 exit 0

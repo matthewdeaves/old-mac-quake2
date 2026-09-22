@@ -1,0 +1,7 @@
+EXITED_BY_ITSELF=yes after 8s
+quake00.tga
+quake01.tga
+setting mode -1: 1024 768
+GL_RENDERER: NVIDIA GeForce 9400 OpenGL Engine
+Bloom GL diagnostics: read 0x405, draw 0x405, capture 0x0, downsample 0x0, darken 0x0, blur-x 0x0, blur-y 0x0, composite 0x0.
+gl_bloom "1"

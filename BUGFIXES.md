@@ -1,5 +1,15 @@
 # Bug fixes
 
+## 2026-09-22 — Linux CI could not exercise occupied-install rollback
+
+The installer fixture ran on Ubuntu but the installer used Mac-only `md5`,
+`ditto` and BSD `stat` options. The helper now uses GNU equivalents on Linux
+while retaining the native Mac operations on the fleet. Digest reads reject
+failed or malformed output, and restore rejects failed device queries.
+The real update and rollback fixtures pass on macOS and Linux. ShellCheck's
+separate failure on comma-containing linker flags was fixed by quoting those
+array elements, without changing the arguments passed to the compiler.
+
 ## 2026-09-12 — Occupied installs had no rollback-safe update path
 
 The fresh DMG deployer correctly refused `/Applications/Quake2` when it already

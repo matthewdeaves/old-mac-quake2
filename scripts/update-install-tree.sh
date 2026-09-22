@@ -17,7 +17,32 @@ fail() {
 }
 
 file_md5() {
-  md5 "$1" 2>/dev/null | awk '{print $NF}'
+  if command -v md5 >/dev/null 2>&1; then
+    digest=$(md5 -q "$1") || return 1
+  else
+    digest=$(md5sum "$1") || return 1
+    digest=${digest%% *}
+  fi
+  [ "${#digest}" = 32 ] || return 1
+  case "$digest" in *[!0-9a-fA-F]*) return 1 ;; esac
+  printf '%s\n' "$digest"
+}
+
+# Keep the native Mac operations on the fleet. GNU equivalents let the real
+# update/rollback code run in Linux CI instead of mocking its filesystem work.
+device_id() {
+  case "$(uname -s)" in
+    Darwin) stat -f %d "$1" ;;
+    *) stat -c %d "$1" ;;
+  esac
+}
+
+copy_tree() {
+  if command -v ditto >/dev/null 2>&1; then
+    ditto "$1" "$2"
+  else
+    cp -pR "$1" "$2"
+  fi
 }
 
 # Never /Applications: a rollback/failed copy sitting beside the live install
@@ -45,7 +70,9 @@ restore_install() {
   # Device-id comparison, not a shared parent dir: ROLLBACK now lives under
   # ROLLBACK_ROOT (~/oldmac/...), a different directory tree from DEST
   # (/Applications/...) but the same boot volume on every fleet Mac.
-  [ "$(stat -f %d "$ROLLBACK")" = "$(stat -f %d "$DEST")" ] || fail "restore must stay on one volume"
+  rollback_device=$(device_id "$ROLLBACK") || fail "cannot read rollback device"
+  current_device=$(device_id "$DEST") || fail "cannot read current device"
+  [ "$rollback_device" = "$current_device" ] || fail "restore must stay on one volume"
 
   mkdir -p "$ROLLBACK_ROOT"
   stamp=$(date -u +%Y%m%dT%H%M%SZ)
@@ -166,9 +193,9 @@ echo "[update-tree] current=$DEST engine=$old_md5 size=${needed_kb}KB"
 echo "[update-tree] stage=$STAGE rollback=$BACKUP"
 inventory_baseq2 "$DEST/baseq2" "$OLD_MANIFEST"
 
-ditto "$DEST" "$STAGE"
+copy_tree "$DEST" "$STAGE"
 rm -rf "$STAGE/Quake2.app"
-ditto "$SOURCE/Quake2.app" "$STAGE/Quake2.app"
+copy_tree "$SOURCE/Quake2.app" "$STAGE/Quake2.app"
 
 copy_verified() {
   src=$1

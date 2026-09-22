@@ -6,8 +6,8 @@ test_dir="$(mktemp -d "${TMPDIR:-/tmp}/q2-renderer-tests.XXXXXX")"
 trap 'rm -rf "$test_dir"' EXIT
 compiler="${CC:-cc}"
 case "$(uname -s)" in
-  Darwin) linker=(-Wl,-dead_strip) ;;
-  *) linker=(-Wl,--gc-sections -lm) ;;
+  Darwin) linker=("-Wl,-dead_strip") ;;
+  *) linker=("-Wl,--gc-sections" -lm) ;;
 esac
 "$compiler" -std=gnu99 "${RENDERER_TEST_OPT:--O2}" -g \
   -Wno-deprecated-declarations -ffunction-sections -fdata-sections \

@@ -274,6 +274,19 @@ run_remote() {
 #     `make` (#90, measured 2026-09-22): without it a live build between
 #     compiler steps counted 0 and its lock read stale after STALE_SECS.
 # Our own probe line always contains "grep", so it is dropped.
+# One parser for `ps ax -o pid=,ucomm=` (#89): it was copied three times, and
+# #74's padded-field trim had to be applied to each copy by hand. Each line out
+# is "PID BASENAME"; the basename may contain spaces ("Aleph One"), which
+# `read -r pid base` keeps whole. Embedded verbatim in the probe and release
+# remote bodies, since those are separate remote shells.
+PS_EXE_FN='ps_exe() {
+	ps ax -o pid=,ucomm= 2>/dev/null | while IFS= read -r line; do
+		pid=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*//; s/[[:space:]].*$//")
+		exe=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//")
+		printf "%s %s\n" "$pid" "${exe##*/}"
+	done
+}'
+
 probe() {
 	# $2, optional: a file to receive ssh's stderr. Default /dev/null preserves
 	# the old behaviour for try_acquire, which only cares whether it worked.
@@ -284,21 +297,16 @@ probe() {
 	run_remote "$1" '
 		# Match only executable basenames. Argument text can contain game names
 		# in an agent prompt, but that does not mean an engine is running.
+		'"$PS_EXE_FN"'
 		game_pids() {
-			ps ax -o pid=,ucomm= 2>/dev/null | while IFS= read -r line; do
-				pid=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*//; s/[[:space:]].*$//")
-				exe=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//")
-				base=${exe##*/}
+			ps_exe | while read -r pid base; do
 				case "$base" in
 					'"$GAME_PROC_CASE"'|"Classic Marathon") printf "%s\n" "$pid" ;;
 				esac
 			done
 		}
 		busy_pids() {
-			ps ax -o pid=,ucomm= 2>/dev/null | while IFS= read -r line; do
-				pid=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*//; s/[[:space:]].*$//")
-				exe=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//")
-				base=${exe##*/}
+			ps_exe | while read -r pid base; do
 				case "$base" in
 					'"$GAME_PROC_CASE"'|"Classic Marathon"|hdiutil|ditto|make|gmake|gnumake|waf|cc1|cc1plus|clang|collect2|ninja) printf "%s\n" "$pid" ;;
 				esac
@@ -646,11 +654,9 @@ cmd_release() {
 		echo "  sessions in $REPO_NAME apart. Export BENCH_LOCK_CLAIM to release strictly." >&2
 	fi
 	run_remote "$h" "
+		$PS_EXE_FN
 		game_pids() {
-			ps ax -o pid=,ucomm= 2>/dev/null | while IFS= read -r line; do
-				pid=\$(printf '%s\\n' \"\$line\" | sed 's/^[[:space:]]*//; s/[[:space:]].*$//')
-				exe=\$(printf '%s\\n' \"\$line\" | sed 's/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//')
-				base=\${exe##*/}
+			ps_exe | while read -r pid base; do
 				case \"\$base\" in
 					$GAME_PROC_CASE|\"Classic Marathon\") printf '%s\\n' \"\$pid\" ;;
 				esac

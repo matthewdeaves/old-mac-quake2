@@ -186,6 +186,16 @@ The R300 display capture is never released. Always TERM, sleep, then KILL:
 
 ## Renderer features
 
+**2026-09-22, offscreen bloom workspace gives too little benefit on GeForce 9400.**
+At native1920x1080 with requestedMSAA2 and bloom256/darken4, single-sample
+renderbuffer copies measured demo2 A/B/B/A 48.30/48.85/48.65/48.20 fps.
+Direct texture ping-pong measured 47.40/50.15/49.30/48.75 in demo2, then
+50.25/50.65/50.90/49.95 in demo1. There is a small measured benefit, but
+only 0.675 fps between demo1's averaged warm legs. Reverted the added FBO
+code rather than shipping extra legacy-driver paths for this return. This does
+not rule out a different approach to the full-resolution capture/composite.
+Evidence, visual comparisons and recoverable patches: framebuffer/intel-fbo.
+
 **2026-09-22, raising GeForce 9400 MSAA with bloom spends too much headroom.**
 At native 1920x1080, optimized bloom on, demo2 requested MSAA2 versus MSAA4
 measured warm 48.25 versus 30.40 fps from three runs each. The selected frames

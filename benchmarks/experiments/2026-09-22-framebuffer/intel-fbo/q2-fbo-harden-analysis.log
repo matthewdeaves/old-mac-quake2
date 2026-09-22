@@ -1,0 +1,7 @@
+=== cppcheck (src/refresh/r_bloom.c) ===
+
+=== clang -fsyntax-only -Wextra -Wshadow -Wundef -Wpointer-arith (src/refresh/r_bloom.c) ===
+1 warning generated.
+src/refresh/r_bloom.c:329:46: warning: declaration shadows a variable in the global scope [-Wshadow]
+
+[analyze] done.

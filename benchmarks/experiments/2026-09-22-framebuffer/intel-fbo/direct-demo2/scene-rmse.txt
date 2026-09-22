@@ -1,0 +1,10 @@
+mini-sl-00.png 0
+mini-sl-01.png 0
+mini-sl-02.png 0
+mini-sl-03.png 2.06685e-05
+mini-sl-04.png 9.5277e-06
+mini-sl-05.png 0
+mini-sl-06.png 0
+mini-sl-07.png 1.2118e-05
+mini-sl-08.png 0
+mini-sl-09.png 0

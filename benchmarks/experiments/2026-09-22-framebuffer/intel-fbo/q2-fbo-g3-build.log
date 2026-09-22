@@ -1,0 +1,23 @@
+[build] claimed build host: mini-intel2
+[build] sync sources Ubuntu → mini-intel2:oldmac/quake2/
+[build] compile g3 on mini-intel2 (vmin=10.3)
+total 2736
+drwxr-xr-x   6 mini  staff     204 Sep 22 12:32 .
+drwxr-xr-x  14 mini  staff     476 Sep 22 12:32 ..
+drwxr-xr-x   3 mini  staff     102 Sep 22 12:32 baseq2
+-rwxr-xr-x   1 mini  staff  260344 Sep 22 12:32 q2ded
+-rwxr-xr-x   1 mini  staff  638984 Sep 22 12:32 quake2
+-rwxr-xr-x   1 mini  staff  494812 Sep 22 12:32 ref_gl.so
+[build] fetch → build/q2-g3/
+[build] source stamp 0f1f9ea873cf
+[build] cpusubtype OK: quake2 = ppc750 (9)
+[build] cpusubtype OK: q2ded = ppc750 (9)
+[build] cpusubtype OK: ref_gl.so = ppc750 (9)
+[build] cpusubtype OK: baseq2/game.so = ppc750 (9)
+[build] artifacts:
+build/q2-g3/SOURCE-STAMP:   ASCII text
+build/q2-g3/baseq2:         directory
+build/q2-g3/q2ded:          Mach-O executable ppc_650
+build/q2-g3/quake2:         Mach-O executable ppc_650
+build/q2-g3/ref_gl.so:      Mach-O dynamically linked shared library ppc_650
+build/q2-g3/baseq2/game.so: Mach-O dynamically linked shared library ppc_650

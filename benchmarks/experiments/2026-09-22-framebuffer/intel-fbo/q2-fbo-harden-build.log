@@ -1,0 +1,19 @@
+[build] claimed build host: mini-intel2
+[build] sync sources Ubuntu → mini-intel2:oldmac/quake2/
+[build] compile lion on mini-intel2 (vmin=10.6)
+total 2928
+drwxr-xr-x   6 mini  staff     204 Sep 22 12:39 .
+drwxr-xr-x  14 mini  staff     476 Sep 22 12:39 ..
+drwxr-xr-x   3 mini  staff     102 Sep 22 12:39 baseq2
+-rwxr-xr-x   1 mini  staff  295424 Sep 22 12:39 q2ded
+-rwxr-xr-x   1 mini  staff  701232 Sep 22 12:39 quake2
+-rwxr-xr-x   1 mini  staff  493672 Sep 22 12:39 ref_gl.so
+[build] fetch → build/q2-lion/
+[build] source stamp 6b77491d4399
+[build] artifacts:
+build/q2-lion/SOURCE-STAMP:   ASCII text
+build/q2-lion/baseq2:         directory
+build/q2-lion/q2ded:          Mach-O 64-bit executable x86_64
+build/q2-lion/quake2:         Mach-O 64-bit executable x86_64
+build/q2-lion/ref_gl.so:      Mach-O 64-bit dynamically linked shared library x86_64
+build/q2-lion/baseq2/game.so: Mach-O 64-bit dynamically linked shared library x86_64

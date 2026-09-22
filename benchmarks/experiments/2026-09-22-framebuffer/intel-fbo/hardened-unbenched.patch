@@ -1,0 +1,549 @@
+diff --git a/tests/renderer-bloom.c b/tests/renderer-bloom.c
+index 502b9271..a01b5f13 100644
+--- a/tests/renderer-bloom.c
++++ b/tests/renderer-bloom.c
+@@ -1,12 +1,163 @@
+ /* Record production restore quads without creating a GL context. */
+ #include <assert.h>
++#include <stdarg.h>
+ #include "../yquake2/src/refresh/r_bloom.c"
+ 
+ viddef_t vid;
+ refdef_t r_newrefdef;
++refimport_t ri;
++glconfig_t gl_config;
++static int queries, lookups, generated, deleted, missing_proc, zero_ids;
++static GLuint bound_framebuffer = 7, bound_renderbuffer = 8;
++static GLuint bound_texture, attached_texture;
++void R_Bind(int texture) { bound_texture = texture; }
++static void APIENTRY tex_image(GLenum target, GLint level, GLint internal, GLsizei w,
++		GLsizei h, GLint border, GLenum format, GLenum type, const void *data)
++{ assert(target == GL_TEXTURE_2D && level == 0 && internal == GL_RGBA8 && w == BLOOM_SIZE && h == BLOOM_SIZE && !border && format == GL_RGBA && type == GL_UNSIGNED_BYTE && !data);
++  assert(bound_texture == TEXNUM_BLOOMWORK || bound_texture == TEXNUM_BLOOMWORK2); }
++static void APIENTRY tex_parameter(GLenum target, GLenum key, GLint value)
++{ (void)key; (void)value; assert(target == GL_TEXTURE_2D); }
++static void APIENTRY enable(GLenum target) { assert(target == GL_BLEND); }
++static void APIENTRY disable(GLenum target) { assert(target == GL_BLEND); }
++static void APIENTRY color(GLfloat r, GLfloat g, GLfloat b, GLfloat a)
++{ assert(r == 1 && g == 1 && b == 1 && a == 1); }
++__typeof__(qglTexImage2D) qglTexImage2D = tex_image;
++__typeof__(qglTexParameteri) qglTexParameteri = tex_parameter;
++__typeof__(qglEnable) qglEnable = enable;
++__typeof__(qglDisable) qglDisable = disable;
++__typeof__(qglColor4f) qglColor4f = color;
++static GLenum framebuffer_status = GL_FRAMEBUFFER_COMPLETE_EXT, pending_error;
++static void print_fn(int level, char *format, ...) { (void)level; (void)format; }
++static void APIENTRY get_integer(GLenum name, GLint *value)
++{
++	queries++;
++	if (name == GL_FRAMEBUFFER_BINDING_EXT) *value = bound_framebuffer;
++	else { assert(name == GL_RENDERBUFFER_BINDING_EXT); *value = bound_renderbuffer; }
++}
++static GLenum APIENTRY get_error(void)
++{ GLenum error = pending_error; pending_error = GL_NO_ERROR; return error; }
++static void APIENTRY gen_fb(GLsizei n, GLuint *id)
++{ assert(n == 1); *id = zero_ids ? 0 : 42; generated++; }
++static void APIENTRY gen_rb(GLsizei n, GLuint *id)
++{ assert(n == 1); *id = zero_ids ? 0 : 43; generated++; }
++static void APIENTRY delete_fb(GLsizei n, const GLuint *id)
++{ assert(n == 1 && *id == 42 && bound_framebuffer != *id); deleted++; }
++static void APIENTRY delete_rb(GLsizei n, const GLuint *id)
++{ assert(n == 1 && *id == 43 && bound_renderbuffer != *id); deleted++; }
++static void APIENTRY bind_fb(GLenum target, GLuint id)
++{ assert(target == GL_FRAMEBUFFER_EXT); bound_framebuffer = id; }
++static void APIENTRY bind_rb(GLenum target, GLuint id)
++{ assert(target == GL_RENDERBUFFER_EXT); bound_renderbuffer = id; }
++static void APIENTRY storage(GLenum target, GLenum format, GLsizei w, GLsizei h)
++{ assert(target == GL_RENDERBUFFER_EXT && format == GL_RGBA8 && w == BLOOM_SIZE && h == BLOOM_SIZE); }
++static void APIENTRY attach(GLenum target, GLenum point, GLenum type, GLuint id)
++{ assert(target == GL_FRAMEBUFFER_EXT && point == GL_COLOR_ATTACHMENT0_EXT && type == GL_RENDERBUFFER_EXT && id == 43); }
++static GLenum APIENTRY status(GLenum target)
++{ assert(target == GL_FRAMEBUFFER_EXT); return framebuffer_status; }
++static void APIENTRY attach_texture(GLenum target, GLenum point, GLenum type, GLuint id, GLint level)
++{ assert(target == GL_FRAMEBUFFER_EXT && point == GL_COLOR_ATTACHMENT0_EXT && type == GL_TEXTURE_2D && level == 0); attached_texture = id; }
++static void APIENTRY buffer(GLenum which)
++{ assert(bound_framebuffer == 42 && which == GL_COLOR_ATTACHMENT0_EXT); }
++__typeof__(qglGetIntegerv) qglGetIntegerv = get_integer;
++__typeof__(qglGetError) qglGetError = get_error;
++__typeof__(qglDrawBuffer) qglDrawBuffer = buffer;
++__typeof__(qglReadBuffer) qglReadBuffer = buffer;
++void *GetProcAddressGL(char *name)
++{
++	lookups++;
++	if (lookups == missing_proc) return NULL;
++#define PROC(n, f) if (!strcmp(name, n)) return (void *)f
++	PROC("glGenFramebuffersEXT", gen_fb);
++	PROC("glDeleteFramebuffersEXT", delete_fb);
++	PROC("glBindFramebufferEXT", bind_fb);
++	PROC("glGenRenderbuffersEXT", gen_rb);
++	PROC("glDeleteRenderbuffersEXT", delete_rb);
++	PROC("glBindRenderbufferEXT", bind_rb);
++	PROC("glRenderbufferStorageEXT", storage);
++	PROC("glFramebufferRenderbufferEXT", attach);
++	PROC("glCheckFramebufferStatusEXT", status);
++	PROC("glFramebufferTexture2DEXT", attach_texture);
++#undef PROC
++	assert(0); return NULL;
++}
++
++static void test_workspace(void)
++{
++	cvar_t option = {0};
++	int missing, size;
++	gl_bloom_fbo = &option;
++	ri.Con_Printf = print_fn;
++	gl_config.extensions_string = "GL_EXT_framebuffer_object";
++	assert(!R_Bloom_BeginWorkspace() && !queries && !lookups);
++	option.value = 1;
++	gl_config.extensions_string = "";
++	assert(!R_Bloom_BeginWorkspace() && !queries && !lookups);
++	R_ShutdownBloom();
++	gl_config.extensions_string = "GL_EXT_framebuffer_object";
++	for (missing = 1; missing <= 9; missing++)
++	{
++		missing_proc = missing; lookups = 0;
++		assert(!R_Bloom_BeginWorkspace() && !generated && !queries);
++		R_ShutdownBloom();
++	}
++	missing_proc = 0;
++	for (size = 64; size <= 512; size *= 2)
++	{
++		BLOOM_SIZE = size;
++		generated = deleted = 0;
++		assert(R_Bloom_BeginWorkspace());
++		assert(bound_framebuffer == 42 && bound_renderbuffer == 8 && generated == 2);
++		R_Bloom_EndWorkspace();
++		assert(bound_framebuffer == 7);
++		assert(R_Bloom_BeginWorkspace() && generated == 2);
++		R_Bloom_EndWorkspace();
++		option.value = 0;
++		assert(!R_Bloom_BeginWorkspace() && bound_framebuffer == 7);
++		option.value = 1;
++		R_ShutdownBloom();
++		assert(deleted == 2 && !bloom_fbo.tried && !bloom_inited);
++	}
++	for (missing = 0; missing < 3; missing++)
++	{
++		generated = deleted = 0;
++		framebuffer_status = missing == 0 ? 0 : GL_FRAMEBUFFER_COMPLETE_EXT;
++		pending_error = missing == 1 ? GL_OUT_OF_MEMORY : GL_NO_ERROR;
++		zero_ids = missing == 2;
++		assert(!R_Bloom_BeginWorkspace());
++		assert(bound_framebuffer == 7 && bound_renderbuffer == 8);
++		assert(deleted == (zero_ids ? 0 : 2));
++		assert(!R_Bloom_BeginWorkspace() && generated == 2); /* don't retry each frame */
++		R_ShutdownBloom();
++	}
++	zero_ids = 0; framebuffer_status = GL_FRAMEBUFFER_COMPLETE_EXT;
++	option.value = 2;
++	missing_proc = 10; lookups = 0;
++	assert(!R_Bloom_BeginWorkspace());
++	R_ShutdownBloom();
++	missing_proc = 0;
++	generated = 0; pending_error = GL_OUT_OF_MEMORY;
++	assert(!R_Bloom_BeginWorkspace());
++	assert(!R_Bloom_BeginWorkspace() && generated == 2);
++	assert(bloom_inited && bloom_fbo.direct && bloom_fbo.tried);
++	R_ShutdownBloom();
++	assert(R_Bloom_BeginWorkspace() && bloom_fbo.direct);
++	assert(attached_texture == TEXNUM_BLOOMWORK);
++	assert(R_Bloom_NextTexture(TEXNUM_BLOOMWORK) == TEXNUM_BLOOMWORK2);
++	assert(bound_texture == TEXNUM_BLOOMWORK && attached_texture == TEXNUM_BLOOMWORK2);
++	assert(R_Bloom_NextTexture(TEXNUM_BLOOMWORK2) == TEXNUM_BLOOMWORK);
++	assert(bound_texture == TEXNUM_BLOOMWORK2 && attached_texture == TEXNUM_BLOOMWORK);
++	R_Bloom_EndWorkspace();
++	R_ShutdownBloom();
++	puts("bloom FBO: capability gates, bindings, reuse, allocation failure and cleanup pass");
++}
+ static float vertices[4][4], texcoord[2];
+ static int count;
+-static void APIENTRY begin(GLenum mode) { assert(mode == GL_QUADS); count = 0; }
++static void APIENTRY begin(GLenum mode)
++{
++	assert(mode == GL_QUADS);
++	if (bound_framebuffer == 42 && attached_texture) assert(bound_texture != attached_texture);
++	count = 0;
++}
+ static void APIENTRY end(void) { assert(count == 4); }
+ static void APIENTRY tex(GLfloat s, GLfloat t) { texcoord[0] = s; texcoord[1] = t; }
+ static void APIENTRY vertex(GLfloat x, GLfloat y)
+@@ -60,5 +211,6 @@ int main(void)
+ 		}
+ 	}
+ 	puts("bloom: full-view workspace mapping and reduced/offset fallback pass");
++	test_workspace();
+ 	return 0;
+ }
+diff --git a/yquake2/src/refresh/header/local.h b/yquake2/src/refresh/header/local.h
+index 6ce8968a..41b1a8da 100644
+--- a/yquake2/src/refresh/header/local.h
++++ b/yquake2/src/refresh/header/local.h
+@@ -93,6 +93,8 @@
+  * screen-resolution render target. See MISTAKES.md. */
+ #define TEXNUM_BLOOMSCREEN 2177
+ #define TEXNUM_BLOOMEFFECT 2178
++#define TEXNUM_BLOOMWORK 2179
++#define TEXNUM_BLOOMWORK2 2180
+ #define MAX_SCRAPS 1
+ #define BLOCK_WIDTH 128
+ #define BLOCK_HEIGHT 128
+@@ -306,6 +308,7 @@ extern cvar_t *gl_bloom_alpha;
+ extern cvar_t *gl_bloom_darken;
+ extern cvar_t *gl_bloom_size;
+ extern cvar_t *gl_bloom_fastrestore;
++extern cvar_t *gl_bloom_fbo;
+ 
+ extern cvar_t *gl_lightlevel;
+ extern cvar_t *gl_overbrightbits;
+@@ -472,6 +475,7 @@ void R_InitParticleTexture(void);
+ void R_InitShellTexture(void);
+ void R_InitCausticTexture(void);
+ void R_InitBloomTextures(void);
++void R_ShutdownBloom(void);
+ void R_Bloom(void);
+ void Draw_InitLocal(void);
+ void R_SubdivideSurface(msurface_t *fa);
+diff --git a/yquake2/src/refresh/r_bloom.c b/yquake2/src/refresh/r_bloom.c
+index 6aceda59..01b54e21 100644
+--- a/yquake2/src/refresh/r_bloom.c
++++ b/yquake2/src/refresh/r_bloom.c
+@@ -42,6 +42,16 @@ cvar_t *gl_bloom_alpha;      /* composite intensity */
+ cvar_t *gl_bloom_darken;     /* bright-pass strength (multiply passes) */
+ cvar_t *gl_bloom_size;       /* effect-texture size (pow2, 64..512) */
+ cvar_t *gl_bloom_fastrestore; /* restore only the workspace for a full-screen view */
++cvar_t *gl_bloom_fbo;         /* optional single-sample off-screen workspace */
++
++#ifndef GL_FRAMEBUFFER_EXT
++#define GL_FRAMEBUFFER_EXT 0x8D40
++#define GL_RENDERBUFFER_EXT 0x8D41
++#define GL_FRAMEBUFFER_BINDING_EXT 0x8CA6
++#define GL_RENDERBUFFER_BINDING_EXT 0x8CA7
++#define GL_COLOR_ATTACHMENT0_EXT 0x8CE0
++#define GL_FRAMEBUFFER_COMPLETE_EXT 0x8CD5
++#endif
+ 
+ /* TEXNUM_BLOOMSCREEN (pow2 >= view, raw back-buffer copy) and
+  * TEXNUM_BLOOMEFFECT (BLOOM_SIZE^2, downsampled + blurred) are fixed manual
+@@ -63,6 +73,150 @@ static float scr_tcw, scr_tch;
+ static qboolean bloom_inited = false;
+ static qboolean bloom_diagnostics_pending = true;
+ 
++static struct
++{
++	GLuint framebuffer, renderbuffer;
++	GLint previous;
++	qboolean tried;
++	qboolean direct;
++	void (APIENTRY *gen_framebuffers)(GLsizei, GLuint *);
++	void (APIENTRY *delete_framebuffers)(GLsizei, const GLuint *);
++	void (APIENTRY *bind_framebuffer)(GLenum, GLuint);
++	void (APIENTRY *gen_renderbuffers)(GLsizei, GLuint *);
++	void (APIENTRY *delete_renderbuffers)(GLsizei, const GLuint *);
++	void (APIENTRY *bind_renderbuffer)(GLenum, GLuint);
++	void (APIENTRY *storage)(GLenum, GLenum, GLsizei, GLsizei);
++	void (APIENTRY *attach)(GLenum, GLenum, GLenum, GLuint);
++	void (APIENTRY *attach_texture)(GLenum, GLenum, GLenum, GLuint, GLint);
++	GLenum (APIENTRY *status)(GLenum);
++} bloom_fbo;
++
++void
++R_ShutdownBloom(void)
++{
++	if (bloom_fbo.framebuffer && bloom_fbo.delete_framebuffers)
++		bloom_fbo.delete_framebuffers(1, &bloom_fbo.framebuffer);
++	if (bloom_fbo.renderbuffer && bloom_fbo.delete_renderbuffers)
++		bloom_fbo.delete_renderbuffers(1, &bloom_fbo.renderbuffer);
++	memset(&bloom_fbo, 0, sizeof(bloom_fbo));
++	bloom_inited = false;
++}
++
++/* Keep the original copy-based blur, but run its small passes on a single-
++ * sample renderbuffer. The scene stays untouched and those copies no longer
++ * read the multisampled window. No framebuffer API is used when disabled. */
++static qboolean
++R_Bloom_BeginWorkspace(void)
++{
++	GLint previous, renderbuffer;
++	GLenum status, error;
++	if (!gl_bloom_fbo->value) return false;
++	if (bloom_fbo.tried && bloom_fbo.direct != (gl_bloom_fbo->value >= 2))
++	{
++		R_ShutdownBloom();
++		bloom_inited = true;
++		bloom_diagnostics_pending = true;
++	}
++	if (!bloom_fbo.tried)
++	{
++		bloom_fbo.tried = true;
++		bloom_fbo.direct = gl_bloom_fbo->value >= 2;
++		if (!gl_config.extensions_string ||
++			!strstr(gl_config.extensions_string, "GL_EXT_framebuffer_object"))
++		{
++			ri.Con_Printf(PRINT_ALL, "Bloom FBO unavailable: using window workspace.\n");
++			return false;
++		}
++#define BLOOM_PROC(member, name) bloom_fbo.member = (void *)GetProcAddressGL(name)
++		BLOOM_PROC(gen_framebuffers, "glGenFramebuffersEXT");
++		BLOOM_PROC(delete_framebuffers, "glDeleteFramebuffersEXT");
++		BLOOM_PROC(bind_framebuffer, "glBindFramebufferEXT");
++		BLOOM_PROC(gen_renderbuffers, "glGenRenderbuffersEXT");
++		BLOOM_PROC(delete_renderbuffers, "glDeleteRenderbuffersEXT");
++		BLOOM_PROC(bind_renderbuffer, "glBindRenderbufferEXT");
++		BLOOM_PROC(storage, "glRenderbufferStorageEXT");
++		BLOOM_PROC(attach, "glFramebufferRenderbufferEXT");
++		BLOOM_PROC(status, "glCheckFramebufferStatusEXT");
++		if (bloom_fbo.direct) BLOOM_PROC(attach_texture, "glFramebufferTexture2DEXT");
++#undef BLOOM_PROC
++		if (!bloom_fbo.gen_framebuffers || !bloom_fbo.delete_framebuffers ||
++			!bloom_fbo.bind_framebuffer || !bloom_fbo.gen_renderbuffers ||
++			!bloom_fbo.delete_renderbuffers || !bloom_fbo.bind_renderbuffer ||
++			!bloom_fbo.storage || !bloom_fbo.attach || !bloom_fbo.status ||
++			(bloom_fbo.direct && !bloom_fbo.attach_texture))
++		{
++			ri.Con_Printf(PRINT_ALL, "Bloom FBO entry points missing: using window workspace.\n");
++			return false;
++		}
++		qglGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &previous);
++		qglGetIntegerv(GL_RENDERBUFFER_BINDING_EXT, &renderbuffer);
++		bloom_fbo.gen_framebuffers(1, &bloom_fbo.framebuffer);
++		bloom_fbo.gen_renderbuffers(1, &bloom_fbo.renderbuffer);
++		if (bloom_fbo.framebuffer && bloom_fbo.renderbuffer)
++		{
++			bloom_fbo.bind_framebuffer(GL_FRAMEBUFFER_EXT, bloom_fbo.framebuffer);
++			bloom_fbo.bind_renderbuffer(GL_RENDERBUFFER_EXT, bloom_fbo.renderbuffer);
++			bloom_fbo.storage(GL_RENDERBUFFER_EXT, GL_RGBA8, BLOOM_SIZE, BLOOM_SIZE);
++			bloom_fbo.attach(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
++				GL_RENDERBUFFER_EXT, bloom_fbo.renderbuffer);
++			if (bloom_fbo.direct)
++			{
++				int texture;
++				/* Optional targets never replace the legacy effect texture. A
++				 * failed allocation must leave the window fallback usable. */
++				for (texture = TEXNUM_BLOOMWORK; texture <= TEXNUM_BLOOMWORK2; texture++)
++				{
++					R_Bind(texture);
++					qglTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, BLOOM_SIZE, BLOOM_SIZE, 0,
++						GL_RGBA, GL_UNSIGNED_BYTE, NULL);
++					qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
++					qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
++					qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
++					qglTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
++				}
++				bloom_fbo.attach_texture(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
++					GL_TEXTURE_2D, TEXNUM_BLOOMWORK2, 0);
++				status = bloom_fbo.status(GL_FRAMEBUFFER_EXT);
++				bloom_fbo.attach_texture(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
++					GL_TEXTURE_2D, TEXNUM_BLOOMWORK, 0);
++			}
++			else status = GL_FRAMEBUFFER_COMPLETE_EXT;
++			qglDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
++			qglReadBuffer(GL_COLOR_ATTACHMENT0_EXT);
++			if (status == GL_FRAMEBUFFER_COMPLETE_EXT) status = bloom_fbo.status(GL_FRAMEBUFFER_EXT);
++		}
++		else status = 0;
++		error = qglGetError();
++		bloom_fbo.bind_renderbuffer(GL_RENDERBUFFER_EXT, renderbuffer);
++		bloom_fbo.bind_framebuffer(GL_FRAMEBUFFER_EXT, previous);
++		if (status != GL_FRAMEBUFFER_COMPLETE_EXT || error != GL_NO_ERROR)
++		{
++			R_ShutdownBloom();
++			bloom_fbo.tried = true;
++			bloom_fbo.direct = gl_bloom_fbo->value >= 2;
++			/* Texture initialization succeeded; only the optional workspace failed. */
++			bloom_inited = true;
++			ri.Con_Printf(PRINT_ALL, "Bloom FBO failed (status 0x%x, error 0x%x): using window workspace.\n", status, error);
++			return false;
++		}
++		ri.Con_Printf(PRINT_ALL, "Bloom FBO workspace: %dx%d RGBA8, single-sample%s.\n",
++			BLOOM_SIZE, BLOOM_SIZE, bloom_fbo.direct ? ", direct textures" : "");
++	}
++	if (!bloom_fbo.framebuffer) return false;
++	qglGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &bloom_fbo.previous);
++	bloom_fbo.bind_framebuffer(GL_FRAMEBUFFER_EXT, bloom_fbo.framebuffer);
++	if (bloom_fbo.direct)
++		bloom_fbo.attach_texture(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
++			GL_TEXTURE_2D, TEXNUM_BLOOMWORK, 0);
++	return true;
++}
++
++static void
++R_Bloom_EndWorkspace(void)
++{
++	bloom_fbo.bind_framebuffer(GL_FRAMEBUFFER_EXT, bloom_fbo.previous);
++}
++
+ static int
+ R_Bloom_RoundUpPow2(int v)
+ {
+@@ -77,7 +231,7 @@ R_Bloom_RoundUpPow2(int v)
+ void
+ R_InitBloomTextures(void)
+ {
+-	bloom_inited = false;
++	R_ShutdownBloom();
+ 	bloom_diagnostics_pending = true;
+ 
+ 	if (!gl_bloom->value)
+@@ -178,12 +332,32 @@ R_Bloom_SamplePass(int xofs, int yofs, float intensity)
+ 	R_Bloom_Quad(xofs, yofs, BLOOM_SIZE, BLOOM_SIZE, 1.0f, 1.0f);
+ }
+ 
++/* Seed the next accumulator from the previous pass. Separate source and
++ * destination textures avoid framebuffer feedback; the old window path kept
++ * this base contribution implicitly between its CopyTexSubImage calls. */
++static int
++R_Bloom_NextTexture(int source)
++{
++	int target = source == TEXNUM_BLOOMWORK ? TEXNUM_BLOOMWORK2 : TEXNUM_BLOOMWORK;
++	bloom_fbo.attach_texture(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
++		GL_TEXTURE_2D, target, 0);
++	R_Bind(source);
++	qglDisable(GL_BLEND);
++	qglColor4f(1, 1, 1, 1);
++	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, 1, 1);
++	qglEnable(GL_BLEND);
++	return target;
++}
++
+ void
+ R_Bloom(void)
+ {
+ 	int i;
+ 	float blur;
+ 	qboolean diagnose;
++	qboolean offscreen;
++	qboolean direct;
++	int effect_texture = TEXNUM_BLOOMEFFECT;
+ 	GLint read_buffer = 0;
+ 	GLint draw_buffer = 0;
+ 	GLenum capture_error = GL_NO_ERROR;
+@@ -257,6 +431,9 @@ R_Bloom(void)
+ 
+ 	/* 2. downsample: render the captured view into the BLOOM_SIZE corner,
+ 	 *    then copy that into the effect texture. */
++	offscreen = R_Bloom_BeginWorkspace();
++	direct = offscreen && bloom_fbo.direct;
++	if (direct) effect_texture = TEXNUM_BLOOMWORK;
+ 	qglViewport(0, 0, BLOOM_SIZE, BLOOM_SIZE);
+ 	qglMatrixMode(GL_PROJECTION);
+ 	qglLoadIdentity();
+@@ -292,7 +469,7 @@ R_Bloom(void)
+ 	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, scr_tcw, scr_tch);
+ 
+ 	R_Bind(TEXNUM_BLOOMEFFECT);
+-	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
++	if (!direct) qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
+ 	if (diagnose)
+ 	{
+ 		downsample_error = qglGetError();
+@@ -304,14 +481,15 @@ R_Bloom(void)
+ 	 *    midtones and keep only the bright sources. */
+ 	if (gl_bloom_darken->value)
+ 	{
++		if (direct) effect_texture = R_Bloom_NextTexture(effect_texture);
+ 		qglBlendFunc(GL_DST_COLOR, GL_ZERO);
+-		R_Bind(TEXNUM_BLOOMEFFECT);
++		if (!direct) R_Bind(TEXNUM_BLOOMEFFECT);
+ 		for (i = 0; i < (int)gl_bloom_darken->value; i++)
+ 		{
+ 			qglColor4f(1, 1, 1, 1);
+ 			R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, 1.0f, 1.0f);
+ 		}
+-		qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
++		if (!direct) qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
+ 		if (diagnose)
+ 		{
+ 			darken_error = qglGetError();
+@@ -321,8 +499,9 @@ R_Bloom(void)
+ 	/* 4. separable-ish blur: additive offset taps in X then Y, re-copying
+ 	 *    the accumulator between axes. */
+ 	blur = 1.0f;
++	if (direct) effect_texture = R_Bloom_NextTexture(effect_texture);
+ 	qglBlendFunc(GL_ONE, GL_ONE);
+-	R_Bind(TEXNUM_BLOOMEFFECT);
++	if (!direct) R_Bind(TEXNUM_BLOOMEFFECT);
+ 
+ 	qglColor4f(0.5f, 0.5f, 0.5f, 1.0f); /* base re-add */
+ 	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, 1.0f, 1.0f);
+@@ -332,13 +511,14 @@ R_Bloom(void)
+ 		R_Bloom_SamplePass(i, 0, w);
+ 		R_Bloom_SamplePass(-i, 0, w);
+ 	}
+-	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
++	if (!direct) qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
+ 	if (diagnose)
+ 	{
+ 		blur_x_error = qglGetError();
+ 	}
+ 
+-	R_Bind(TEXNUM_BLOOMEFFECT);
++	if (direct) effect_texture = R_Bloom_NextTexture(effect_texture);
++	else R_Bind(TEXNUM_BLOOMEFFECT);
+ 	qglColor4f(0.5f, 0.5f, 0.5f, 1.0f);
+ 	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, 1.0f, 1.0f);
+ 	for (i = 1; i <= 4; i++)
+@@ -347,12 +527,14 @@ R_Bloom(void)
+ 		R_Bloom_SamplePass(0, i, w);
+ 		R_Bloom_SamplePass(0, -i, w);
+ 	}
+-	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
++	if (!direct) qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);
+ 	if (diagnose)
+ 	{
+ 		blur_y_error = qglGetError();
+ 	}
+ 
++	if (offscreen) R_Bloom_EndWorkspace();
++
+ 	/* 5. composite over the full view rectangle.
+ 	 *
+ 	 * The downsample/darken/blur passes above rendered into the bottom-left
+@@ -372,13 +554,13 @@ R_Bloom(void)
+ 	R_TexEnv(GL_REPLACE);
+ 	qglColor4f(1, 1, 1, 1);
+ 	R_Bind(TEXNUM_BLOOMSCREEN);
+-	R_Bloom_RestoreScene();
++	if (!offscreen) R_Bloom_RestoreScene();
+ 
+ 	/* 5b. add the bloom */
+ 	qglEnable(GL_BLEND);
+ 	R_TexEnv(GL_MODULATE);
+ 	qglBlendFunc(GL_ONE, GL_ONE);
+-	R_Bind(TEXNUM_BLOOMEFFECT);
++	R_Bind(effect_texture);
+ 	{
+ 		float a = gl_bloom_alpha->value;
+ 		qglColor4f(a, a, a, 1.0f);
+diff --git a/yquake2/src/refresh/r_main.c b/yquake2/src/refresh/r_main.c
+index ea8ebf4f..1e819869 100644
+--- a/yquake2/src/refresh/r_main.c
++++ b/yquake2/src/refresh/r_main.c
+@@ -1197,6 +1197,7 @@ R_Register(void)
+ 	gl_caustics = ri.Cvar_Get("gl_caustics", "1", CVAR_ARCHIVE);
+ 	gl_bloom = ri.Cvar_Get("gl_bloom", "0", CVAR_ARCHIVE);
+ 	gl_bloom_fastrestore = ri.Cvar_Get("gl_bloom_fastrestore", "0", CVAR_ARCHIVE);
++	gl_bloom_fbo = ri.Cvar_Get("gl_bloom_fbo", "0", CVAR_ARCHIVE);
+ 	gl_bloom_alpha = ri.Cvar_Get("gl_bloom_alpha", "0.3", CVAR_ARCHIVE);
+ 	gl_bloom_darken = ri.Cvar_Get("gl_bloom_darken", "4", CVAR_ARCHIVE);
+ 	gl_bloom_size = ri.Cvar_Get("gl_bloom_size", "256", CVAR_ARCHIVE);
+@@ -1714,6 +1715,7 @@ R_Shutdown(void)
+ 	Mod_FreeAll();
+ 	R_ClearLightCache();
+ 
++	R_ShutdownBloom();
+ 	R_ShutdownImages();
+ 
+ 	/* shutdown OS specific OpenGL stuff like contexts, etc.  */
+diff --git a/yquake2/src/refresh/r_surf.c b/yquake2/src/refresh/r_surf.c
+index 90037abd..8d7dcaf3 100644
+--- a/yquake2/src/refresh/r_surf.c
++++ b/yquake2/src/refresh/r_surf.c
+@@ -56,7 +56,7 @@ static qboolean collect_world;
+  * draws. The cap bounds CPU and GPU storage on the smallest machines;
+  * excess source atlases retain the original per-surface path. */
+ #define DYNAMIC_PAGES 4
+-#define TEXNUM_DYNAMIC_FIRST (TEXNUM_BLOOMEFFECT + 1)
++#define TEXNUM_DYNAMIC_FIRST (TEXNUM_BLOOMWORK2 + 1)
+ typedef struct
+ {
+ 	byte pixels[BLOCK_WIDTH * BLOCK_HEIGHT * LIGHTMAP_BYTES];

@@ -205,6 +205,23 @@ else
 	fail "occupied-install updater fixture failed"
 fi
 
+# The Cocoa surface-setup callback also activates the app and marks the view
+# dirty. Calling it for every window update stalls the M5 in WindowServer IPC.
+detect_window_update_observer() {
+	grep -Eq 'name:[[:space:]]*NSWindowDidUpdateNotification'
+}
+if ! printf '%s\n' 'name:NSWindowDidUpdateNotification' | detect_window_update_observer; then
+	fail "window-update detector missed the bad fixture"
+elif printf '%s\n' 'name:NSWindowDidBecomeKeyNotification' | detect_window_update_observer; then
+	fail "window-update detector rejected the good fixture"
+elif [ ! -s "$REPO_ROOT/yquake2/src/backends/sdl_osx/SDLMain.m" ]; then
+	fail "missing Cocoa launcher source"
+elif detect_window_update_observer < "$REPO_ROOT/yquake2/src/backends/sdl_osx/SDLMain.m"; then
+	fail "Cocoa launcher subscribes surface setup to every window update"
+else
+	pass "Cocoa surface setup is not driven by recurring window updates"
+fi
+
 echo
 [ "$FAILED" = 0 ] && echo "all repo invariants hold" || echo "repo invariants FAILED"
 exit "$FAILED"

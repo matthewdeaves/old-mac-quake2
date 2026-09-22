@@ -380,7 +380,10 @@ static void CustomApplicationMain (int argc, char **argv)
     sdlMain = [[SDLMain alloc] init];
     [NSApp setDelegate:sdlMain];
 
-    /* Observe window events to ensure layer-backed OpenGL surface on macOS 10.14+ */
+    /* Configure the OpenGL surface when a window becomes key/main, not on
+       every redraw. windowDidChange: also activates the app and invalidates
+       the view. Subscribing it to window updates creates repeated WindowServer
+       activation round trips during SDL_PollEvent, causing gameplay stalls. */
     [[NSNotificationCenter defaultCenter] addObserver:sdlMain
                                              selector:@selector(windowDidChange:)
                                                  name:NSWindowDidBecomeKeyNotification
@@ -388,10 +391,6 @@ static void CustomApplicationMain (int argc, char **argv)
     [[NSNotificationCenter defaultCenter] addObserver:sdlMain
                                              selector:@selector(windowDidChange:)
                                                  name:NSWindowDidBecomeMainNotification
-                                               object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:sdlMain
-                                             selector:@selector(windowDidChange:)
-                                                 name:NSWindowDidUpdateNotification
                                                object:nil];
     
     /* Start the main event loop */

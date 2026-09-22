@@ -1,0 +1,40 @@
+=== round 1 arm A []
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> 73.8 fps
+  -> 73.1 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 73.45 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 1 arm C [+set gl_msaa_samples 4]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> 154.4 fps
+  -> 147.4 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 150.90 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 1 arm F [+set gl_msaa_samples 4 +set gl_bloom_fastrestore 1]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> 133.8 fps
+  -> 130.2 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 132.00 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 1 arm B [+set gl_bloom_fastrestore 1]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> 64.1 fps
+  -> 64.7 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 64.40 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 2 arm A []
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> 74.9 fps
+  -> 73.9 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 74.40 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 2 arm C [+set gl_msaa_samples 4]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> 144.8 fps
+  -> 154.0 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 149.40 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 2 arm F [+set gl_msaa_samples 4 +set gl_bloom_fastrestore 1]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> 135.7 fps
+  -> 130.2 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 132.95 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 2 arm B [+set gl_bloom_fastrestore 1]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> 63.5 fps
+  -> 67.7 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 65.60 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv

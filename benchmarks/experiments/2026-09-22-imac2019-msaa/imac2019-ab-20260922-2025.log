@@ -1,0 +1,46 @@
+=== round 1 arm A []
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 74.2 fps
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 73.1 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 73.65 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 1 arm B [+set gl_bloom_fastrestore 1]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 64.3 fps
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 65.0 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 64.65 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 1 arm C [+set gl_msaa_samples 4]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=4 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 150.2 fps
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=4 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 147.1 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 148.65 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 1 arm D [+set gl_bloom 0]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> effective: gl_bloom=0 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 429.3 fps
+  -> effective: gl_bloom=0 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 430.1 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 429.70 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 1 arm E [+set gl_swapinterval 1]
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=1
+  -> 75.0 fps
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=1
+  -> 72.6 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 73.80 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 2 arm A []
+gui-precondition: imac-2019 ready (probe: wake=yes locked=no display_power=4)
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 75.4 fps
+  -> effective: gl_bloom=1 gl_bloom_darken=1 gl_msaa_samples=8 gl_mode=-1 gl_customwidth=1920 gl_customheight=1080 vid_fullscreen=1 vid_desktopfullscreen=1 gl_swapinterval=0
+  -> 74.4 fps
+[bench] imac-2019 (fat) demo1 1920x1080 median = 74.90 fps  →  /Users/matt/Documents/old-mac-quake2/benchmarks/results.csv
+=== round 2 arm B [+set gl_bloom_fastrestore 1]
+=== round 2 arm C [+set gl_msaa_samples 4]
+=== round 2 arm D [+set gl_bloom 0]
+=== round 2 arm E [+set gl_swapinterval 1]

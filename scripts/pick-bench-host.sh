@@ -270,7 +270,9 @@ run_remote() {
 #     under (Half-Life runs as xash3d.bin behind the xash3d launcher);
 #   a deploy in flight (hdiutil attached, ditto copying a bundle);
 #   a compile, since the two minis are build hosts too and pick-build-host.sh
-#     may have started one.
+#     may have started one. On Lion, Xcode's make runs as ucomm `gnumake`, not
+#     `make` (#90, measured 2026-09-22): without it a live build between
+#     compiler steps counted 0 and its lock read stale after STALE_SECS.
 # Our own probe line always contains "grep", so it is dropped.
 probe() {
 	# $2, optional: a file to receive ssh's stderr. Default /dev/null preserves
@@ -298,7 +300,7 @@ probe() {
 				exe=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//")
 				base=${exe##*/}
 				case "$base" in
-					'"$GAME_PROC_CASE"'|"Classic Marathon"|hdiutil|ditto|make|gmake|waf|cc1|cc1plus|clang|collect2|ninja) printf "%s\n" "$pid" ;;
+					'"$GAME_PROC_CASE"'|"Classic Marathon"|hdiutil|ditto|make|gmake|gnumake|waf|cc1|cc1plus|clang|collect2|ninja) printf "%s\n" "$pid" ;;
 				esac
 			done
 		}

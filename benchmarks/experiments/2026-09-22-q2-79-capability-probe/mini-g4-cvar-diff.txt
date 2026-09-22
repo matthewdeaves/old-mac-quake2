@@ -1,0 +1,9 @@
+63d62
+< g_select_empty "0"
+192c191,192
+< qport "213"
+---
+> q2_overlay_gpu "radeon 9200"
+> qport "934"
+228a229
+> watch_enable "0"

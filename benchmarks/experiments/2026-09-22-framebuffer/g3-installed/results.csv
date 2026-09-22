@@ -1,0 +1,2 @@
+timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_fps,median_fps,notes
+2026-09-22T10:56:48Z,b1231d32,fat,yosemite,PPC 750 @ 449MHz,ATI Rage 128 16MB,10.3.9 Panther,demo2,1024x768,28.3,28.3,28.3,28.30,Complete installed shadows-rc1 candidate; production effects without overrides; system muted; benchmark sound disabled | mode=fullscreen EXTRA=+gl_shadows +gl_stencilshadow +gl_clear_combined +gl_ztrick | Enable measured projected monster s

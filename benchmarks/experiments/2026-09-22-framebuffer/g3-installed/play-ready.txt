@@ -1,0 +1,2 @@
+output volume:0, input volume:47, alert volume:missing value, output muted:true
+ 8612  ??  Ss     0:00.02 bash -c cp -p '/Users/mini/oldmac/quake2/play-ready.j

@@ -1,0 +1,11 @@
+Started from command line by admin
+Running as SYSTEM
+Building remotely on g3 (bench build smoke capture) in workspace /home/matt/jenkins/agents/g3/workspace/smoke-quake2-g3
+[smoke-quake2-g3] $ /bin/bash /tmp/jenkins4516753409176612905.sh
+[smoke yosemite] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke yosemite] renderer : GL_RENDERER: ATI Rage 128 OpenGL Engine
+[smoke yosemite] mode     : setting mode -1: 1024 768
+[smoke yosemite] desktop  : Desktop is 800x600.
+[smoke yosemite] result   : <NO FPS LINE>
+[smoke yosemite] PASS — renderer initialized and a new game started (no argv on this OS, see #35)
+Finished: SUCCESS

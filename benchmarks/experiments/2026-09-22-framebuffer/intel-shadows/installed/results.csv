@@ -1,0 +1,2 @@
+timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_fps,median_fps,notes
+2026-09-22T12:56:08Z,09e5ff44,fat,mini-sl,Core 2 Duo @ 2.26GHz,NVIDIA GeForce 9400,10.6.8 Snow Leopard,demo2,1920x1080,46.0,44.5,45.2,44.85,Installed whole RC2 candidate after production smoke; no feature overrides; uncapped floor | mode=fullscreen EXTRA=+gl_stencilshadow +gl_clear_combined +gl_bloom_fastrestore | Select projected shadow defaults for measured GeForce 9400

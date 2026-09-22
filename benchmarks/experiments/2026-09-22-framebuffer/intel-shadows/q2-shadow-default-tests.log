@@ -1,0 +1,7 @@
+alias: winding, UV seams, alpha, shadow reuse and malformed streams pass
+world: retained indices, batching, client/VBO parity and state cleanup pass
+lighting: randomized scalar/cache byte parity, bounded columns and style invalidation pass
+atlas: non-overlapping slots, grouped uploads, bounded overflow and GL-error fallback pass
+clear: all 64 state combinations and both depth phases preserve buffer/state results
+shadow defaults: measured GPU only, explicit overrides and restart preservation pass
+bloom: full-view workspace mapping and reduced/offset fallback pass

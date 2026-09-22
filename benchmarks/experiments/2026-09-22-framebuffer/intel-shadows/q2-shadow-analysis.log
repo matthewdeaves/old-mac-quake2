@@ -1,0 +1,5 @@
+=== cppcheck (src/refresh/r_main.c) ===
+
+=== clang -fsyntax-only -Wextra -Wshadow -Wundef -Wpointer-arith (src/refresh/r_main.c) ===
+
+[analyze] done.

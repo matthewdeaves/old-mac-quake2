@@ -25,7 +25,7 @@ Files: `scripts/bundle/autoexec-*.cfg`,
 | `gl_trans_lighting` | lightmapped glass/grates, latched at map load | on multitex, off G3 + sawtooth |
 | `gl_caustics` | water-surface caustic overlay. **Water only**: skips lava and slime, see below | on multitex, off G3 + sawtooth |
 | `gl_zfix` | polygon-offset coplanar surfaces | on (all) |
-| `gl_clear_combined` | clear requested depth/stencil/colour buffers together | 1 on measured Radeon 9200 mini-G4 profile; 0 elsewhere |
+| `gl_clear_combined` | clear requested depth/stencil/colour buffers together | 1 on measured mini-G4 and G3 profiles and GeForce 9400 auto-default; 0 elsewhere |
 | `gl_bloom_fastrestore` | restore only the overwritten bloom workspace for full views; reduced/offset views keep the full restore | 1 with the measured GeForce 9400 bloom auto-default; 0 elsewhere |
 | `gl_farsee` | extended far clip, `CVAR_LATCH` | on ppc7400/ppc970/x86_64/arm64, off ppc750/i386 (#24) |
 | `gl_bloom` (+ `_alpha` `_darken` `_size`) | fixed-function light bloom | on for tuned G5 dual, imac-2019 and arm64 profiles; off on G3/G4 and generic Intel. Apple Silicon measured 264.55 fps at 1920x1080 with bloom, 4x MSAA and desktop-fullscreen; evidence: `benchmarks/experiments/2026-09-12-bloom-readback/` |
@@ -58,6 +58,16 @@ default. The renderer enables bloom and partial restoration on GeForce 9400;
 other GPUs resolve to off. Mapped profiles and explicit `+set gl_bloom 0/1`
 remain authoritative. The measured 1080p result is about 49.9 fps with bloom,
 versus 83.8 without it: this default spends speed on a visible effect.
+
+The generic x86_64 profile also requests `gl_stencilshadow -1` and
+`gl_clear_combined -1`. GeForce 9400 resolves these to 1, giving projected
+monster shadows with a combined depth/stencil clear. Other GPUs resolve to 0;
+mapped profiles and explicit command-line 0/1 overrides remain authoritative.
+At native 1920x1080 with bloom and requested MSAA2, demo2 measured
+44.15-44.75 fps with projected shadows versus 48.50-48.60 with blobs.
+Demo1 measured 45.15 versus 49.80. This is a deliberate visual upgrade with
+an FPS cost, not an optimization claim. Evidence is under
+`benchmarks/experiments/2026-09-22-framebuffer/intel-shadows/`.
 
 ## Tuning the caustic look (`gl_caustics`)
 

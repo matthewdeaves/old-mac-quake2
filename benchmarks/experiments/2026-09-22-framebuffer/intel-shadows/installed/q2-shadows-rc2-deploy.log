@@ -1,0 +1,19 @@
+[update-dmg] artifact=Quake2-OldMac-2026-09-22-shadows-rc2.dmg sha256=c6bb82924ea8369e81de03ef57cafa0f637f6807e4664c81645d5a3fb3746ac5
+[update-dmg] slices=ppc750 ppc7400 ppc970 x86_64 i386 arm64 signature=valid
+[update-dmg] Quake2.app/Contents/MacOS/quake2 55dc759b67f770a1f1f0ede4e3636b82
+[update-dmg] ref_gl.so dcfde8e72664968edd16f15f298d785b
+[update-dmg] baseq2/game.so fb46d7e8adf39b6eea1d8dd0e9991193
+[update-dmg] q2ded d8adf7d8c5c0ed4eaf1bcd371d42f5bd
+[update-dmg mini-sl] copy and verify Quake2-OldMac-2026-09-22-shadows-rc2.dmg
+[update-tree] current=/Applications/Quake2 engine=d23e8c27b2f172d6dde7d250a91415da size=221892KB
+[update-tree] stage=/Applications/.Quake2.stage-20260922T125312Z-21360 rollback=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260922T125312Z-d23e8c27b2f1
+clear-launch-quarantine: /Applications/Quake2/Quake2.app carried no quarantine flag
+clear-launch-quarantine: re-registered /Applications/Quake2/Quake2.app
+ThrottleProcessIO: throttling disk i/o
+[update-tree] update complete
+CURRENT_PATH=/Applications/Quake2
+ROLLBACK_PATH=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260922T125312Z-d23e8c27b2f1
+OLD_ENGINE_MD5=d23e8c27b2f172d6dde7d250a91415da
+NEW_ENGINE_MD5=55dc759b67f770a1f1f0ede4e3636b82
+PRESERVED_AUTOEXEC=no
+[update-dmg mini-sl] installed and retained named rollback from Quake2-OldMac-2026-09-22-shadows-rc2.dmg

@@ -1,0 +1,22 @@
+Started smoke-quake2-mini-sl #3
+Started from command line by admin
+Running as SYSTEM
+Building remotely on mini-sl (bench build smoke capture both) in workspace /home/matt/jenkins/agents/mini-sl/workspace/smoke-quake2-mini-sl
+[smoke-quake2-mini-sl] $ /bin/bash /tmp/jenkins4156055164702588579.sh
+[smoke mini-sl] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke mini-sl] renderer : GL_RENDERER: NVIDIA GeForce 9400 OpenGL Engine
+[smoke mini-sl] mode     : setting mode -1: 1024 768
+[smoke mini-sl] desktop  : Desktop is 1920x1080.
+[smoke mini-sl] result   : 689 frames, 23.1 seconds: 29.9 fps
+[smoke mini-sl] effective settings:
+    "gl_bloom" is "1"
+    "gl_msaa_samples" is "2"
+    "gl_mode" is "-1"
+    "gl_customwidth" is "1024"
+    "gl_customheight" is "768"
+    "vid_fullscreen" is "1"
+    "vid_desktopfullscreen" is "1"
+    "gl_swapinterval" is "1"
+[smoke mini-sl] PASS — world rendered to completion on the production path
+Finished: SUCCESS
+Completed smoke-quake2-mini-sl #3 : SUCCESS

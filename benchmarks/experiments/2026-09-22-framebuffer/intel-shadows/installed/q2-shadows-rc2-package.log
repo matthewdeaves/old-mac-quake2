@@ -1,0 +1,12 @@
+[make-dmg] arm64 slice present: native on Apple Silicon
+[make-dmg] stage Quake2.app (same layout as deploy.sh)
+[make-dmg] bundle version: 5.11-oldmac-2026-09-22-shadows-rc2
+[make-dmg] bundled libSDL2-2.0.0.dylib for the arm64 slice
+[make-dmg] ad-hoc code-signing the staged bundle
+[make-dmg] signatures verified on the bundle
+[make-dmg] attempt 1/3: ship staged image to mini-g4 and run hdiutil
+created: /tmp/q2-dmg-2026-09-22-shadows-rc2/out.dmg
+hdiutil: verify: checksum of "/tmp/q2-dmg-2026-09-22-shadows-rc2/out.dmg" is VALID
+[make-dmg] verified: quake2 / ref_gl.so / game.so inside the DMG match source byte-for-byte
+[make-dmg] OK — /Users/matt/Documents/old-mac-quake2/dist/Quake2-OldMac-2026-09-22-shadows-rc2.dmg (contents verified byte-identical to source)
+-rw-r--r--  1 matt  staff   6.7M Sep 22 13:51 /Users/matt/Documents/old-mac-quake2/dist/Quake2-OldMac-2026-09-22-shadows-rc2.dmg

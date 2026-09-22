@@ -1,0 +1,4 @@
+MD5 (build/q2-fat/quake2) = 19aac105f17cfaeccb2f9a905c2de28d
+MD5 (build/q2-fat/q2ded) = ef28c444409062c6de0d406ea2865f89
+MD5 (build/q2-fat/ref_gl.so) = 0d4257fe108c93b99f1ce48a02c23c39
+MD5 (build/q2-fat/baseq2/game.so) = cb1a9ba62746ba0c7147342305ed6726

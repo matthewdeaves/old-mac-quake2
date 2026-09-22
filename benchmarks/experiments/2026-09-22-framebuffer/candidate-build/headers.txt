@@ -1,0 +1,96 @@
+build/q2-fat/quake2 (architecture ppc750):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18          9  0x00           2    17       2724 0x00000085
+build/q2-fat/quake2 (architecture ppc7400):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18         10  0x00           2    17       2724 0x00000085
+build/q2-fat/quake2 (architecture ppc970):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18        100  0x00           2    17       2724 0x00000085
+build/q2-fat/quake2 (architecture x86_64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedfacf 16777223          3  0x80           2    22       3456 0x00000085
+build/q2-fat/quake2 (architecture i386):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface       7          3  0x00           2    23       3140 0x00000085
+build/q2-fat/quake2 (architecture arm64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedfacf 16777228          0  0x00           2    28       3776 0x00200085
+build/q2-fat/ref_gl.so (architecture ppc750):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18          9  0x00           6    13       1520 0x00100085
+build/q2-fat/ref_gl.so (architecture ppc7400):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18         10  0x00           6    13       1520 0x00100085
+build/q2-fat/ref_gl.so (architecture ppc970):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18        100  0x00           6    13       1520 0x00100085
+build/q2-fat/ref_gl.so (architecture x86_64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedfacf 16777223          3  0x00           6    13       1872 0x00100085
+build/q2-fat/ref_gl.so (architecture i386):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface       7          3  0x00           6    14       1580 0x00100085
+build/q2-fat/ref_gl.so (architecture arm64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedfacf 16777228          0  0x00           6    19       2040 0x00100085
+build/q2-fat/baseq2/game.so (architecture ppc750):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18          9  0x00           6     9       1124 0x00100085
+build/q2-fat/baseq2/game.so (architecture ppc7400):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18         10  0x00           6     9       1124 0x00100085
+build/q2-fat/baseq2/game.so (architecture ppc970):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18        100  0x00           6     9       1124 0x00100085
+build/q2-fat/baseq2/game.so (architecture x86_64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedfacf 16777223          3  0x00           6     9       1456 0x00100085
+build/q2-fat/baseq2/game.so (architecture i386):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface       7          3  0x00           6    10       1184 0x00100085
+build/q2-fat/baseq2/game.so (architecture arm64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedfacf 16777228          0  0x00           6    15       1704 0x00100085
+build/q2-fat/q2ded (architecture ppc750):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18          9  0x00           2    12       1452 0x00000085
+build/q2-fat/q2ded (architecture ppc7400):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18         10  0x00           2    12       1452 0x00000085
+build/q2-fat/q2ded (architecture ppc970):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface      18        100  0x00           2    12       1452 0x00000085
+build/q2-fat/q2ded (architecture x86_64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedfacf 16777223          3  0x80           2    12       1904 0x00000085
+build/q2-fat/q2ded (architecture i386):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedface       7          3  0x00           2    13       1416 0x00000085
+build/q2-fat/q2ded (architecture arm64):
+Mach header
+      magic  cputype cpusubtype  caps    filetype ncmds sizeofcmds      flags
+ 0xfeedfacf 16777228          0  0x00           2    18       1752 0x00200085

@@ -1001,6 +1001,7 @@ R_RenderView(refdef_t *fd)
 	R_UnsetFog();   /* disable GL_FOG before 2D HUD pass so HUD isn't fogged */
 
 	R_Bloom();      /* yquake2-ppc — fixed-function light bloom post-process */
+	R_ScenePresent(); /* bloom-off and reduced-view fallback, before HUD */
 
 	if (gl_speeds->value)
 	{
@@ -1102,6 +1103,7 @@ R_Register(void)
 	R_RegisterFogCvars();   /* yquake2-ppc Phase C — gl_fog + range/color/mode cvars */
 	R_RegisterDecalCvars(); /* yquake2-ppc — world decals from KMQuake2 (r_decal.c) */
 	gl_msaa_samples = ri.Cvar_Get("gl_msaa_samples", "0", CVAR_ARCHIVE | CVAR_LATCH);
+	gl_scene_resolve = ri.Cvar_Get("gl_scene_resolve", "0", CVAR_LATCH);
 	gl_pointsprites = ri.Cvar_Get("gl_pointsprites", "0", CVAR_ARCHIVE);
 	gl_waterwarp = ri.Cvar_Get("gl_waterwarp", "0", CVAR_ARCHIVE);   /* Phase C #2 — underwater frustum warp */
 	gl_lightmap_subrect = ri.Cvar_Get("gl_lightmap_subrect", "1", CVAR_ARCHIVE);   /* Phase B #1 — subrect dynamic lightmap upload */
@@ -1408,6 +1410,11 @@ R_Init(void *hinstance, void *hWnd)
 	 * framebuffer copies and reads through its context-aware wrappers when
 	 * that runtime is present; genuine SDL 1.2 keeps the original QGL path. */
 	sdl_readback_bridge = GLimp_RebindReadbackFunctions();
+	if (sdl_readback_bridge != 0 && gl_scene_resolve->value)
+	{
+		ri.Con_Printf(PRINT_ALL, "Scene resolve experiment requires native SDL 1.2; disable gl_scene_resolve.\n");
+		return -1;
+	}
 	if (sdl_readback_bridge < 0)
 	{
 		ri.Con_Printf(PRINT_ALL,
@@ -1710,6 +1717,7 @@ R_Init(void *hinstance, void *hWnd)
 	Mod_Init();
 	R_InitParticleTexture();
 	R_InitBloomTextures(); /* (re)create bloom textures for this video mode */
+	if (!R_SceneInit()) return -1;
 	Draw_InitLocal();
 
 	err = qglGetError();
@@ -1734,6 +1742,7 @@ R_Shutdown(void)
 	R_ClearLightCache();
 
 	R_ShutdownImages();
+	R_SceneShutdown();
 
 	/* shutdown OS specific OpenGL stuff like contexts, etc.  */
 	GLimp_Shutdown();
@@ -1830,6 +1839,7 @@ R_BeginFrame(float camera_separation)
 	}
 
 	/* clear screen if desired */
+	R_SceneBegin();
 	R_Clear();
 }
 

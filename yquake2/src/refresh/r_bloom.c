@@ -62,6 +62,7 @@ static float scr_tcw, scr_tch;
 
 static qboolean bloom_inited = false;
 static qboolean bloom_diagnostics_pending = true;
+static qboolean bloom_scene_resolved;
 
 static int
 R_Bloom_RoundUpPow2(int v)
@@ -155,7 +156,7 @@ R_Bloom_Quad(float x, float y, float w, float h, float tcw, float tch)
 static void
 R_Bloom_RestoreScene(void)
 {
-	if (gl_bloom_fastrestore->value && v_x == 0 && v_y == 0 &&
+	if (!bloom_scene_resolved && gl_bloom_fastrestore->value && v_x == 0 && v_y == 0 &&
 		v_w == vid.width && v_h == vid.height)
 	{
 		/* Only the bottom-left workspace was overwritten. Preserve 1:1
@@ -249,7 +250,12 @@ R_Bloom(void)
 
 	/* 1. capture the rendered view into the screen texture (1:1) */
 	R_Bind(TEXNUM_BLOOMSCREEN);
-	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, v_x, v_y, v_w, v_h);
+	bloom_scene_resolved = R_SceneResolveBloom();
+	if (!bloom_scene_resolved)
+	{
+		R_ScenePresent();
+		qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, v_x, v_y, v_w, v_h);
+	}
 	if (diagnose)
 	{
 		capture_error = qglGetError();

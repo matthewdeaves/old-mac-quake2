@@ -57,6 +57,10 @@ int main(void)
 				assert(vertices[2][2] == (float)size / screen_tex_w);
 				assert(vertices[1][2] == 0 && vertices[1][3] == 0);
 			}
+			bloom_scene_resolved = true;
+			R_Bloom_RestoreScene();
+			assert(!memcmp(original, vertices, sizeof(original)));
+			bloom_scene_resolved = false;
 		}
 	}
 	puts("bloom: full-view workspace mapping and reduced/offset fallback pass");

@@ -45,6 +45,24 @@ the source is left out.
 
 ## A/B one cvar without a rebuild
 
+### Experimental scene resolve
+
+`gl_scene_resolve 1` is an opt-in, latched experiment for native SDL 1.2.
+It requests a single-sample window and moves the requested `gl_msaa_samples`
+into a full-resolution scene framebuffer, resolving once before bloom. Bloom,
+projected shadows and scene antialiasing remain enabled; the HUD and postprocess
+run single-sampled. Default is 0 and no machine profile enables it. It is not
+archived. Set it before startup, not in a late `exec` file.
+
+The experiment requires EXT framebuffer object, multisample, blit and packed
+depth/stencil support, a back-buffer mono context, and the exact requested
+scene sample count. Unsupported configurations fail initialization explicitly
+rather than silently disabling antialiasing. SDL12-compat is rejected because
+it owns its own framebuffer plumbing. This is not a universal replacement for
+the existing path and is not enabled on G3/G4/G5 or Apple Silicon profiles.
+
+### Existing draw-time cvars
+
     EXTRA='+set gl_retexturing 0 +gl_retexturing' scripts/bench.sh <machine> demo1 1024x768 3
 
 `+set` is applied again after the bundle config, so it overrides the profile.

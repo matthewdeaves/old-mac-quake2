@@ -318,6 +318,12 @@ extern cvar_t *gl_waterwarp;
 
 /* yquake2-ppc — MSAA sample count (CVAR_LATCH: requires vid_restart) */
 extern cvar_t *gl_msaa_samples;
+extern cvar_t *gl_scene_resolve;
+qboolean R_SceneInit(void);
+void R_SceneShutdown(void);
+void R_SceneBegin(void);
+qboolean R_SceneResolveBloom(void);
+void R_ScenePresent(void);
 
 /* yquake2-ppc — Textured point sprite particles (GL_ARB_point_sprite).
  * Probed at GL init; cvar is the user-visible toggle. */

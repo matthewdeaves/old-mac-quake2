@@ -351,7 +351,12 @@ GLimp_InitGraphics(qboolean fullscreen)
 	 * off output. Per-machine defaults via autoexec cvar. */
 	{
 		extern cvar_t *gl_msaa_samples;
-		if (gl_msaa_samples && (int)gl_msaa_samples->value > 0)
+		if (gl_scene_resolve && gl_scene_resolve->value)
+		{
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 0);
+			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 0);
+		}
+		else if (gl_msaa_samples && (int)gl_msaa_samples->value > 0)
 		{
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
 			SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES,
@@ -462,6 +467,7 @@ GLimp_InitGraphics(qboolean fullscreen)
 void
 GLimp_EndFrame(void)
 {
+	R_ScenePresent(); /* menu/loading frames without R_RenderView */
 	SDL_GL_SwapBuffers();
 }
 

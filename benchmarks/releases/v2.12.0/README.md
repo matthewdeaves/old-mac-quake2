@@ -29,7 +29,7 @@ Smokes use the production config, sound disabled, system output muted.
 | mini-g4 | 10.4.11 Tiger | ATI Radeon 9200 | ppc7400 | Jenkins `smoke-quake2-mini-g4` #3 | PASS, new game started (#35) |
 | imac-g5 | 10.5.8 Leopard | ATI Radeon 9600 | ppc970 | Jenkins `smoke-quake2-imac-g5` #5 | PASS, native 1440x900, new game started (#35) |
 | mini-sl | 10.6.8 Snow Leopard | NVIDIA GeForce 9400 | x86_64 | Jenkins `smoke-quake2-mini-sl` #4 | PASS, demo1 29.8 fps, vsync on |
-| imac-2019 | 15.7.9 Sequoia | AMD Radeon Pro 580X | x86_64 | Jenkins `smoke-quake2-mini-intel` #5 (FLEET_HOST imac-2019) | **NOT VALID, see below.** Logged 689 frames, 76.3 fps at 1920x1080, but the console was locked |
+| imac-2019 | 15.7.9 Sequoia | AMD Radeon Pro 580X | x86_64 | Jenkins `smoke-quake2-mini-intel` #7 (FLEET_HOST imac-2019), 2026-09-22 ~20:14 BST | PASS, demo1 73.5 fps, vsync on, 1920x1080 desktop fullscreen, bloom 1, MSAA 8. Console checked unlocked first (`gui-precondition.sh`: ready). #5 is void, see below |
 | workstation | 26.6.2 | Apple M5 | arm64 | `scripts/smoke-dmg.sh workstation` | PASS, demo1 59.4 fps, vsync on |
 
 Smoke fps is a vsync-on production launch, not a benchmark.
@@ -58,6 +58,15 @@ therefore still outstanding for v2.12.0.** A re-run at 19:39, after checking
 `CGSSessionScreenIsLocked` was absent, did not start: buildhost held the host
 for the #88 fix. The engine on imac-2019 is still the release binary
 (`2f7874dd…`).
+
+**Re-run, 2026-09-22 ~20:14 BST: PASS.** Jenkins `smoke-quake2-mini-intel` #7,
+FLEET_HOST imac-2019. The job's own `gui-precondition.sh` step reported the
+console ready (not locked, display power 4) before launch. Engine md5 was
+`2f7874dd…`, the release binary. It rendered demo1 to completion at 73.5 fps,
+vsync on, with live read-back `gl_bloom 1`, `gl_msaa_samples 8`, 1920x1080,
+`vid_desktopfullscreen 1` and `gl_swapinterval 1`.
+`logs/smoke-imac-2019-recheck.log`. This closes the required imac-2019
+release smoke.
 
 ## Not covered
 

@@ -1,0 +1,2 @@
+timestamp,commit,build_type,machine,cpu,gpu,os,demo,res,run1_fps,run2_fps,run3_fps,median_fps,notes
+2026-09-22T16:30:00Z,93ae411a,fat,workstation,Apple M5,Apple M5,26.6.2,demo1,1920x1080,105.5,112.8,112.6,112.70,M5 window-update baseline; installed old engine 59137715; sound enabled; no injection | mode=desktopfullscreen EXTRA=+set s_initsound 1 | Record resolve-once FPS gains and controlled image validation

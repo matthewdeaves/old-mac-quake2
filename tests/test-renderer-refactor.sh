@@ -14,3 +14,13 @@ esac
   -fsanitize=address,undefined "$repo_root/tests/renderer-refactor.c" \
   "${linker[@]}" -o "$test_dir/renderer-refactor"
 "$test_dir/renderer-refactor"
+"$compiler" -std=gnu99 "${RENDERER_TEST_OPT:--O2}" -g \
+  -Wno-deprecated-declarations -ffunction-sections -fdata-sections \
+  -fsanitize=address,undefined "$repo_root/tests/renderer-clear.c" \
+  "${linker[@]}" -o "$test_dir/renderer-clear"
+"$test_dir/renderer-clear"
+"$compiler" -std=gnu99 "${RENDERER_TEST_OPT:--O2}" -g \
+  -Wno-deprecated-declarations -ffunction-sections -fdata-sections \
+  -fsanitize=address,undefined "$repo_root/tests/renderer-bloom.c" \
+  "${linker[@]}" -o "$test_dir/renderer-bloom"
+"$test_dir/renderer-bloom"

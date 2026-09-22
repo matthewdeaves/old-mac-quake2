@@ -25,6 +25,8 @@ Files: `scripts/bundle/autoexec-*.cfg`,
 | `gl_trans_lighting` | lightmapped glass/grates, latched at map load | on multitex, off G3 + sawtooth |
 | `gl_caustics` | water-surface caustic overlay. **Water only**: skips lava and slime, see below | on multitex, off G3 + sawtooth |
 | `gl_zfix` | polygon-offset coplanar surfaces | on (all) |
+| `gl_clear_combined` | clear requested depth/stencil/colour buffers together | 1 on measured Radeon 9200 mini-G4 profile; 0 elsewhere |
+| `gl_bloom_fastrestore` | restore only the overwritten bloom workspace for full views; reduced/offset views keep the full restore | 1 with the measured GeForce 9400 bloom auto-default; 0 elsewhere |
 | `gl_farsee` | extended far clip, `CVAR_LATCH` | on ppc7400/ppc970/x86_64/arm64, off ppc750/i386 (#24) |
 | `gl_bloom` (+ `_alpha` `_darken` `_size`) | fixed-function light bloom | on for tuned G5 dual, imac-2019 and arm64 profiles; off on G3/G4 and generic Intel. Apple Silicon measured 264.55 fps at 1920x1080 with bloom, 4x MSAA and desktop-fullscreen; evidence: `benchmarks/experiments/2026-09-12-bloom-readback/` |
 | `vid_desktopfullscreen` | native-res same-mode fullscreen capture | on iMac-class (`ppc970` baseline + `imac-g5`); off elsewhere. **The only R300/Leopard-safe fullscreen, ADR 0008** |
@@ -43,13 +45,19 @@ the source is left out.
 
 ## A/B one cvar without a rebuild
 
-    EXTRA='+cmd "set gl_retexturing 0"' scripts/bench.sh <machine> demo1 1024x768 3
+    EXTRA='+set gl_retexturing 0 +gl_retexturing' scripts/bench.sh <machine> demo1 1024x768 3
 
-`+cmd` is a **late** command, so it runs after the bundle exec and overrides
-cleanly. `+set` is an **early** command, applied just after the bundle block, so
-it also overrides, that is what `bench.sh` uses for resolution control. If the
+`+set` is applied again after the bundle config, so it overrides the profile.
+The trailing cvar command prints its effective value. `+cmd` forwards text to
+the server and is not a local cvar override in this engine. If the
 tweak wins, fold it into `scripts/bundle/autoexec-<machine>.cfg`, redeploy,
 re-bench. See `docs/BENCH.md` and ADR 0010.
+
+The generic x86_64 profile uses `gl_bloom -1` to request a measured GPU
+default. The renderer enables bloom and partial restoration on GeForce 9400;
+other GPUs resolve to off. Mapped profiles and explicit `+set gl_bloom 0/1`
+remain authoritative. The measured 1080p result is about 49.9 fps with bloom,
+versus 83.8 without it: this default spends speed on a visible effect.
 
 ## Tuning the caustic look (`gl_caustics`)
 

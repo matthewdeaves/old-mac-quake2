@@ -1,5 +1,23 @@
 # Bug fixes
 
+## 2026-09-22 — Avoid redundant framebuffer work on measured GPUs
+
+The Radeon 9200 path cleared depth and stencil separately. Opt-in
+`gl_clear_combined` issues the same requested buffer clears together, retaining
+the existing depth range, z-trick phases and polygon offset. Recorded GL-call
+tests cover all 64 boolean state combinations and both phases. On mini-G4,
+demo1 at 1024x768 with MSAA2 and projected shadows improved from 40.60 to
+55.70 fps in A/B/B/A runs; demo2 confirmed 40.40 to 55.60. Scene/HUD captures
+match after excluding screenshot notification text.
+
+Bloom restored the entire captured scene even though its working passes only
+overwrote the bottom-left corner. Opt-in `gl_bloom_fastrestore` restores that
+corner for a full view, with the original path retained for reduced/offset
+views. Coordinate/fallback tests pass. GeForce 9400 demo1 at 1920x1080 with
+bloom and MSAA2 improved from about 42.7 to 49.9 fps; demo2 from 42.00 to
+48.65. Captures have small sampling differences, not exact pixel equality.
+These results used temporary renderer swaps, not the final candidate DMG.
+
 ## 2026-09-22 — Current Apple lipo omitted valid PowerPC slices
 
 The orchestration Mac's lipo reports thin PowerPC binaries as

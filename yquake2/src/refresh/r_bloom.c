@@ -41,6 +41,7 @@ cvar_t *gl_bloom;            /* master on/off */
 cvar_t *gl_bloom_alpha;      /* composite intensity */
 cvar_t *gl_bloom_darken;     /* bright-pass strength (multiply passes) */
 cvar_t *gl_bloom_size;       /* effect-texture size (pow2, 64..512) */
+cvar_t *gl_bloom_fastrestore; /* restore only the workspace for a full-screen view */
 
 /* TEXNUM_BLOOMSCREEN (pow2 >= view, raw back-buffer copy) and
  * TEXNUM_BLOOMEFFECT (BLOOM_SIZE^2, downsampled + blurred) are fixed manual
@@ -148,6 +149,25 @@ R_Bloom_Quad(float x, float y, float w, float h, float tcw, float tch)
 	qglTexCoord2f(tcw, 0);   qglVertex2f(x + w, y + h);
 	qglTexCoord2f(tcw, tch); qglVertex2f(x + w, y);
 	qglEnd();
+}
+
+/* Restore the scene pixels overwritten by the bloom workspace. */
+static void
+R_Bloom_RestoreScene(void)
+{
+	if (gl_bloom_fastrestore->value && v_x == 0 && v_y == 0 &&
+		v_w == vid.width && v_h == vid.height)
+	{
+		/* Only the bottom-left workspace was overwritten. Preserve 1:1
+		 * texel mapping; reduced/offset views use the original full restore. */
+		R_Bloom_Quad(0, vid.height - BLOOM_SIZE, BLOOM_SIZE, BLOOM_SIZE,
+			(float)BLOOM_SIZE / screen_tex_w, (float)BLOOM_SIZE / screen_tex_h);
+	}
+	else
+	{
+		R_Bloom_Quad(r_newrefdef.x, r_newrefdef.y,
+				r_newrefdef.width, r_newrefdef.height, scr_tcw, scr_tch);
+	}
 }
 
 /* Single offset additive sample of the effect texture onto itself. */
@@ -352,8 +372,7 @@ R_Bloom(void)
 	R_TexEnv(GL_REPLACE);
 	qglColor4f(1, 1, 1, 1);
 	R_Bind(TEXNUM_BLOOMSCREEN);
-	R_Bloom_Quad(r_newrefdef.x, r_newrefdef.y,
-			r_newrefdef.width, r_newrefdef.height, scr_tcw, scr_tch);
+	R_Bloom_RestoreScene();
 
 	/* 5b. add the bloom */
 	qglEnable(GL_BLEND);

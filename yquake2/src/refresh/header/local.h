@@ -305,6 +305,7 @@ extern cvar_t *gl_bloom;        /* yquake2-ppc — fixed-function light bloom po
 extern cvar_t *gl_bloom_alpha;
 extern cvar_t *gl_bloom_darken;
 extern cvar_t *gl_bloom_size;
+extern cvar_t *gl_bloom_fastrestore;
 
 extern cvar_t *gl_lightlevel;
 extern cvar_t *gl_overbrightbits;

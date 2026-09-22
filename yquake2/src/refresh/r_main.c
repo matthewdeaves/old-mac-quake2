@@ -29,6 +29,7 @@
 #define NUM_BEAM_SEGS 6
 
 void R_Clear(void);
+static cvar_t *gl_clear_combined;
 void R_BeginRegistration(char *map);
 struct model_s *R_RegisterModel(char *name);
 struct image_s *R_RegisterSkin(char *name);
@@ -859,11 +860,26 @@ R_SetupGL(void)
 void
 R_Clear(void)
 {
+	qboolean stencil = gl_shadows->value && have_stencil && gl_stencilshadow->value;
+	qboolean combined = gl_clear_combined->value != 0;
+	if (combined)
+	{
+		/* Depth and stencil commonly share a packed GPU surface. Clearing
+		 * both together avoids preserving half that surface on each pass. */
+		GLbitfield bits = gl_clear->value ? GL_COLOR_BUFFER_BIT : 0;
+		if (!gl_ztrick->value) bits |= GL_DEPTH_BUFFER_BIT;
+		if (stencil)
+		{
+			qglClearStencil(1);
+			bits |= GL_STENCIL_BUFFER_BIT;
+		}
+		if (bits) qglClear(bits);
+	}
 	if (gl_ztrick->value)
 	{
 		static int trickframe;
 
-		if (gl_clear->value)
+		if (gl_clear->value && !combined)
 		{
 			qglClear(GL_COLOR_BUFFER_BIT);
 		}
@@ -885,11 +901,11 @@ R_Clear(void)
 	}
 	else
 	{
-		if (gl_clear->value)
+		if (!combined && gl_clear->value)
 		{
 			qglClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		}
-		else
+		else if (!combined)
 		{
 			qglClear(GL_DEPTH_BUFFER_BIT);
 		}
@@ -914,7 +930,7 @@ R_Clear(void)
 	}
 
 	/* stencilbuffer shadows */
-	if (gl_shadows->value && have_stencil && gl_stencilshadow->value)
+	if (stencil && !combined)
 	{
 		qglClearStencil(1);
 		qglClear(GL_STENCIL_BUFFER_BIT);
@@ -1078,6 +1094,7 @@ R_Register(void)
 	gl_nocull = ri.Cvar_Get("gl_nocull", "0", 0);
 	gl_lerpmodels = ri.Cvar_Get("gl_lerpmodels", "1", 0);
 	gl_speeds = ri.Cvar_Get("gl_speeds", "0", 0);
+	gl_clear_combined = ri.Cvar_Get("gl_clear_combined", "0", CVAR_ARCHIVE);
 
 	gl_lightlevel = ri.Cvar_Get("gl_lightlevel", "0", 0);
 	gl_overbrightbits = ri.Cvar_Get("gl_overbrightbits", "2", CVAR_ARCHIVE);
@@ -1179,6 +1196,7 @@ R_Register(void)
 	gl_trans_lighting = ri.Cvar_Get("gl_trans_lighting", "1", CVAR_ARCHIVE);
 	gl_caustics = ri.Cvar_Get("gl_caustics", "1", CVAR_ARCHIVE);
 	gl_bloom = ri.Cvar_Get("gl_bloom", "0", CVAR_ARCHIVE);
+	gl_bloom_fastrestore = ri.Cvar_Get("gl_bloom_fastrestore", "0", CVAR_ARCHIVE);
 	gl_bloom_alpha = ri.Cvar_Get("gl_bloom_alpha", "0.3", CVAR_ARCHIVE);
 	gl_bloom_darken = ri.Cvar_Get("gl_bloom_darken", "4", CVAR_ARCHIVE);
 	gl_bloom_size = ri.Cvar_Get("gl_bloom_size", "256", CVAR_ARCHIVE);
@@ -1419,6 +1437,19 @@ R_Init(void *hinstance, void *hWnd)
 
 	Q_strlcpy(vendor_buffer, gl_config.vendor_string, sizeof(vendor_buffer));
 	Q_strlwr(vendor_buffer);
+
+	/* The generic Intel profile requests measured GPU defaults with -1.
+	 * Explicit 0/1 values (including command-line overrides and mapped
+	 * profiles) remain authoritative. No video-mode change occurs here. */
+	if (gl_bloom->value < 0)
+	{
+		qboolean measured = strstr(renderer_buffer, "geforce 9400") != NULL;
+		ri.Cvar_Set("gl_bloom", measured ? "1" : "0");
+		if (measured) ri.Cvar_Set("gl_bloom_fastrestore", "1");
+		ri.Con_Printf(PRINT_ALL, "...bloom auto: %s for %s\n",
+			measured ? "enabled (measured GPU)" : "off (unmeasured GPU)",
+			gl_config.renderer_string);
+	}
 
 	/*
 	 * Capability tier for UNMAPPED hardware (issue #32). q2_autotier is

@@ -1,5 +1,18 @@
 # Bug fixes
 
+## 2026-09-22 — PowerPC Macs at Thousands of colors could not launch
+
+The ppc member of the bundled `MacOSX/SDL.framework` (SDL 1.2.15) quit about
+2 s after launch with "Couldn't init SDL video: Unsupported display mode" on
+any PPC Mac whose desktop was at Thousands of colors, not Millions.
+matthewdeaves/SDL#5 reproduced it on the G3 under 10.3.9 with Quake II.
+Fix: that member only is replaced with the SDL-1.2 release asset
+`retro/panther-ppc-sdl5-fix` (d298f453, SDL#4's byte-identical rebuild plus
+upstream 61074e09), sha256 `07cc046e…aac554401`, done with `lipo -replace ppc`
+on a Lion mini. The i386, x86_64 and arm64 members are byte-identical to
+before; the new ppc member's md5 `5f8cb597…` equals the asset. The 10.3 floor
+(per SDL#5) and the install name are unchanged. Refs #83.
+
 ## 2026-09-22 — Avoid redundant framebuffer work on measured GPUs
 
 The Radeon 9200 path cleared depth and stencil separately. Opt-in

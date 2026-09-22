@@ -369,19 +369,28 @@ case "$TARGET" in
   *)    WANT_SUBTYPE=""                     ;;   # x86_64 needs no coaxing
 esac
 if [ -n "$WANT_SUBTYPE" ]; then
+  # Current Apple lipo no longer recognizes thin big-endian Mach-O files.
+  # otool still decodes their header; require an actual thin PPC header before
+  # writing offset 8, and compare numeric subtypes rather than display names.
+  ppc_subtype() {
+    otool -h "$1" | awk '$1 == "0xfeedface" && $2 == 18 { print $3 }'
+  }
   for art in quake2 q2ded ref_gl.so baseq2/game.so; do
     BIN="$REPO_ROOT/build/q2-$TARGET/$art"
     [ -f "$BIN" ] || { echo "[build] missing artifact: $BIN" >&2; exit 1; }
-    GOT=$(lipo -info "$BIN" | sed 's/.*: //' | tr -d ' ')
-    if [ "$GOT" != "$WANT_NAME" ]; then
+    GOT=$(ppc_subtype "$BIN")
+    case "$GOT" in
+      ''|*[!0-9]*) echo "[build] not a thin 32-bit PPC Mach-O: $BIN" >&2; exit 1 ;;
+    esac
+    if [ "$GOT" != "$WANT_SUBTYPE" ]; then
       echo "[build] $art cpusubtype is '$GOT', re-stamping → $WANT_NAME ($WANT_SUBTYPE)"
       printf "$(printf '\\%03o\\%03o\\%03o\\%03o' 0 0 0 "$WANT_SUBTYPE")" \
         | dd of="$BIN" bs=1 seek=8 count=4 conv=notrunc 2>/dev/null
-      GOT=$(lipo -info "$BIN" | sed 's/.*: //' | tr -d ' ')
-      [ "$GOT" = "$WANT_NAME" ] || {
+      GOT=$(ppc_subtype "$BIN")
+      [ "$GOT" = "$WANT_SUBTYPE" ] || {
         echo "[build] FAILED to stamp $WANT_NAME on $art (got '$GOT')" >&2; exit 1; }
     fi
-    echo "[build] cpusubtype OK: $art = $GOT"
+    echo "[build] cpusubtype OK: $art = $WANT_NAME ($GOT)"
   done
 fi
 

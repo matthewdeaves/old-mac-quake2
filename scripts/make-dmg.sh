@@ -105,12 +105,11 @@ for required in quake2 ref_gl.so baseq2/game.so q2ded; do
     exit 1
   }
 done
-# Sanity: must be the multi-slice fat, not a stray single-arch binary. Use lipo
-# (reads the Mach header directly) rather than file(1): file's ppc subtype
-# names vary by host/toolchain — on an Apple-silicon workstation it renders
-# the ppc750 slice as "ppc_650", so the old `file | grep ppc_750` check
-# spuriously failed on a good fat. lipo -archs is authoritative.
-ARCHS=$(lipo -archs "$BUILD_DIR/quake2" 2>/dev/null || echo)
+# Sanity: require the numeric Mach headers, not file(1)'s variable PPC names
+# or modern lipo's incomplete PowerPC listing.
+# shellcheck source=scripts/macho-archs.sh
+. "$REPO_ROOT/scripts/macho-archs.sh"
+ARCHS=$(macho_archs "$BUILD_DIR/quake2")
 for a in ppc750 ppc7400 ppc970 i386 x86_64; do
   case " $ARCHS " in
     *" $a "*) ;;

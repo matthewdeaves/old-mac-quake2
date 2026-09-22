@@ -1,5 +1,16 @@
 # Bug fixes
 
+## 2026-09-22 — Current Apple lipo omitted valid PowerPC slices
+
+The orchestration Mac's lipo reports thin PowerPC binaries as
+`big-endian-mach-o` and rejects the PPC members of a valid fat binary. This
+made the subtype check refuse a correctly stamped G4 build. Build and package
+checks now read numeric CPU types/subtypes through otool. Tests cover all six
+engine slices, generic PPC, malformed headers and tool failures; the real G4
+build also passed all four subtype checks. Native arm64 framework assembly uses
+LLVM lipo when Apple's tool cannot handle the existing PPC member, with the
+architecture listing verified independently through otool.
+
 ## 2026-09-22 — Linux CI could not exercise occupied-install rollback
 
 The installer fixture ran on Ubuntu but the installer used Mac-only `md5`,

@@ -63,3 +63,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Repo invariants
         run: tests/test-repo.sh
+      - name: Mach-O architecture parser
+        run: bash tests/test-macho-archs.sh

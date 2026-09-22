@@ -34,6 +34,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The exclude list is a PARAMETER of the shared file, supplied per repo.
 # shellcheck source=scripts/source-stamp-excludes.sh
 . "$(dirname "$0")/source-stamp-excludes.sh"
+# shellcheck source=scripts/macho-archs.sh
+. "$(dirname "$0")/macho-archs.sh"
 cd "$REPO_ROOT"
 
 # Track every host WE personally claimed so ONE trap releases them all,
@@ -261,13 +263,13 @@ file "$REPO_ROOT/build/q2-fat"/* "$REPO_ROOT/build/q2-fat/baseq2"/* 2>/dev/null 
 # than as an ordered string: lipo lists members in the order they were fused,
 # not in any canonical order, so an ordered compare asserts the argument order
 # of the lipo call rather than the contents of the file.
-if command -v lipo >/dev/null 2>&1; then
+if command -v otool >/dev/null 2>&1; then
   WANT_SET=$(for a in $ARCHES; do
       case $a in g3) echo ppc750;; g4) echo ppc7400;; g5) echo ppc970;;
                  lion) echo x86_64;; *) echo "$a";; esac
     done | LC_ALL=C sort | tr '\n' ' ')
   for art in quake2 q2ded ref_gl.so baseq2/game.so; do
-    GOT_SET=$(lipo -archs "$REPO_ROOT/build/q2-fat/$art" | tr ' ' '\n' | grep . | LC_ALL=C sort | tr '\n' ' ')
+    GOT_SET=$(macho_archs "$REPO_ROOT/build/q2-fat/$art" | tr ' ' '\n' | grep . | LC_ALL=C sort | tr '\n' ' ')
     [ "$GOT_SET" = "$WANT_SET" ] || {
       echo "[build-fat] $art has members '$GOT_SET', want '$WANT_SET'" >&2; exit 1; }
     case " $GOT_SET " in

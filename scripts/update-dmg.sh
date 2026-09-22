@@ -74,7 +74,9 @@ done
   echo "candidate arm64 runtime is missing Contents/MacOS/libSDL2-2.0.0.dylib" >&2
   exit 1
 }
-ARCHS=$(lipo -archs "$MOUNT/Quake2.app/Contents/MacOS/quake2")
+# shellcheck source=scripts/macho-archs.sh
+. "$REPO_ROOT/scripts/macho-archs.sh"
+ARCHS=$(macho_archs "$MOUNT/Quake2.app/Contents/MacOS/quake2")
 [ "$ARCHS" = "ppc750 ppc7400 ppc970 x86_64 i386 arm64" ] || {
   echo "candidate slice mismatch: $ARCHS" >&2
   exit 1

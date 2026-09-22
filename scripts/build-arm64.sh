@@ -114,11 +114,26 @@ strip -x "$TMPSHIM"
 # cannot codesign arm64, and an unsigned arm64 Mach-O is SIGKILLed on load with
 # no diagnostic. lipo preserves each member's bytes, signature included.
 codesign --force --sign - "$TMPSHIM"
-OTHERS=$(lipo -archs "$FW" | tr ' ' '\n' | grep -v '^arm64$' | tr '\n' ' ')
+# shellcheck source=scripts/macho-archs.sh
+. "$REPO_ROOT/scripts/macho-archs.sh"
+OTHERS=$(macho_archs "$FW" | tr ' ' '\n' | grep -v '^arm64$' | tr '\n' ' ')
+# Apple's current lipo rejects PPC members. LLVM still preserves their numeric
+# headers while fusing, although it prints their names as unknown(18,subtype).
+LIPO=${LIPO:-lipo}
+if ! "$LIPO" -archs "$FW" >/dev/null 2>&1; then
+  if command -v llvm-lipo >/dev/null 2>&1; then
+    LIPO=llvm-lipo
+  elif [ -x /opt/homebrew/opt/llvm/bin/llvm-lipo ]; then
+    LIPO=/opt/homebrew/opt/llvm/bin/llvm-lipo
+  else
+    echo 'build-arm64.sh: set LIPO to a PowerPC-capable lipo (LLVM or legacy cctools)' >&2
+    exit 1
+  fi
+fi
 # shellcheck disable=SC2086
-lipo "$FW" -remove arm64 -output "$OUT/.sdl-noarm.dylib" 2>/dev/null || cp "$FW" "$OUT/.sdl-noarm.dylib"
-lipo -create "$OUT/.sdl-noarm.dylib" "$TMPSHIM" -output "$FW"
-echo "    SDL.framework members: $(lipo -archs "$FW")  (was: $OTHERS + shim)"
+"$LIPO" "$FW" -remove arm64 -output "$OUT/.sdl-noarm.dylib"
+"$LIPO" -create "$OUT/.sdl-noarm.dylib" "$TMPSHIM" -output "$FW"
+echo "    SDL.framework members: $(macho_archs "$FW")  (was: $OTHERS + shim)"
 rm -f "$OUT/.sdl-noarm.dylib"
 
 # --- 3) the engine, all four products ----------------------------------------

@@ -167,7 +167,9 @@ echo "[deploy-dmg $HOST] mount + stage /Applications/Quake2 (preserving ~/quake2
 if ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
 set -e
 DMG_BASE="$1"
-MNT="$HOME/q2install-mnt"
+# Under ~/oldmac/quake2/mnt, which the build mirror protects (build.sh).
+MNT="$HOME/oldmac/quake2/mnt/install"
+mkdir -p "$HOME/oldmac/quake2/mnt"
 DEST="/Applications/Quake2"
 DEST_STAGE="/Applications/.Quake2.stage.$$"
 

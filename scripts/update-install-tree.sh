@@ -292,6 +292,14 @@ if [ -x "$panther_ls" ]; then
 fi
 UPDATE_COMPLETE=yes
 trap - EXIT HUP INT TERM
+# Keep exactly one rollback: the install this update just replaced. Older ones
+# and earlier failed candidates piled up at ~220 MB each on every fleet Mac
+# (buildhost tidy, 2026-09-22). Only prune once the new install has verified.
+for old in "$ROLLBACK_ROOT"/Quake2.rollback-* "$ROLLBACK_ROOT"/Quake2.failed-update-*; do
+  [ -d "$old" ] && [ ! -L "$old" ] || continue
+  [ "$old" = "$BACKUP" ] && continue
+  rm -rf "$old" && echo "[update-tree] pruned older $(basename "$old")"
+done
 echo "[update-tree] update complete"
 echo "CURRENT_PATH=$DEST"
 echo "ROLLBACK_PATH=$BACKUP"

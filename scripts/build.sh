@@ -278,9 +278,10 @@ echo "[build] sync sources Ubuntu → $BUILD_HOST:$REMOTE_PATH/"
 ssh "$BUILD_HOST" "mkdir -p '$REMOTE_PATH'"
 # The minis are also install targets: deploy-dmg.sh/update-dmg.sh stage the DMG
 # at ~/oldmac/quake2/<dmg> and update-install-tree.sh keeps rollbacks under
-# ~/oldmac/quake2/rollbacks/. --delete never removes excluded receiver paths,
-# and neither pattern matches the source tree, so the stamp is unaffected (#81).
-REMOTE_KEEP_EXCLUDES=(--exclude=/rollbacks/ --exclude='/*.dmg')
+# ~/oldmac/quake2/rollbacks/, and both mount DMGs under ~/oldmac/quake2/mnt/.
+# --delete never removes excluded receiver paths, and no pattern matches the
+# source tree, so the stamp is unaffected (#81).
+REMOTE_KEEP_EXCLUDES=(--exclude=/rollbacks/ --exclude='/*.dmg' --exclude=/mnt/)
 # shellcheck disable=SC2046
 rsync -a --partial --inplace --delete \
   $(source_stamp_rsync_excludes "$SOURCE_STAMP_EXCLUDES") \

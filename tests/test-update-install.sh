@@ -62,7 +62,15 @@ grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
 [ -n "$(find "$Q2_UPDATE_ROLLBACK_ROOT" -maxdepth 1 -type d -name 'Quake2.failed-update-*' -print 2>/dev/null)" ]
 
 setup_fixture success
+# Older rollbacks and failed candidates are pruned after a verified update;
+# unrelated files next to them are not.
+mkdir -p "$Q2_UPDATE_ROLLBACK_ROOT/Quake2.rollback-20200101T000000Z-aaaaaaaaaaaa" \
+  "$Q2_UPDATE_ROLLBACK_ROOT/Quake2.failed-update-20200101T000000Z-bbbbbbbbbbbb"
+printf 'keep\n' > "$Q2_UPDATE_ROLLBACK_ROOT/marker"
 Q2_UPDATE_ALLOW_TEST_ROOT=1 "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output"
+[ ! -e "$Q2_UPDATE_ROLLBACK_ROOT/Quake2.rollback-20200101T000000Z-aaaaaaaaaaaa" ]
+[ ! -e "$Q2_UPDATE_ROLLBACK_ROOT/Quake2.failed-update-20200101T000000Z-bbbbbbbbbbbb" ]
+grep -q '^keep$' "$Q2_UPDATE_ROLLBACK_ROOT/marker"
 grep -q '^new-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
 grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
 grep -q '^set sensitivity 7$' "$DEST/baseq2/autoexec.cfg"

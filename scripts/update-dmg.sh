@@ -120,7 +120,9 @@ ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
 set -e
 DMG_BASE=$1
 DMG_PATH="$HOME/oldmac/quake2/$DMG_BASE"
-MOUNT="$HOME/q2-update-mnt.$$"
+# Under ~/oldmac/quake2/mnt, which the build mirror protects (build.sh).
+MOUNT="$HOME/oldmac/quake2/mnt/update.$$"
+mkdir -p "$HOME/oldmac/quake2/mnt"
 
 # Retry then force, same pattern as deploy-dmg.sh's own remote install path
 # (deploy-dmg.sh:296-301) — a slow PPC disk needs the flush time before

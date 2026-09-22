@@ -248,22 +248,23 @@ rm -rf "$ov_tmp"
 # Issue #81. The build mirror's rsync --delete targets ~/oldmac/quake2, where a
 # mini that is also an install target keeps its staged DMG and rollbacks.
 keep_tmp="$(mktemp -d)"
-mkdir -p "$keep_tmp/src/yquake2" "$keep_tmp/dst/rollbacks/Quake2.rollback-x" "$keep_tmp/dst/yquake2"
+mkdir -p "$keep_tmp/src/yquake2" "$keep_tmp/dst/rollbacks/Quake2.rollback-x" "$keep_tmp/dst/yquake2" "$keep_tmp/dst/mnt/install"
 : > "$keep_tmp/src/yquake2/kept.c"
 : > "$keep_tmp/dst/Quake2-OldMac-vX.dmg"
 : > "$keep_tmp/dst/rollbacks/Quake2.rollback-x/quake2"
 : > "$keep_tmp/dst/yquake2/stale.c"
-if ! grep -q -- "REMOTE_KEEP_EXCLUDES=(--exclude=/rollbacks/ --exclude='/\*.dmg')" "$REPO_ROOT/scripts/build.sh" ||
+: > "$keep_tmp/dst/mnt/install/README.txt"
+if ! grep -q -- "REMOTE_KEEP_EXCLUDES=(--exclude=/rollbacks/ --exclude='/\*.dmg' --exclude=/mnt/)" "$REPO_ROOT/scripts/build.sh" ||
 	! grep -q -- '"\${REMOTE_KEEP_EXCLUDES\[@\]}"' "$REPO_ROOT/scripts/build.sh"; then
 	fail "build.sh source mirror does not protect staged DMGs and rollbacks"
-elif ! rsync -a --delete --exclude=/rollbacks/ --exclude='/*.dmg' "$keep_tmp/src/" "$keep_tmp/dst/"; then
+elif ! rsync -a --delete --exclude=/rollbacks/ --exclude='/*.dmg' --exclude=/mnt/ "$keep_tmp/src/" "$keep_tmp/dst/"; then
 	fail "rsync protect-rule fixture could not run"
-elif [ ! -e "$keep_tmp/dst/Quake2-OldMac-vX.dmg" ] || [ ! -e "$keep_tmp/dst/rollbacks/Quake2.rollback-x/quake2" ]; then
-	fail "rsync --delete removed a staged DMG or rollback"
+elif [ ! -e "$keep_tmp/dst/Quake2-OldMac-vX.dmg" ] || [ ! -e "$keep_tmp/dst/rollbacks/Quake2.rollback-x/quake2" ] || [ ! -e "$keep_tmp/dst/mnt/install/README.txt" ]; then
+	fail "rsync --delete removed a staged DMG, rollback or mounted image"
 elif [ -e "$keep_tmp/dst/yquake2/stale.c" ] || [ ! -e "$keep_tmp/dst/yquake2/kept.c" ]; then
 	fail "protect rules stopped the mirror deleting stale sources"
 else
-	pass "build mirror keeps staged DMGs and rollbacks, still deletes stale sources"
+	pass "build mirror keeps staged DMGs, rollbacks and mounts, still deletes stale sources"
 fi
 rm -rf "$keep_tmp"
 

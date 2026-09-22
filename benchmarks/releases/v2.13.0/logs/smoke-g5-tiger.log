@@ -1,0 +1,7 @@
+gui-precondition: g5-tiger ready (probe: wake=no caffeinate locked=no display_power=none)
+[smoke g5-tiger] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke g5-tiger] renderer : GL_RENDERER: ATI Radeon 9600 OpenGL Engine
+[smoke g5-tiger] mode     : setting mode -1: 1680 1050
+[smoke g5-tiger] desktop  : Desktop is 1680x1050.
+[smoke g5-tiger] result   : <NO FPS LINE>
+[smoke g5-tiger] PASS — renderer initialized and a new game started (no argv on this OS, see #35)

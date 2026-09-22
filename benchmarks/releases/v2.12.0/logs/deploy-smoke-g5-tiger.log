@@ -1,0 +1,41 @@
+[deploy-dmg g5-tiger] copy Quake2-OldMac-v2.12.0.dmg to ~/oldmac/quake2/
+[deploy-dmg g5-tiger] DMG on ~/oldmac/quake2/ verified intact (bc1fd68f4099000f1cfd13ae1a6eee1b)
+[deploy-dmg g5-tiger] mount + stage /Applications/Quake2 (preserving ~/quake2-play as rollback)
+  [data] copied legacy baseq2 into the staged install; rollback left untouched
+  [config] no stale baseq2/autoexec.cfg (shipped cfg is the bundle's)
+  [verify] staged binaries match the image byte-for-byte ✅
+clear-launch-quarantine: /Applications/.Quake2.stage.9309/Quake2.app carried no quarantine flag
+installed into /Applications/Quake2:
+  9712
+  .
+  ..
+  Quake2.app
+  baseq2
+  q2ded
+  ref_gl.so
+app binary archs:
+Mach-O universal binary with 6 architectures
+/Applications/Quake2/Quake2.app/Contents/MacOS/quake2 (for architecture ppc750):	Mach-O executable ppc
+/Applications/Quake2/Quake2.app/Contents/MacOS/quake2 (for architecture ppc7400):	Mach-O executable ppc
+/Applications/Quake2/Quake2.app/Contents/MacOS/quake2 (for architecture ppc970):	Mach-O executable ppc
+/Applications/Quake2/Quake2.app/Contents/MacOS/quake2 (for architecture cputype (16777223) cpusubtype (-2147483645)):	Mach-O 64-bit executable x86_64
+/Applications/Quake2/Quake2.app/Contents/MacOS/quake2 (for architecture i386):	Mach-O executable i386
+/Applications/Quake2/Quake2.app/Contents/MacOS/quake2 (for architecture cputype (16777228) cpusubtype (0)):	Mach-O 64-bit executable
+[deploy-dmg g5-tiger] done — installed from Quake2-OldMac-v2.12.0.dmg at /Applications/Quake2
+gui-precondition: g5-tiger ready (usage: ioreg [-b] [-c class | -l | -n name] [-p plane] [-s] [-w width] [-x]
+where options are:
+	-b show object name in bold
+	-c list properties of objects with the given class
+	-l list properties of all objects
+	-n list properties of objects with the given name
+	-p traverse registry over the given plane (IOService is default)
+	-s show object state (eg. busy state, retain count)
+	-w clip output to the given line width (0 is unlimited)
+	-x print numeric property values in hexadecimal
+probe: wake=no caffeinate locked=no display_power=none)
+[smoke g5-tiger] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke g5-tiger] renderer : GL_RENDERER: ATI Radeon 9600 OpenGL Engine
+[smoke g5-tiger] mode     : setting mode -1: 1680 1050
+[smoke g5-tiger] desktop  : Desktop is 1680x1050.
+[smoke g5-tiger] result   : <NO FPS LINE>
+[smoke g5-tiger] PASS — renderer initialized and a new game started (no argv on this OS, see #35)

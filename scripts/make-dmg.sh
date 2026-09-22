@@ -294,9 +294,8 @@ launch. The real floors:
    Intel, 64-bit (x86_64)   10.6 Snow Leopard or later
    Apple Silicon (arm64)    11 Big Sur or later
 
-Three of those are built but untested: no G4 on Panther, no Intel Mac on Snow
-Leopard and no 32-bit Intel Mac exist in the test fleet. They should work;
-nobody has proven it.
+G4 on Panther and 32-bit Intel remain built but untested on hardware.
+Snow Leopard is tested on the Intel mini.
 
 The i386 slice covers the 2006 Core Solo and Core Duo Macs, the only Intel
 Macs with no 64-bit mode. Apple Silicon runs its own native arm64 slice, not
@@ -374,6 +373,10 @@ where they can't. Every knob is a runtime cvar or launch -flag, so nothing is
 locked in.
 
 Project: https://github.com/matthewdeaves/old-mac-quake2
+Known issue: bloom can leave a small processing image visible in the border
+when viewsize is below 100. Use viewsize 100 with bloom, or disable gl_bloom.
+The experimental gl_scene_resolve mode remains off by default and is not
+supported on Apple Silicon or the G3.
 License: GPL-2.0-or-later (see the project repo).
 EOF
 

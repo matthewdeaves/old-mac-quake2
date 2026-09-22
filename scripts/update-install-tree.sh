@@ -32,7 +32,14 @@ file_md5() {
 # update/rollback code run in Linux CI instead of mocking its filesystem work.
 device_id() {
   case "$(uname -s)" in
-    Darwin) stat -f %d "$1" ;;
+    Darwin)
+      if command -v stat >/dev/null 2>&1; then
+        stat -f %d "$1"
+      else
+        # Panther has no stat command; its bundled Perl exposes st_dev.
+        perl -e '@s = stat($ARGV[0]); @s or die "stat failed: $!\n"; print "$s[0]\n"' "$1"
+      fi
+      ;;
     *) stat -c %d "$1" ;;
   esac
 }
@@ -277,6 +284,12 @@ if [ -x "$DEST/clear-launch-quarantine.sh" ]; then
 fi
 
 rm -f "$OLD_MANIFEST" "$NEW_MANIFEST"
+# Panther keeps LaunchServices under ApplicationServices, unlike later OSes.
+# Refresh the current path so Finder does not keep launching the moved backup.
+panther_ls=/System/Library/Frameworks/ApplicationServices.framework/Frameworks/LaunchServices.framework/Support/lsregister
+if [ -x "$panther_ls" ]; then
+  "$panther_ls" -f "$DEST/Quake2.app" || rollback_after_publish "LaunchServices registration failed"
+fi
 UPDATE_COMPLETE=yes
 trap - EXIT HUP INT TERM
 echo "[update-tree] update complete"

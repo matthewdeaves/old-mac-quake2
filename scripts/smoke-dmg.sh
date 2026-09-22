@@ -168,6 +168,8 @@ else
   LAUNCH_CMD="open /Applications/Quake2/Quake2.app"
 fi
 host_exec "
+  # Automated fleet tests are silent; preserve the production video settings.
+  osascript -e 'set volume 0' || exit 8
   if killall -TERM quake2 2>/dev/null; then sleep 2; fi
   killall -KILL quake2 2>/dev/null || true
   sleep 1

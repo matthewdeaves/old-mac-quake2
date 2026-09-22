@@ -24,6 +24,41 @@ __typeof__(qglDepthFunc) qglDepthFunc = depthfunc;
 __typeof__(qglDepthRange) qglDepthRange = depthrange;
 __typeof__(qglPolygonOffset) qglPolygonOffset = offset;
 
+static cvar_t *set_option(char *name, char *value)
+{
+	cvar_t *option;
+	if (!strcmp(name, "gl_stencilshadow")) option = gl_stencilshadow;
+	else { assert(!strcmp(name, "gl_clear_combined")); option = gl_clear_combined; }
+	option->value = atof(value);
+	return option;
+}
+static void print_option(int level, char *format, ...)
+{ (void)level; (void)format; }
+
+static void test_shadow_defaults(void)
+{
+	const char *renderers[] = {"nvidia geforce 9400 opengl engine",
+		"intel gma 950", "ati rage 128", "ati radeon 9200", "unknown", ""};
+	int gpu, shadow, combined;
+	ri.Cvar_Set = set_option;
+	ri.Con_Printf = print_option;
+	for (gpu = 0; gpu < 6; gpu++)
+		for (shadow = -1; shadow <= 1; shadow++)
+			for (combined = -1; combined <= 1; combined++)
+			{
+				gl_stencilshadow->value = shadow;
+				gl_clear_combined->value = combined;
+				R_ApplyShadowDefaults(renderers[gpu]);
+				assert(gl_stencilshadow->value == (shadow < 0 ? gpu == 0 : shadow));
+				assert(gl_clear_combined->value == (combined < 0 ? gpu == 0 : combined));
+				/* Restart must not reinterpret resolved or explicit values. */
+				R_ApplyShadowDefaults("unknown");
+				assert(gl_stencilshadow->value == (shadow < 0 ? gpu == 0 : shadow));
+				assert(gl_clear_combined->value == (combined < 0 ? gpu == 0 : combined));
+			}
+	puts("shadow defaults: measured GPU only, explicit overrides and restart preservation pass");
+}
+
 int main(void)
 {
 	cvar_t vars[6] = {{0}};
@@ -62,5 +97,6 @@ int main(void)
 		}
 	}
 	puts("clear: all 64 state combinations and both depth phases preserve buffer/state results");
+	test_shadow_defaults();
 	return 0;
 }

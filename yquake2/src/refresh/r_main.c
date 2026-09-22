@@ -1320,6 +1320,23 @@ R_SetMode(void)
 	return true;
 }
 
+/* Called after renderer_buffer has been lowercased. Only negative values
+ * request automatic defaults; explicit player and mapped-profile values win.
+ * These are draw-time options, never a video-mode change or renderer reload. */
+static void
+R_ApplyShadowDefaults(const char *renderer)
+{
+	qboolean measured = strstr(renderer, "geforce 9400") != NULL;
+	if (gl_stencilshadow->value < 0)
+	{
+		ri.Cvar_Set("gl_stencilshadow", measured ? "1" : "0");
+		ri.Con_Printf(PRINT_ALL, "...shadow auto: %s for %s\n",
+			measured ? "projected (measured GPU)" : "blobs (unmeasured GPU)", renderer);
+	}
+	if (gl_clear_combined->value < 0)
+		ri.Cvar_Set("gl_clear_combined", measured ? "1" : "0");
+}
+
 int
 R_Init(void *hinstance, void *hWnd)
 {
@@ -1450,6 +1467,8 @@ R_Init(void *hinstance, void *hWnd)
 			measured ? "enabled (measured GPU)" : "off (unmeasured GPU)",
 			gl_config.renderer_string);
 	}
+
+	R_ApplyShadowDefaults(renderer_buffer);
 
 	/*
 	 * Capability tier for UNMAPPED hardware (issue #32). q2_autotier is

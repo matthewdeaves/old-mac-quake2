@@ -1,5 +1,9 @@
 # Framebuffer work reduction, 2026-09-22
 
+The sections below describe the original renderer-swap experiments. Later
+`g3-installed/` contains whole-candidate DMG acceptance, and `g4-drawrange/`
+records a rejected follow-up. Their own READMEs state the tested artifacts.
+
 Code: `dff140f3`. These are renderer-swap experiments, not final-DMG tests.
 The engine remained the deployed `3f6cf8b9` artifact throughout. CSV commit
 labels describe the experiment checkout, not the temporary renderer's source

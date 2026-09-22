@@ -186,6 +186,14 @@ The R300 display capture is never released. Always TERM, sleep, then KILL:
 
 ## Renderer features
 
+**2026-09-22, indexed-model range hints did not improve the Radeon 9200.**
+An optional glDrawRangeElements path supplied the known model/shadow vertex
+bounds instead of glDrawElements. At 1024x768 with combined clears, MSAA2 and
+projected shadows, demo1 A/B/B/A warm results were 55.65 / 55.70 / 55.70 /
+55.70 fps. Ten captured frame pairs had identical pixels. Reverted the code;
+no new setting earns a default. Evidence and rejected patch are under
+benchmarks/experiments/2026-09-22-framebuffer/g4-drawrange/.
+
 **2026-09-22, G4 bloom still breaks the playable floor after framebuffer
 optimizations.** On the Radeon 9200 mini-G4 at 1024x768, MSAA2 and stencil
 shadows retained, combined clears improve bloom-off demo1 from 40.60 to

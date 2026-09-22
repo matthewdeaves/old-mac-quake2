@@ -1,0 +1,186 @@
+diff --git a/tests/renderer-refactor.c b/tests/renderer-refactor.c
+index 282e1cae..0dad1126 100644
+--- a/tests/renderer-refactor.c
++++ b/tests/renderer-refactor.c
+@@ -17,7 +17,8 @@ entity_t *currententity;
+ refdef_t r_newrefdef;
+ int r_framecount;
+ float r_avertexnormals[162][3];
+-static cvar_t options[8];
++static cvar_t options[9];
++cvar_t *gl_mesh_drawrange = &options[8];
+ cvar_t *gl_worldsort = &options[6];
+ cvar_t *gl_mesh_lockarrays = &options[7];
+ cvar_t *gl_staticworld = &options[0], *gl_indexedmodels = &options[1];
+@@ -32,6 +33,8 @@ static byte vbo_data[4096];
+ static float drawn[1024][3], drawn_alpha;
+ static int drawn_count;
+ static GLenum next_error;
++static int range_calls, range_end;
++static void APIENTRY draw_range(GLenum, GLuint, GLuint, GLsizei, GLenum, const void *);
+ static int lock_first, lock_count, array_locked, array_locks;
+ static byte textures[DYNAMIC_PAGES][BLOCK_WIDTH * BLOCK_HEIGHT * 4];
+ 
+@@ -52,6 +55,7 @@ static void APIENTRY upload_buffer(GLenum target, ptrdiff_t size, const void *da
+ }
+ void *GetProcAddressGL(char *name)
+ {
++	if (!strcmp(name, "glDrawRangeElements") || !strcmp(name, "glDrawRangeElementsEXT")) return (void *)draw_range;
+ 	if (!strcmp(name, "glBindBufferARB")) return (void *)bind_buffer;
+ 	if (!strcmp(name, "glDeleteBuffersARB")) return (void *)delete_buffers;
+ 	if (!strcmp(name, "glGenBuffersARB")) return (void *)generate_buffers;
+@@ -95,6 +99,15 @@ static void APIENTRY draw_elements(GLenum mode, GLsizei count, GLenum type, cons
+ 	}
+ }
+ static GLenum APIENTRY get_error(void) { GLenum error = next_error; next_error = GL_NO_ERROR; return error; }
++static void APIENTRY draw_range(GLenum mode, GLuint first, GLuint last,
++		GLsizei count, GLenum type, const void *indices)
++{
++	int i;
++	assert(first == 0 && type == GL_UNSIGNED_SHORT);
++	for (i = 0; i < count; i++) assert(((const GLushort *)indices)[i] <= last);
++	range_calls++; range_end = last;
++	draw_elements(mode, count, type, indices);
++}
+ static void APIENTRY pixel_store(GLenum what, GLint value) { assert(what == GL_UNPACK_ROW_LENGTH); rowlength = value; }
+ static void APIENTRY tex_subimage(GLenum target, GLint level, GLint x, GLint y, GLsizei w, GLsizei h,
+ 		GLenum format, GLenum type, const void *data)
+@@ -201,7 +214,38 @@ static void test_alias(void)
+ 	assert(R_DrawIndexedAlias(&mod, positions, verts, dots, light, 0.25f, false, false));
+ 	assert(array_locks == 2 && !array_locked);
+ 	qglUnlockArraysEXT = unlock_arrays;
++	/* Range hints must include UV-split vertices for models, but only original
++	 * XYZ vertices for shadows. Missing support preserves the old draw call. */
++	gl_mesh_lockarrays->value = 0;
++	gl_mesh_drawrange->value = 1;
++	drawn_count = 0;
++	assert(!mod.aliasmesh->drawrange);
++	assert(R_DrawIndexedAlias(&mod, positions, verts, dots, light, 0.25f, false, false));
++	assert(range_calls == 0);
++	mod.aliasmesh->drawrange = draw_range;
++	drawn_count = 0;
++	assert(R_DrawIndexedAlias(&mod, positions, verts, dots, light, 0.25f, false, false));
++	assert(range_calls == 1 && range_end == 4 && drawn_count == 9);
++	drawn_count = 0;
++	assert(R_DrawIndexedShadow(&mod, positions, light, 2, 5));
++	assert(range_calls == 2 && range_end == 3 && drawn_count == 9);
++	gl_mesh_drawrange->value = 0;
++	drawn_count = 0;
++	assert(R_DrawIndexedAlias(&mod, positions, verts, dots, light, 0.25f, false, false));
++	assert(range_calls == 2);
+ 	R_FreeAliasMesh(&mod);
++	/* Core 1.2 and the 1.1 extension path are independent capability gates. */
++	for (i = 0; i < 4; i++)
++	{
++		gl_config.version_string = i < 2 ? "1.1 ATI" : (i == 2 ? "1.2 ATI" : "2.1 NVIDIA");
++		gl_config.extensions_string = i == 1 ? "GL_EXT_draw_range_elements" : "";
++		mod.aliasmesh_attempted = false;
++		R_BuildAliasMesh(&mod);
++		assert(mod.aliasmesh && !!mod.aliasmesh->drawrange == (i != 0));
++		R_FreeAliasMesh(&mod);
++	}
++	gl_config.version_string = NULL;
++	gl_config.extensions_string = NULL;
+ 	mod.aliasmesh_attempted = false;
+ 	commands[0] = INT32_MIN;
+ 	R_BuildAliasMesh(&mod); assert(!mod.aliasmesh);
+@@ -211,6 +255,7 @@ static void test_alias(void)
+ 	mod.aliasmesh_attempted = false;
+ 	commands[3] = 0; h->num_glcmds = 12;
+ 	R_BuildAliasMesh(&mod); assert(!mod.aliasmesh);
++	gl_mesh_lockarrays->value = 1;
+ 	puts("alias: winding, UV seams, alpha, shadow reuse and malformed streams pass");
+ }
+ 
+diff --git a/yquake2/src/refresh/header/local.h b/yquake2/src/refresh/header/local.h
+index 6ce8968a..27ac26c2 100644
+--- a/yquake2/src/refresh/header/local.h
++++ b/yquake2/src/refresh/header/local.h
+@@ -329,6 +329,7 @@ extern cvar_t *gl_groupdraw;
+ extern cvar_t *gl_staticworld, *gl_indexedmodels, *gl_lightmap_cache;
+ extern cvar_t *gl_worldsort;
+ extern cvar_t *gl_mesh_lockarrays;
++extern cvar_t *gl_mesh_drawrange;
+ void R_BuildWorldMesh(model_t *mod);
+ void R_FreeWorldMesh(model_t *mod);
+ void R_FlushWorldMesh(void);
+diff --git a/yquake2/src/refresh/r_geometry.c b/yquake2/src/refresh/r_geometry.c
+index b617b5a3..51a142aa 100644
+--- a/yquake2/src/refresh/r_geometry.c
++++ b/yquake2/src/refresh/r_geometry.c
+@@ -249,8 +249,20 @@ typedef struct aliasmesh_s
+ 	aliasvertex_t *vertices;
+ 	GLushort *indices, *shadowindices;
+ 	int numvertices, numindices;
++	void (APIENTRY *drawrange)(GLenum, GLuint, GLuint, GLsizei, GLenum, const void *);
+ } aliasmesh_t;
+ 
++/* Give supporting drivers the already-known bounds instead of requiring an
++ * index scan. Optional: legacy drivers can make this slower, not faster. */
++static void
++R_DrawAliasElements(aliasmesh_t *m, int vertices, const GLushort *indices)
++{
++	if (gl_mesh_drawrange->value && m->drawrange)
++		m->drawrange(GL_TRIANGLES, 0, vertices - 1, m->numindices, GL_UNSIGNED_SHORT, indices);
++	else
++		qglDrawElements(GL_TRIANGLES, m->numindices, GL_UNSIGNED_SHORT, indices);
++}
++
+ void
+ R_FreeAliasMesh(model_t *mod)
+ {
+@@ -296,8 +308,16 @@ R_BuildAliasMesh(model_t *mod)
+ 		count = *order++;
+ 		if (!count)
+ 		{
++			int major = 0, minor = 0;
+ 			for (i = 0; i < m->numindices; i++)
+ 				m->shadowindices[i] = m->vertices[m->indices[i]].source;
++			if (gl_config.version_string)
++				sscanf(gl_config.version_string, "%d.%d", &major, &minor);
++			if (major > 1 || (major == 1 && minor >= 2))
++				m->drawrange = (void *)GetProcAddressGL("glDrawRangeElements");
++			else if (gl_config.extensions_string &&
++				strstr(gl_config.extensions_string, "GL_EXT_draw_range_elements"))
++				m->drawrange = (void *)GetProcAddressGL("glDrawRangeElementsEXT");
+ 			free(lookup);
+ 			return;
+ 		}
+@@ -392,7 +412,7 @@ R_DrawIndexedAlias(model_t *mod, float (*positions)[4], dtrivertx_t *verts,
+ 	}
+ 	locked = gl_mesh_lockarrays->value && qglLockArraysEXT && qglUnlockArraysEXT;
+ 	if (locked) qglLockArraysEXT(0, m->numvertices);
+-	qglDrawElements(GL_TRIANGLES, m->numindices, GL_UNSIGNED_SHORT, m->indices);
++	R_DrawAliasElements(m, m->numvertices, m->indices);
+ 	if (locked) qglUnlockArraysEXT();
+ 	if (glow) qglDisableClientState(GL_NORMAL_ARRAY);
+ 	if (!shell) qglDisableClientState(GL_TEXTURE_COORD_ARRAY);
+@@ -421,7 +441,7 @@ R_DrawIndexedShadow(model_t *mod, float (*positions)[4], float *shade,
+ 	qglVertexPointer(3, GL_FLOAT, 0, projected);
+ 	locked = gl_mesh_lockarrays->value && qglLockArraysEXT && qglUnlockArraysEXT;
+ 	if (locked) qglLockArraysEXT(0, h->num_xyz);
+-	qglDrawElements(GL_TRIANGLES, m->numindices, GL_UNSIGNED_SHORT, m->shadowindices);
++	R_DrawAliasElements(m, h->num_xyz, m->shadowindices);
+ 	if (locked) qglUnlockArraysEXT();
+ 	qglDisableClientState(GL_VERTEX_ARRAY);
+ 	return true;
+diff --git a/yquake2/src/refresh/r_main.c b/yquake2/src/refresh/r_main.c
+index ea8ebf4f..21514411 100644
+--- a/yquake2/src/refresh/r_main.c
++++ b/yquake2/src/refresh/r_main.c
+@@ -111,6 +111,7 @@ cvar_t *gl_groupdraw;          /* yquake2-ppc Phase B #3 — buffer-batched draw
+ cvar_t *gl_staticworld, *gl_indexedmodels, *gl_lightmap_cache;
+ cvar_t *gl_worldsort;
+ cvar_t *gl_mesh_lockarrays;
++cvar_t *gl_mesh_drawrange;
+ cvar_t *gl_minlight;           /* yquake2-ppc Tier 2 — clamp dark luxels to this floor (0-255, default 0) */
+ cvar_t *gl_skydistance;        /* yquake2-ppc Tier 2 — sky box half-extent (was hardcoded 2300/4096) */
+ cvar_t *gl_particle_square;    /* yquake2-ppc Tier 2 — force GL_POINTS particle path even without pointparameters ext */
+@@ -1141,6 +1142,7 @@ R_Register(void)
+ 	 * retained geometry without the per-frame depth/material sort. */
+ 	gl_worldsort = ri.Cvar_Get("gl_worldsort", "1", CVAR_ARCHIVE);
+ 	gl_mesh_lockarrays = ri.Cvar_Get("gl_mesh_lockarrays", "0", CVAR_ARCHIVE);
++	gl_mesh_drawrange = ri.Cvar_Get("gl_mesh_drawrange", "0", CVAR_ARCHIVE);
+ 
+ 	/* Tier 2 — minimum lightmap luxel value. 0 disables (lightmap stays
+ 	 * pitch-black in unlit corners as the original Q2 does). 8-32 lifts

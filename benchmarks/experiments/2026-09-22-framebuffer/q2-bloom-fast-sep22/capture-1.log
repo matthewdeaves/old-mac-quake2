@@ -1,0 +1,38 @@
+[screenshot mini-sl] native-res same-mode CAPTURE (R300-safe or unconfirmed GPU; shots at native res)
+[screenshot] staging autoshot.cfg on mini-sl (10 shots)
+[screenshot]   cfg size: 648 lines
+[screenshot] launch quake2 → timedemo demo1.dm2 → capture series → quit
+quake00.tga
+quake01.tga
+quake02.tga
+quake03.tga
+quake04.tga
+quake05.tga
+quake06.tga
+quake07.tga
+quake08.tga
+quake09.tga
+[screenshot] fetch TGAs
+[screenshot] convert TGAs → PNGs (magick)
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-00.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-01.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-02.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-03.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-04.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-05.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-06.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-07.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-08.png
+  /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-09.png
+[screenshot] OK —       10 PNGs
+-rw-r--r--  1 matt  wheel  2419858 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-00.png
+-rw-r--r--  1 matt  wheel  2613705 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-01.png
+-rw-r--r--  1 matt  wheel  2308346 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-02.png
+-rw-r--r--  1 matt  wheel  2409578 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-03.png
+-rw-r--r--  1 matt  wheel  1330587 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-04.png
+-rw-r--r--  1 matt  wheel  2953666 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-05.png
+-rw-r--r--  1 matt  wheel  2606266 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-06.png
+-rw-r--r--  1 matt  wheel  1747271 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-07.png
+-rw-r--r--  1 matt  wheel  2141994 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-08.png
+-rw-r--r--  1 matt  wheel  2033731 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl-09.png
+-rw-r--r--  1 matt  wheel  2606266 Sep 22 09:13 /private/tmp/q2-bloom-fast-sep22/frames-1/mini-sl.png

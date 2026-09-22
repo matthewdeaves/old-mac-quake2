@@ -1,0 +1,37 @@
+[screenshot] staging autoshot.cfg on mini-g4 (10 shots)
+[screenshot]   cfg size: 648 lines
+[screenshot] launch quake2 → timedemo demo1.dm2 → capture series → quit
+quake00.tga
+quake01.tga
+quake02.tga
+quake03.tga
+quake04.tga
+quake05.tga
+quake06.tga
+quake07.tga
+quake08.tga
+quake09.tga
+[screenshot] fetch TGAs
+[screenshot] convert TGAs → PNGs (magick)
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-00.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-01.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-02.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-03.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-04.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-05.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-06.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-07.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-08.png
+  /private/tmp/q2-combined-sep22/frames-0/mini-g4-09.png
+[screenshot] OK —       10 PNGs
+-rw-r--r--  1 matt  wheel  1144590 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-00.png
+-rw-r--r--  1 matt  wheel  1198915 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-01.png
+-rw-r--r--  1 matt  wheel  1040985 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-02.png
+-rw-r--r--  1 matt  wheel  1088240 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-03.png
+-rw-r--r--  1 matt  wheel   708275 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-04.png
+-rw-r--r--  1 matt  wheel  1332086 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-05.png
+-rw-r--r--  1 matt  wheel  1237949 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-06.png
+-rw-r--r--  1 matt  wheel   874235 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-07.png
+-rw-r--r--  1 matt  wheel  1071931 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-08.png
+-rw-r--r--  1 matt  wheel   996140 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4-09.png
+-rw-r--r--  1 matt  wheel  1237949 Sep 22 09:11 /private/tmp/q2-combined-sep22/frames-0/mini-g4.png

@@ -186,6 +186,23 @@ The R300 display capture is never released. Always TERM, sleep, then KILL:
 
 ## Renderer features
 
+**2026-09-22, G4 bloom still breaks the playable floor after framebuffer
+optimizations.** On the Radeon 9200 mini-G4 at 1024x768, MSAA2 and stencil
+shadows retained, combined clears improve bloom-off demo1 from 40.60 to
+55.70 fps. Enabling bloom with partial restoration and darken=4 costs
+18.15 fps at bloom-size 128 and 15.10 fps at size 256, warm means from
+three runs each. Keep bloom off here. Smaller blur work and the new clear
+path do not make the full-screen capture/composite affordable. This does
+not negate the measured GeForce 9400 partial-restoration win.
+
+**2026-09-22, G4 stencil-operation and submission experiments did not win.**
+Changing shadow coverage consumption from GL_INCR to GL_ZERO produced the
+same captured pixels but unchanged 40.60 fps in A/B/B/A runs. Reverted.
+Compiled-array locking measured 34.80 versus 40.60 fps; retained-world VBO
+submission measured 40.65 versus 40.60, within noise. Neither earns a new
+default. Combining depth/stencil clears, not changing shadow geometry or
+the stencil operation, was the measured win in this driver.
+
 **2026-09-13, forcing 16-bit `gl_texturesolidmode`/`gl_texturealphamode`
 helped the G3, cost the G4 (#69).** #68 found `GL_EXT_paletted_texture` (and
 `GL_EXT_shared_texture_palette`) absent on both the G3's Rage 128 *and* the

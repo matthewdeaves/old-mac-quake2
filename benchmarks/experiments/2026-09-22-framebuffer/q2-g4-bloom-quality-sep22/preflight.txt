@@ -1,0 +1,2 @@
+MD5 (/Users/mini/oldmac/quake2/experiments/bloomquality.mv4vhY/original.so) = 2e5ad14fa52e8c9959a54bbaea774eca
+output volume:0, input volume:missing value, alert volume:100, output muted:true

@@ -1,0 +1,24 @@
+##### CONTROL v2.12.0
+2f7874ddbd9f78498d35dce1b107aa38
+-rw-r--r--  1 matt  staff  615712 23 Sep 00:19 /Users/matt/oldmac/quake2/logs/q2-80/v2.12.0/yosemite-08.png
+-rw-r--r--  1 matt  staff  544180 23 Sep 00:19 /Users/matt/oldmac/quake2/logs/q2-80/v2.12.0/yosemite-09.png
+-rw-r--r--  1 matt  staff  760256 23 Sep 00:19 /Users/matt/oldmac/quake2/logs/q2-80/v2.12.0/yosemite.png
+##### DEPLOY
+CURRENT_PATH=/Applications/Quake2
+ROLLBACK_PATH=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260922T232004Z-2f7874ddbd9f
+OLD_ENGINE_MD5=2f7874ddbd9f78498d35dce1b107aa38
+NEW_ENGINE_MD5=d32851f17fdebd0158f51815cee567f9
+PRESERVED_AUTOEXEC=no
+[update-dmg yosemite] installed and retained named rollback from Quake2-OldMac-v2.13.0.dmg
+##### CANDIDATE v2.13.0
+-rw-r--r--  1 matt  staff  634883 23 Sep 00:25 /Users/matt/oldmac/quake2/logs/q2-80/v2.13.0/yosemite-08.png
+-rw-r--r--  1 matt  staff  559384 23 Sep 00:25 /Users/matt/oldmac/quake2/logs/q2-80/v2.13.0/yosemite-09.png
+-rw-r--r--  1 matt  staff  771329 23 Sep 00:25 /Users/matt/oldmac/quake2/logs/q2-80/v2.13.0/yosemite.png
+##### SMOKE
+gui-precondition: yosemite ready (probe: wake=no caffeinate locked=no display_power=none)
+[smoke yosemite] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke yosemite] renderer : GL_RENDERER: ATI Rage 128 OpenGL Engine
+[smoke yosemite] mode     : setting mode -1: 1024 768
+[smoke yosemite] desktop  : Desktop is 800x600.
+[smoke yosemite] result   : <NO FPS LINE>
+[smoke yosemite] PASS — renderer initialized and a new game started (no argv on this OS, see #35)

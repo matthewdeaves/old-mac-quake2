@@ -1,0 +1,46 @@
+##### CONTROL (installed 885f7de8, old SDL)
+gui-precondition: mini-g4 ready (probe: wake=no caffeinate locked=no display_power=none)
+engine md5: a035bd5dc901b601e9b04a140d4a22da
+sdl ppc md5: c5a4d268f3d86f5a37e17b3661042206
+depth before: 1024x768 32bpp
+1024x768 16bpp
+depth during: 1024x768 16bpp
+engine exited by 3s
+1024x768 32bpp
+depth after: 1024x768 32bpp
+--- stdout/stderr:
+couldn't exec yq2.cfg
+Couldn't init SDL video: Unsupported display mode.
+--- control result:
+Couldn't init SDL video: Unsupported display mode.
+Couldn't init SDL video: Unsupported display mode.
+##### DEPLOY
+CURRENT_PATH=/Applications/Quake2
+ROLLBACK_PATH=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260922T231409Z-a035bd5dc901
+OLD_ENGINE_MD5=a035bd5dc901b601e9b04a140d4a22da
+NEW_ENGINE_MD5=d32851f17fdebd0158f51815cee567f9
+PRESERVED_AUTOEXEC=no
+[update-dmg mini-g4] installed and retained named rollback from Quake2-OldMac-v2.13.0.dmg
+##### FIX (v2.13.0)
+gui-precondition: mini-g4 ready (probe: wake=no caffeinate locked=no display_power=none)
+engine md5: d32851f17fdebd0158f51815cee567f9
+sdl ppc md5: 0965a00dd7fc67f88c721b905dd0c227
+depth before: 1024x768 32bpp
+1024x768 16bpp
+depth during: 1024x768 16bpp
+engine alive at 17s
+1024x768 32bpp
+depth after: 1024x768 32bpp
+--- stdout/stderr:
+couldn't exec yq2.cfg
+--- fixed result:
+689 frames, 12.7 seconds: 54.3 fps
+689 frames, 12.7 seconds: 54.3 fps
+##### SMOKE
+gui-precondition: mini-g4 ready (probe: wake=no caffeinate locked=no display_power=none)
+[smoke mini-g4] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke mini-g4] renderer : GL_RENDERER: ATI Radeon 9200 OpenGL Engine
+[smoke mini-g4] mode     : setting mode -1: 1024 768
+[smoke mini-g4] desktop  : Desktop is 1024x768.
+[smoke mini-g4] result   : <NO FPS LINE>
+[smoke mini-g4] PASS — renderer initialized and a new game started (no argv on this OS, see #35)

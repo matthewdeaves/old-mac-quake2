@@ -1,0 +1,32 @@
+Console initialized.
+
+------- sound initialization -------
+Not initializing.
+------------------------------------
+
+----- refresher initialization -----
+Byte ordering: big endian
+
+Input initialized.
+Refresher build options:
+ + Retexturing support
+ - Gamma via X11
+Refresh: Yamagi Quake II OpenGL Refresher
+Using /System/Library/Frameworks/OpenGL.framework/OpenGL for OpenGL.
+Couldn't init SDL video: Unsupported display mode.
+Input shut down.
+==== Yamagi Quake II Initialized ====
+
+*************************************
+
+-------- game initialization -------
+LoadLibrary("game.so")
+Game is starting up.
+Game is baseq2.
+------------------------------------
+
+------- server initialization ------
+0 entities inhibited.
+0 teams with 0 entities.
+------------------------------------
+

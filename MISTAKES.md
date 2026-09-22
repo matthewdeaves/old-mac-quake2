@@ -186,6 +186,13 @@ The R300 display capture is never released. Always TERM, sleep, then KILL:
 
 ## Renderer features
 
+**2026-09-22, raising GeForce 9400 MSAA with bloom spends too much headroom.**
+At native 1920x1080, optimized bloom on, demo2 requested MSAA2 versus MSAA4
+measured warm 48.25 versus 30.40 fps from three runs each. The selected frames
+show only modest edge changes, so retain the 2x default. The cvar requests were
+verified; this runtime did not query/log the driver's actual sample count.
+Evidence: benchmarks/experiments/2026-09-22-framebuffer/intel-aa/.
+
 **2026-09-22, indexed-model range hints did not improve the Radeon 9200.**
 An optional glDrawRangeElements path supplied the known model/shadow vertex
 bounds instead of glDrawElements. At 1024x768 with combined clears, MSAA2 and

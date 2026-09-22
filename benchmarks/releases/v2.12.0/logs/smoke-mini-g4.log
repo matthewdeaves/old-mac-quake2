@@ -1,0 +1,13 @@
+Started smoke-quake2-mini-g4 #3
+Started from command line by admin
+Running as SYSTEM
+Building remotely on mini-g4 (bench build smoke capture) in workspace /home/matt/jenkins/agents/mini-g4/workspace/smoke-quake2-mini-g4
+[smoke-quake2-mini-g4] $ /bin/bash /tmp/jenkins768433157121619993.sh
+[smoke mini-g4] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke mini-g4] renderer : GL_RENDERER: ATI Radeon 9200 OpenGL Engine
+[smoke mini-g4] mode     : setting mode -1: 1024 768
+[smoke mini-g4] desktop  : Desktop is 1024x768.
+[smoke mini-g4] result   : <NO FPS LINE>
+[smoke mini-g4] PASS — renderer initialized and a new game started (no argv on this OS, see #35)
+Finished: SUCCESS
+Completed smoke-quake2-mini-g4 #3 : SUCCESS

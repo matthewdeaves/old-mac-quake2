@@ -1,0 +1,22 @@
+Started smoke-quake2-mini-intel #5
+Started from command line by admin
+Running as SYSTEM
+Building remotely on mini-intel (bench build smoke capture both) in workspace /home/matt/jenkins/agents/mini-intel/workspace/smoke-quake2-mini-intel
+[smoke-quake2-mini-intel] $ /bin/bash /tmp/jenkins9259256242438482173.sh
+[smoke imac-2019] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke imac-2019] renderer : GL_RENDERER: ATI Radeon Pro 580X OpenGL Engine
+[smoke imac-2019] mode     : setting mode -1: 1920 1080
+[smoke imac-2019] desktop  : Desktop is 2560x1440.
+[smoke imac-2019] result   : 689 frames, 9.0 seconds: 76.3 fps
+[smoke imac-2019] effective settings:
+    "gl_bloom" is "1"
+    "gl_msaa_samples" is "8"
+    "gl_mode" is "-1"
+    "gl_customwidth" is "1920"
+    "gl_customheight" is "1080"
+    "vid_fullscreen" is "1"
+    "vid_desktopfullscreen" is "1"
+    "gl_swapinterval" is "1"
+[smoke imac-2019] PASS — world rendered to completion on the production path
+Finished: SUCCESS
+Completed smoke-quake2-mini-intel #5 : SUCCESS

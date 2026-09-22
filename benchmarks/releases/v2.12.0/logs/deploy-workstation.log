@@ -1,0 +1,10 @@
+[update-tree] current=/Applications/Quake2 engine=bd3bb1a24e431696678d62d548f053c9 size=221236KB
+[update-tree] stage=/Applications/.Quake2.stage-20260922T172406Z-29703 rollback=/Users/matt/oldmac/quake2/rollbacks/Quake2.rollback-20260922T172406Z-bd3bb1a24e43
+clear-launch-quarantine: /Applications/Quake2/Quake2.app carried no quarantine flag
+clear-launch-quarantine: re-registered /Applications/Quake2/Quake2.app
+[update-tree] update complete
+CURRENT_PATH=/Applications/Quake2
+ROLLBACK_PATH=/Users/matt/oldmac/quake2/rollbacks/Quake2.rollback-20260922T172406Z-bd3bb1a24e43
+OLD_ENGINE_MD5=bd3bb1a24e431696678d62d548f053c9
+NEW_ENGINE_MD5=2f7874ddbd9f78498d35dce1b107aa38
+PRESERVED_AUTOEXEC=no

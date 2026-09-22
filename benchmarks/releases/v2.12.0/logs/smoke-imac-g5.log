@@ -1,0 +1,13 @@
+Started smoke-quake2-imac-g5 #5
+Started from command line by admin
+Running as SYSTEM
+Building remotely on imac-g5 (bench build smoke capture) in workspace /home/matt/jenkins/agents/imac-g5/workspace/smoke-quake2-imac-g5
+[smoke-quake2-imac-g5] $ /bin/bash /tmp/jenkins11866281052614676692.sh
+[smoke imac-g5] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke imac-g5] renderer : GL_RENDERER: ATI Radeon 9600 OpenGL Engine
+[smoke imac-g5] mode     : setting mode -1: 1440 900
+[smoke imac-g5] desktop  : Desktop is 1440x900.
+[smoke imac-g5] result   : <NO FPS LINE>
+[smoke imac-g5] PASS — renderer initialized and a new game started (no argv on this OS, see #35)
+Finished: SUCCESS
+Completed smoke-quake2-imac-g5 #5 : SUCCESS

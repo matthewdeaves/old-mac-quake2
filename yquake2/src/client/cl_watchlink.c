@@ -108,6 +108,7 @@
 #define WATCHLINK_OWNSOCK 1
 #endif
 
+static cvar_t *watch_enable; /* master switch, 0 (default) => fully inert */
 static cvar_t *watch_host;   /* "ip"/"ip:port", "auto" for Bonjour, "" => off */
 static cvar_t *watch_port;   /* default port when watch_host omits one */
 static cvar_t *watch_rate;   /* vitals heartbeat, Hz */
@@ -153,6 +154,14 @@ static DNSServiceRef watch_addr_ref;     /* IPv4 address of the host (10.5+) */
 
 static qboolean WatchLink_IsAuto(void);
 static void WatchLink_Sync(void);
+
+/* The feature runs only when switched on AND given a destination. */
+static qboolean
+WatchLink_Enabled(void)
+{
+	return watch_enable && watch_enable->value &&
+		watch_host && watch_host->string[0];
+}
 
 #ifdef WATCHLINK_OWNSOCK
 /* Parse "a.b.c.d:port" (numeric IPv4) into watch_sin. A non-numeric host leaves
@@ -467,9 +476,17 @@ WatchLink_PumpDiscovery(void)
 static void
 WatchLink_Sync(void)
 {
-	if (!watch_host)
+	if (!watch_host || !watch_enable)
 	{
 		return;
+	}
+
+	/* Toggling watch_enable reconciles exactly like a host edit: switching
+	   off stops any discovery in flight, switching on re-arms it. */
+	if (watch_enable->modified)
+	{
+		watch_enable->modified = false;
+		watch_host->modified = true;
 	}
 
 	if (watch_host->modified)
@@ -479,7 +496,7 @@ WatchLink_Sync(void)
 #ifdef WATCHLINK_BONJOUR
 		WatchLink_StopDiscovery();
 #endif
-		if (watch_host->string[0] && WatchLink_IsAuto())
+		if (WatchLink_Enabled() && WatchLink_IsAuto())
 		{
 #ifdef WATCHLINK_BONJOUR
 			WatchLink_StartDiscovery();
@@ -534,7 +551,7 @@ WatchLink_Ready(void)
 
 	WatchLink_Sync();
 
-	if (!watch_host || !watch_host->string[0])
+	if (!WatchLink_Enabled())
 	{
 		return false;
 	}
@@ -644,6 +661,10 @@ WatchLink_ConfigName(char *dst, int dstsize, int cs_index)
 void
 CL_WatchLink_Init(void)
 {
+	/* Off unless the player opts in (config.cfg or console). Archived, and
+	   deliberately never set by the bundle cfgs: they exec after config.cfg
+	   and would reset the player's choice on every launch. */
+	watch_enable = Cvar_Get("watch_enable", "0", CVAR_ARCHIVE);
 	watch_host = Cvar_Get("watch_host", "", CVAR_ARCHIVE);
 	watch_port = Cvar_Get("watch_port", "27999", CVAR_ARCHIVE);
 	watch_rate = Cvar_Get("watch_rate", "10", CVAR_ARCHIVE);
@@ -984,7 +1005,7 @@ WatchLink_SendMeta(void)
 void
 CL_WatchLink_Meta(void)
 {
-	if (!watch_host || !watch_host->string[0])
+	if (!WatchLink_Enabled())
 	{
 		return; /* feature off -- stay fully inert */
 	}

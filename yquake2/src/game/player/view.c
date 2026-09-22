@@ -1388,13 +1388,19 @@ ClientEndServerFrame(edict_t *ent)
 		else if (!deathmatch->value && !ent->client->showscores)
 		{
 			static cvar_t *wl_host;
+			static cvar_t *wl_enable;
 
 			if (!wl_host)
 			{
 				wl_host = gi.cvar("watch_host", "", 0);
 			}
 
-			if (wl_host && wl_host->string[0])
+			if (!wl_enable)
+			{
+				wl_enable = gi.cvar("watch_enable", "0", 0);
+			}
+
+			if (wl_enable && wl_enable->value && wl_host && wl_host->string[0])
 			{
 				WatchLink_ObjectivesMessage(ent);
 				gi.unicast(ent, false);

@@ -23,16 +23,27 @@ load-time change (see MISTAKES.md on "zero-risk load-time" traps).
 
 | cvar | default | meaning |
 |---|---|---|
-| `watch_host` | `""` | destination `ip` or `ip:port`; empty disables the feature |
+| `watch_enable` | `0` | master on/off switch. Nothing is sent and no discovery runs unless it is `1` |
+| `watch_host` | `""` | destination `ip` or `ip:port`, or `auto` for Bonjour discovery; empty disables the feature |
 | `watch_port` | `27999` | port used when `watch_host` omits one |
 | `watch_rate` | `10` | vitals heartbeat, Hz (floored to ≥1ms interval) |
 | `watch_events` | `1` | also emit discrete damage / centerprint events |
 
-Set live from the console, or from an `autoexec-*.cfg`:
+**Off by default.** The bundled machine cfgs already set `watch_host "auto"`,
+so turning the feed on takes one setting. Put this line in
+`~/.yq2/baseq2/config.cfg` while the game is not running, or type it at the
+console:
 
 ```
-set watch_host "192.168.1.50"
+set watch_enable 1
 ```
+
+`watch_enable` is archived, so the choice survives relaunches and app
+updates. `set watch_enable 0` turns it off again, live, and stops any Bonjour
+discovery in flight. The bundle cfgs never set `watch_enable`, because they
+execute after `config.cfg` and would reset the player's choice on every
+launch. To target a fixed address instead of discovery, set
+`watch_host "192.168.1.50"` as well.
 
 ## Wire format (newline-delimited JSON: UDP)
 

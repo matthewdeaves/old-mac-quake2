@@ -813,8 +813,7 @@ CL_Frame(int msec)
 		unsigned map_checksum;
 		CM_LoadMap(cl.configstrings[CS_MODELS + 1], true, &map_checksum);
 		CL_RegisterSounds();
-		CL_PrepRefresh();
-		CL_WatchLink_Meta(); /* send level name + item table to companion */
+		CL_PrepRefresh(); /* also sends the watchlink meta table (#82) */
 	}
 
 	/* update the screen */

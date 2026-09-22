@@ -67,7 +67,8 @@ Endianness-proof on the big-endian PPC fleet; debuggable with `nc -ul 27999`.
 
 - `CL_WatchLink_Init`, `cl_main.c` `CL_InitLocal` (registers cvars).
 - `CL_WatchLink_Frame`, tail of `CL_Frame` (heartbeat + damage edge).
-- `CL_WatchLink_Meta`, after `CL_PrepRefresh` in `CL_Frame`.
+- `CL_WatchLink_Meta`, at the end of `CL_PrepRefresh` (`cl_view.c`), so every
+  map-load path sends the table (#82).
 - `CL_WatchLink_CenterPrint`, inside `SCR_CenterPrint` (`cl_screen.c`).
 
 Sends reuse the engine's existing non-blocking UDP client socket via

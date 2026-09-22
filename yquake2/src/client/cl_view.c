@@ -354,6 +354,11 @@ CL_PrepRefresh(void)
 	cl.refresh_prepped = true;
 	cl.force_refdef = true; /* make sure we have a valid refdef */
 
+	/* Every map-load path preps here (precache, old-demo precache, the
+	   delayed CL_Frame prep), so the companion's level/item table goes
+	   out from here rather than from any one caller (#82). */
+	CL_WatchLink_Meta();
+
 #if defined(OGG) || defined(CDA)
 
 	/* start the cd track */

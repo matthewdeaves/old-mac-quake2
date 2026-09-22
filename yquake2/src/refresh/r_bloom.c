@@ -57,8 +57,12 @@ static int BLOOM_SIZE;                  /* effect-texture edge (pow2) */
 
 /* View rectangle currently being processed (from r_newrefdef). */
 static int   v_x, v_y, v_w, v_h;
-/* texcoords of the captured view within the pow2 screen texture */
+/* The capture always spans the whole window, so a reduced view's border
+ * (where the bottom-left workspace then lands) can be restored too (#80).
+ * scr_tcw/scr_tch: the window's extent in the pow2 screen texture;
+ * view_s0..view_t1: the view rectangle's sub-range within it. */
 static float scr_tcw, scr_tch;
+static float view_s0, view_t0, view_s1, view_t1;
 
 static qboolean bloom_inited = false;
 static qboolean bloom_diagnostics_pending = true;
@@ -139,35 +143,62 @@ R_InitBloomTextures(void)
 	bloom_inited = true;
 }
 
-/* Draw a textured quad in the current ortho workspace. tcw/tch are the
- * texcoord extents (top-right); the quad spans (x,y)..(x+w,y+h). */
+/* Draw a textured quad in the current ortho workspace, sampling texcoords
+ * s0..s1 x t0..t1 (t1 at the top edge); the quad spans (x,y)..(x+w,y+h). */
+static void
+R_Bloom_QuadST(float x, float y, float w, float h,
+		float s0, float t0, float s1, float t1)
+{
+	qglBegin(GL_QUADS);
+	qglTexCoord2f(s0, t1); qglVertex2f(x, y);
+	qglTexCoord2f(s0, t0); qglVertex2f(x, y + h);
+	qglTexCoord2f(s1, t0); qglVertex2f(x + w, y + h);
+	qglTexCoord2f(s1, t1); qglVertex2f(x + w, y);
+	qglEnd();
+}
+
+/* As above from texcoord (0,0); tcw/tch are the extents (top-right). */
 static void
 R_Bloom_Quad(float x, float y, float w, float h, float tcw, float tch)
 {
-	qglBegin(GL_QUADS);
-	qglTexCoord2f(0, tch);   qglVertex2f(x, y);
-	qglTexCoord2f(0, 0);     qglVertex2f(x, y + h);
-	qglTexCoord2f(tcw, 0);   qglVertex2f(x + w, y + h);
-	qglTexCoord2f(tcw, tch); qglVertex2f(x + w, y);
-	qglEnd();
+	R_Bloom_QuadST(x, y, w, h, 0, 0, tcw, tch);
+}
+
+/* Take this frame's view rectangle from r_newrefdef, in GL window
+ * coordinates, and its texcoords within the whole-window capture. */
+static void
+R_Bloom_SetView(void)
+{
+	v_x = r_newrefdef.x;
+	v_y = vid.height - r_newrefdef.height - r_newrefdef.y; /* GL origin = bottom-left */
+	v_w = r_newrefdef.width;
+	v_h = r_newrefdef.height;
+
+	scr_tcw = (float)vid.width / (float)screen_tex_w;
+	scr_tch = (float)vid.height / (float)screen_tex_h;
+	view_s0 = (float)v_x / (float)screen_tex_w;
+	view_t0 = (float)v_y / (float)screen_tex_h;
+	view_s1 = (float)(v_x + v_w) / (float)screen_tex_w;
+	view_t1 = (float)(v_y + v_h) / (float)screen_tex_h;
 }
 
 /* Restore the scene pixels overwritten by the bloom workspace. */
 static void
 R_Bloom_RestoreScene(void)
 {
-	if (!bloom_scene_resolved && gl_bloom_fastrestore->value && v_x == 0 && v_y == 0 &&
-		v_w == vid.width && v_h == vid.height)
+	if (!bloom_scene_resolved && gl_bloom_fastrestore->value)
 	{
-		/* Only the bottom-left workspace was overwritten. Preserve 1:1
-		 * texel mapping; reduced/offset views use the original full restore. */
+		/* Only the bottom-left workspace was overwritten, and the capture
+		 * spans the whole window, so this holds for reduced views too.
+		 * Preserve 1:1 texel mapping. */
 		R_Bloom_Quad(0, vid.height - BLOOM_SIZE, BLOOM_SIZE, BLOOM_SIZE,
 			(float)BLOOM_SIZE / screen_tex_w, (float)BLOOM_SIZE / screen_tex_h);
 	}
 	else
 	{
-		R_Bloom_Quad(r_newrefdef.x, r_newrefdef.y,
-				r_newrefdef.width, r_newrefdef.height, scr_tcw, scr_tch);
+		/* Whole window: a reduced view's border gets its workspace corner
+		 * back as well as the view itself (#80). */
+		R_Bloom_Quad(0, 0, vid.width, vid.height, scr_tcw, scr_tch);
 	}
 }
 
@@ -213,13 +244,7 @@ R_Bloom(void)
 	/* drain any pending batch before we take over GL state */
 	R_ApplyGLBuffer();
 
-	v_x = r_newrefdef.x;
-	v_y = vid.height - r_newrefdef.height - r_newrefdef.y; /* GL origin = bottom-left */
-	v_w = r_newrefdef.width;
-	v_h = r_newrefdef.height;
-
-	scr_tcw = (float)v_w / (float)screen_tex_w;
-	scr_tch = (float)v_h / (float)screen_tex_h;
+	R_Bloom_SetView();
 
 	/* Record the context's framebuffer state once. Supported renderers pay no
 	 * per-frame glGetError cost after this diagnostic frame. */
@@ -248,13 +273,15 @@ R_Bloom(void)
 	qglPushMatrix();
 	qglLoadIdentity();
 
-	/* 1. capture the rendered view into the screen texture (1:1) */
+	/* 1. capture the whole window into the screen texture (1:1). For the
+	 *    normal full view that is exactly the view; a reduced view also
+	 *    brings its border, which the workspace below overwrites (#80). */
 	R_Bind(TEXNUM_BLOOMSCREEN);
 	bloom_scene_resolved = R_SceneResolveBloom();
 	if (!bloom_scene_resolved)
 	{
 		R_ScenePresent();
-		qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, v_x, v_y, v_w, v_h);
+		qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, vid.width, vid.height);
 	}
 	if (diagnose)
 	{
@@ -295,7 +322,8 @@ R_Bloom(void)
 		qglColor4f(comp, comp, comp, 1);
 	}
 	R_Bind(TEXNUM_BLOOMSCREEN);
-	R_Bloom_Quad(0, 0, BLOOM_SIZE, BLOOM_SIZE, scr_tcw, scr_tch);
+	R_Bloom_QuadST(0, 0, BLOOM_SIZE, BLOOM_SIZE,
+			view_s0, view_t0, view_s1, view_t1);
 
 	R_Bind(TEXNUM_BLOOMEFFECT);
 	qglCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, BLOOM_SIZE, BLOOM_SIZE);

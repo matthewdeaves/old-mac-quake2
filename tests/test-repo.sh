@@ -248,18 +248,19 @@ rm -rf "$ov_tmp"
 # Issue #81. The build mirror's rsync --delete targets ~/oldmac/quake2, where a
 # mini that is also an install target keeps its staged DMG and in-flight swap copy.
 keep_tmp="$(mktemp -d)"
-mkdir -p "$keep_tmp/src/yquake2" "$keep_tmp/dst/swap/Quake2.previous-x" "$keep_tmp/dst/yquake2" "$keep_tmp/dst/mnt/install"
+mkdir -p "$keep_tmp/src/yquake2" "$keep_tmp/dst/swap/Quake2.previous-x" "$keep_tmp/dst/yquake2" "$keep_tmp/dst/mnt/install" "$keep_tmp/dst/deploy/incoming"
 : > "$keep_tmp/src/yquake2/kept.c"
 : > "$keep_tmp/dst/Quake2-OldMac-vX.dmg"
 : > "$keep_tmp/dst/swap/Quake2.previous-x/quake2"
 : > "$keep_tmp/dst/yquake2/stale.c"
 : > "$keep_tmp/dst/mnt/install/README.txt"
-if ! grep -q -- "REMOTE_KEEP_EXCLUDES=(--exclude=/swap/ --exclude='/\*.dmg' --exclude=/mnt/)" "$REPO_ROOT/scripts/build.sh" ||
+: > "$keep_tmp/dst/deploy/incoming/Quake2-OldMac-vX.dmg"
+if ! grep -q -- "REMOTE_KEEP_EXCLUDES=(--exclude=/swap/ --exclude='/\*.dmg' --exclude=/mnt/ --exclude=/deploy/)" "$REPO_ROOT/scripts/build.sh" ||
 	! grep -q -- '"\${REMOTE_KEEP_EXCLUDES\[@\]}"' "$REPO_ROOT/scripts/build.sh"; then
 	fail "build.sh source mirror does not protect staged DMGs and swap copies"
-elif ! rsync -a --delete --exclude=/swap/ --exclude='/*.dmg' --exclude=/mnt/ "$keep_tmp/src/" "$keep_tmp/dst/"; then
+elif ! rsync -a --delete --exclude=/swap/ --exclude='/*.dmg' --exclude=/mnt/ --exclude=/deploy/ "$keep_tmp/src/" "$keep_tmp/dst/"; then
 	fail "rsync protect-rule fixture could not run"
-elif [ ! -e "$keep_tmp/dst/Quake2-OldMac-vX.dmg" ] || [ ! -e "$keep_tmp/dst/swap/Quake2.previous-x/quake2" ] || [ ! -e "$keep_tmp/dst/mnt/install/README.txt" ]; then
+elif [ ! -e "$keep_tmp/dst/Quake2-OldMac-vX.dmg" ] || [ ! -e "$keep_tmp/dst/swap/Quake2.previous-x/quake2" ] || [ ! -e "$keep_tmp/dst/mnt/install/README.txt" ] || [ ! -e "$keep_tmp/dst/deploy/incoming/Quake2-OldMac-vX.dmg" ]; then
 	fail "rsync --delete removed a staged DMG, swap copy or mounted image"
 elif [ -e "$keep_tmp/dst/yquake2/stale.c" ] || [ ! -e "$keep_tmp/dst/yquake2/kept.c" ]; then
 	fail "protect rules stopped the mirror deleting stale sources"

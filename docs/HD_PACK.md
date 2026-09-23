@@ -13,7 +13,7 @@ transparently to the original 256x256 asset.
 **1. Next to the paks** (per-user, mix and match):
 
 ```
-~/Desktop/quake2/
+/Applications/Quake2/
   Quake2.app/
   baseq2/
     pak0.pak  pak1.pak  pak2.pak
@@ -71,8 +71,8 @@ see `LoadJPG:` / `LoadTGA:` lines, or:
 
 A/B the cost:
 
-    EXTRA='+cmd "set gl_retexturing 0"' scripts/bench.sh <machine> demo1 1024x768 3
-    EXTRA='+cmd "set gl_retexturing 1"' scripts/bench.sh <machine> demo1 1024x768 3
+    EXTRA='+set gl_retexturing 0 +gl_retexturing' scripts/bench.sh <machine> demo1 1024x768 3
+    EXTRA='+set gl_retexturing 1 +gl_retexturing' scripts/bench.sh <machine> demo1 1024x768 3
 
 Typical impact is **under 5% fps**: decode is a one-time per-texture cost paid
 at map load, not per frame.

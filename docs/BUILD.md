@@ -10,7 +10,7 @@ slices and cpusubtype stamping **ADR 0001**, the engine pin **ADR 0002**, SDL
 ```sh
 scripts/pick-build-host.sh --status              # which mini is free
 scripts/build.sh <g3|g4|g5|lion>                 # one slice, claims a host, flocks
-scripts/build-fat.sh                             # g3→g4→g5→lion + lipo; pinned host, lion best-effort on imac-2019
+scripts/build-fat.sh                             # g3→g4→g5→lion + lipo; pinned host; imac-2019 lion leg opt-in (below)
 scripts/deploy.sh <machine>                      # ships build/q2-fat over ssh
 scripts/make-dmg.sh                              # → dist/Quake2-OldMac-<ver>.dmg, on a Tiger box
 scripts/deploy-dmg.sh <machine>                  # install from the mounted image, as a human does

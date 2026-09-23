@@ -13,7 +13,7 @@ Files: `scripts/bundle/autoexec-*.cfg`,
 | `gl_fog` (+ `_mode` `_start` `_end` `_density` `_red/green/blue`) | cvar-driven `GL_FOG` | on (all); linear, far 2048-4096 |
 | `gl_waterwarp` | underwater frustum sine-warp, magnitude 0..1 | 1 (all), one `sin()` per frame, only when `RDF_UNDERWATER` |
 | `gl_decals` `gl_decal_max` `gl_decal_life` `gl_decal_fade` | KMQuake2 world decals | on; cap 8 (G3), 16 (sawtooth), 32 (qs/mg4), 64 (mini-intel), 128 (imac-2019) |
-| `gl_msaa_samples` | MSAA, `CVAR_LATCH` (0/2/4/8/16) | 0 G3+sawtooth, 2 qs/mg4/mini-intel, 2 imac-g5, 8 imac-2019 |
+| `gl_msaa_samples` | MSAA, `CVAR_LATCH` (0/2/4/8/16) | 0 G3+sawtooth+mini-intel, 2 qs/mg4, 2 imac-g5, 8 imac-2019 |
 | `gl_lightmap_subrect` | dirty-column-only dynamic lightmap upload | 1 (all); no-op when `gl_dynamic 0` |
 | `gl_groupdraw` | batched `qglDrawElements` dispatch (+ `glLockArraysEXT` CVA) | 1 on G4+ and x86, 0 on G3 (no benefit, small cost) |
 | `gl_minlight` | lightmap LUT clamp | 16 yosemite, 8 sawtooth, 0 elsewhere |

@@ -40,7 +40,7 @@ builds from the same tree (see [`server/`](server/README.md)).
 | **mini-g4** PowerMac10,1 | 1.25 GHz G4 / Radeon 9200 | 10.4.11 | `ppc7400` |
 | **sawtooth**, **quicksilver** | G4 / GeForce2 MX, Radeon 9000 | 10.4.11 (earlier releases) | `ppc7400` |
 | **G5 tower** PowerMac7,3 | dual 2.7 GHz G5 / Radeon 9600 | 10.3.9, 10.4.11, 10.5.8 | `ppc970` |
-| **imac-g5** PowerMac8,2 | 2.0 GHz G5 / Radeon 9600 | 10.5.8 | `ppc970` |
+| **imac-g5** PowerMac8,2 | 2.0 GHz G5 / Radeon 9600 | 10.5.8 (earlier releases) | `ppc970` |
 | **mini-sl** Macmini3,1 | Core 2 Duo / GeForce 9400M | 10.6.8 | `x86_64` |
 | **mini-intel**, **mini-intel2** Macmini2,1 | Core 2 Duo / GMA 950 | 10.7.5 | `x86_64` |
 | **imac-2019** iMac19,1 | i5-9600K / Radeon Pro 580X | 15.7 | `x86_64` |
@@ -69,7 +69,7 @@ numbers are in [`benchmarks/results.csv`](benchmarks/results.csv).
 | Apple M5, 4x MSAA | 1920×1080 | 264.6 |
 
 The floors are 20 fps on a G3 and about 40 on a G4. Above them, frame rate is
-spent on effects. Sawtooth and quicksilver were off this cycle.
+spent on effects. Sawtooth, quicksilver, the iMac G5 and the quad G5 were off this cycle.
 
 ## How it's built and benchmarked
 

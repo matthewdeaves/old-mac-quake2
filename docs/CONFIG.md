@@ -85,9 +85,7 @@ an FPS cost, not an optimization claim. Evidence is under
 
 **It is a WATER effect and is gated to water.** `R_EmitWaterPolys` draws every
 `SURF_DRAWTURB` surface, and lava and slime are warp surfaces too, so an
-ungated overlay paints its blue-white net over molten lava. That shipped, and
-was reported from hardware on q2dm6 "Lava Tomb": the lava read as pale blue
-water while still behaving as lava when you jumped in.
+ungated overlay paints its blue-white net over lava (seen on q2dm6).
 
 Measured on q2dm6, whose only liquid texture is `e3u1/brlava`, mean RGB over
 the lava pool: on (67.6, 36.9, **39.7**) blue shifted, off (71.7, 38.2,

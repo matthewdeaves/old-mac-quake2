@@ -10,18 +10,10 @@
 </p>
 
 A Quake II port (yquake2 5.11) built as one six-slice fat PowerPC + Intel + Apple
-Silicon binary inside a single `Quake2.app`, tested on a range of old Macs, G3,
-G4, G5, Intel and Apple Silicon, from a 1999 Power Mac to an M5. The app carries three config layers: shared
+Silicon binary inside a single `Quake2.app`. The app carries three config layers: shared
 controls, a per-arch baseline picked by the running slice, and a per-machine
 overlay picked at boot by `sysctl hw.model`. A headless Linux dedicated server
 builds from the same tree (see [`server/`](server/README.md)).
-
-> **About this project.** A personal project, I love Quake and I collect and
-> tinker with old Macs. My part is the setup and testing: the build, deploy and
-> benchmark scripts, and the per-machine settings. The engine and config changes
-> were made mostly **with AI (Claude), which I directed and checked against real
-> benchmarks on the machines**. The visual features are ported from KMQuake2 and
-> yquake2, not written from scratch.
 
 <p align="center">
   <img src="docs/screenshots/yosemite.png" width="19%" alt="yosemite (G3 Panther)" />
@@ -30,7 +22,7 @@ builds from the same tree (see [`server/`](server/README.md)).
   <img src="docs/screenshots/mini-g4.png" width="19%" alt="mini-g4 (G4 Tiger / R9200)" />
   <img src="docs/screenshots/mini-intel.png" width="19%" alt="mini-intel (Lion / GMA 950)" />
 </p>
-<p align="center"><sub>Same fat binary, same demo, five legacy GPU generations · 1999 → 2007; native arm64 support included</sub></p>
+<p align="center"><sub>Same fat binary and demo on five GPUs, 1999 to 2007</sub></p>
 
 ## Tested machines
 
@@ -73,8 +65,8 @@ spent on effects. Sawtooth, quicksilver, the iMac G5 and the quad G5 were off th
 
 ## How it's built and benchmarked
 
-One modern Mac drives the whole fleet over SSH. The Lion mini does double duty:
-it cross-builds the five PowerPC and Intel slices; `arm64` builds on the orchestration Mac. These diagrams
+One Mac drives the fleet over SSH. A Lion mini
+cross-builds the five PowerPC and Intel slices; `arm64` builds on the orchestration Mac. These diagrams
 cover the setup, the build pipeline and the timedemo bench loop.
 
 ![Build and bench rack: one orchestration Mac drives the fleet via the Lion mini cross-build host](docs/images/architecture.svg)
@@ -98,7 +90,7 @@ cover the setup, the build pipeline and the timedemo bench loop.
   underwater warp, group-draw batching, MSAA, energy-shell glow, lightmapped
   glass/grates, water caustics, extended draw distance.
 - **World decals + per-weapon blast marks**, rocket, grenade, plasma, BFG and
-  railgun each leave a distinct mark on the surface they actually hit (ported
+  railgun each leave a distinct mark on the surface they hit (ported
   from KMQuake2's fragment clipper; `gl_decals`).
 - **Stencil shadows on every PowerPC machine**, with a soft blob fallback where
   the GPU can't afford them.

@@ -1,0 +1,34 @@
+[update-dmg] artifact=Quake2-OldMac-v2.13.0.dmg sha256=1357d187c588a659c4557dbfd8fcc013dd2a22dec16cc62925ff8ec9081ed573
+[update-dmg] slices=ppc750 ppc7400 ppc970 x86_64 i386 arm64 signature=valid
+[update-dmg] Quake2.app/Contents/MacOS/quake2 d32851f17fdebd0158f51815cee567f9
+[update-dmg] ref_gl.so a0793d3e29393551e4704b922d70fc63
+[update-dmg] baseq2/game.so fd1510407ffc148bc4f04ddd65b00e66
+[update-dmg] q2ded 3f9689beee34086403dcc2c1841d2c72
+[update-dmg mini-intel2] copy and verify Quake2-OldMac-v2.13.0.dmg
+[update-tree] current=/Applications/Quake2 engine=d23e8c27b2f172d6dde7d250a91415da size=221892KB
+[update-tree] stage=/Applications/.Quake2.stage-20260923T071426Z-9019 rollback=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260923T071426Z-d23e8c27b2f1
+clear-launch-quarantine: /Applications/Quake2/Quake2.app carried no quarantine flag
+clear-launch-quarantine: re-registered /Applications/Quake2/Quake2.app
+[update-tree] update complete
+CURRENT_PATH=/Applications/Quake2
+ROLLBACK_PATH=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260923T071426Z-d23e8c27b2f1
+OLD_ENGINE_MD5=d23e8c27b2f172d6dde7d250a91415da
+NEW_ENGINE_MD5=d32851f17fdebd0158f51815cee567f9
+PRESERVED_AUTOEXEC=no
+[update-dmg mini-intel2] installed and retained named rollback from Quake2-OldMac-v2.13.0.dmg
+gui-precondition: mini-intel2 ready (probe: wake=no caffeinate locked=no display_power=4)
+[smoke mini-intel2] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke mini-intel2] renderer : GL_RENDERER: Intel GMA 950 OpenGL Engine
+[smoke mini-intel2] mode     : setting mode -1: 1024 768
+[smoke mini-intel2] desktop  : Desktop is 1920x1080.
+[smoke mini-intel2] result   : 689 frames, 16.0 seconds: 43.1 fps
+[smoke mini-intel2] effective settings:
+    "gl_bloom" is "0"
+    "gl_msaa_samples" is "8"
+    "gl_mode" is "-1"
+    "gl_customwidth" is "1024"
+    "gl_customheight" is "768"
+    "vid_fullscreen" is "1"
+    "vid_desktopfullscreen" is "1"
+    "gl_swapinterval" is "1"
+[smoke mini-intel2] PASS — world rendered to completion on the production path

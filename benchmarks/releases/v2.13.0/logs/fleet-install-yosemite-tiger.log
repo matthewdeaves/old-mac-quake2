@@ -1,0 +1,25 @@
+[update-dmg] artifact=Quake2-OldMac-v2.13.0.dmg sha256=1357d187c588a659c4557dbfd8fcc013dd2a22dec16cc62925ff8ec9081ed573
+[update-dmg] slices=ppc750 ppc7400 ppc970 x86_64 i386 arm64 signature=valid
+[update-dmg] Quake2.app/Contents/MacOS/quake2 d32851f17fdebd0158f51815cee567f9
+[update-dmg] ref_gl.so a0793d3e29393551e4704b922d70fc63
+[update-dmg] baseq2/game.so fd1510407ffc148bc4f04ddd65b00e66
+[update-dmg] q2ded 3f9689beee34086403dcc2c1841d2c72
+[update-dmg yosemite-tiger] copy and verify Quake2-OldMac-v2.13.0.dmg
+[update-tree] current=/Applications/Quake2 engine=d23e8c27b2f172d6dde7d250a91415da size=221900KB
+[update-tree] stage=/Applications/.Quake2.stage-20260923T071158Z-3198 rollback=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260923T071158Z-d23e8c27b2f1
+clear-launch-quarantine: /Applications/Quake2/Quake2.app carried no quarantine flag
+[update-tree] pruned older Quake2.rollback-20260913T134925Z-64e1bf9d72fe
+[update-tree] update complete
+CURRENT_PATH=/Applications/Quake2
+ROLLBACK_PATH=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260923T071158Z-d23e8c27b2f1
+OLD_ENGINE_MD5=d23e8c27b2f172d6dde7d250a91415da
+NEW_ENGINE_MD5=d32851f17fdebd0158f51815cee567f9
+PRESERVED_AUTOEXEC=no
+[update-dmg yosemite-tiger] installed and retained named rollback from Quake2-OldMac-v2.13.0.dmg
+gui-precondition: yosemite-tiger ready (probe: wake=no caffeinate locked=no display_power=none)
+[smoke yosemite-tiger] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke yosemite-tiger] renderer : GL_RENDERER: ATI Rage 128 OpenGL Engine
+[smoke yosemite-tiger] mode     : setting mode -1: 1024 768
+[smoke yosemite-tiger] desktop  : Desktop is 800x600.
+[smoke yosemite-tiger] result   : <NO FPS LINE>
+[smoke yosemite-tiger] PASS — renderer initialized and a new game started (no argv on this OS, see #35)

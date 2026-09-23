@@ -41,3 +41,14 @@ tested on hardware.
 - **imac-2019, 4x MSAA:** production demo1 went from 73.5 to 118.8 fps with
   vsync on (bench, vsync off: 73-75 to 145-154).
   `benchmarks/experiments/2026-09-22-imac2019-msaa/`.
+
+## Fleet install for play-testing, 2026-09-23 08:1x
+
+At the manager's request (the user is play-testing everywhere). Updates ran one
+host at a time (#85). Every up Mac's installed engine md5 was re-read as
+`d32851f1…`:
+yosemite-tiger (G3 on 10.4.11, installed and smoked, PASS), mini-intel2
+(GMA 950, 10.7.5, installed and smoked, PASS, demo1 43.1 fps, it now has a
+1920x1080 display), mini-sl (installed, NOT launched because of the #84 kernel
+panic), and mini-g4, g5-tiger, mini-intel, imac-2019 and the workstation
+(already on v2.13.0 from the release rollout). Logs: `logs/fleet-install-*`.

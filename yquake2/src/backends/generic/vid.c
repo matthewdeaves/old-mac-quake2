@@ -353,6 +353,15 @@ VID_CheckChanges(void)
 
 		if (!VID_LoadRefresh(name))
 		{
+			/* This tree has one renderer. Falling back to "gl" when "gl"
+			 * itself failed changes nothing, and the next frame called
+			 * through the freed renderer table: a SIGSEGV in
+			 * SCR_UpdateScreen instead of an error (imac-2019, 2026-09-23). */
+			if (!strcmp(vid_ref->string, "gl"))
+			{
+				Com_Error(ERR_FATAL, "Couldn't start the OpenGL renderer; see qconsole.log.\n");
+			}
+
 			Cvar_Set("vid_ref", "gl");
 		}
 

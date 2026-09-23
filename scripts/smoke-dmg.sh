@@ -243,7 +243,9 @@ echo "[smoke $HOST] result   : ${FPS_LINE:-<NO FPS LINE>}"
 if [ "$OPEN_ARGS" = 1 ]; then
   echo "[smoke $HOST] effective settings:"
   printf '%s' "$EFFECTIVE_LINES" | sed 's/^/    /'
-  if [ -n "$MISSING_EFFECTIVE" ]; then
+  # A host with no fullscreen mode never reaches the read-back; that is
+  # NOT TESTED (exit 3, below), not a failed build (mini-intel, headless).
+  if [ -n "$MISSING_EFFECTIVE" ] && [ -z "$NOMODE_LINE" ]; then
     echo "[smoke $HOST] FAIL — live cvar read-back missing:$MISSING_EFFECTIVE" >&2
     exit 4
   fi

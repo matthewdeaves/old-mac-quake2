@@ -596,6 +596,13 @@ try_acquire() {
 		ACQUIRE_LAST_REASON="$state"
 		return 1
 	fi
+	# The owner line goes inside single quotes in the remote body, so a quote in
+	# the label must be escaped as '\''. Unescaped, the remote shell has already
+	# run mkdir when it hits the syntax error. The result is an ownerless lock
+	# that reads busy to everyone, including this caller's own retries, until
+	# STALE_SECS. (A boot label containing "user's" did exactly that, #95.)
+	local owner_q
+	owner_q="$(printf '%s' "$ME$tag $label (bench)" | sed "s/'/'\\\\''/g")"
 	# Reclaim a stale lock via mv, so only one claimant's reclaim can succeed and
 	# two retriers cannot both pass the age check and both proceed. Then mkdir,
 	# which is the atomic part. `created` is written FIRST so a lock is never
@@ -615,7 +622,7 @@ try_acquire() {
 		fi
 		mkdir \"\$L\" 2>/dev/null || exit 1
 		date +%s > \"\$L/created\" 2>/dev/null
-		echo '$ME$tag $label (bench)' > \"\$L/owner\" 2>/dev/null
+		echo '$owner_q' > \"\$L/owner\" 2>/dev/null
 		date >> \"\$L/owner\" 2>/dev/null
 		exit 0
 	" >/dev/null 2>&1

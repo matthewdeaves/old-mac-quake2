@@ -250,6 +250,10 @@ try_acquire() {
 	# "this lock has a nonce" at release and defeat the old-format fallback.
 	CLAIM_TAG=""
 	[ -n "$CLAIM" ] && CLAIM_TAG=" claim=$CLAIM"
+	# Escape quotes for the single-quoted owner line below. Unescaped, a label
+	# with a ' leaves an ownerless lock that reads busy until STALE_SECS (#95).
+	local owner_q
+	owner_q="$(printf '%s' "$ME$CLAIM_TAG $label" | sed "s/'/'\\\\''/g")"
 	# Reclaim a stale lock first, then take it atomically via mkdir. The reclaim
 	# itself goes through mv: only one claimant's mv of the stale dir succeeds,
 	# so two orchestrators retrying the same stale lock cannot both pass their
@@ -264,7 +268,7 @@ try_acquire() {
 			fi
 		fi
 		mkdir \"\$L\" 2>/dev/null || exit 1
-		echo '$ME$CLAIM_TAG $label' > \"\$L/owner\" 2>/dev/null
+		echo '$owner_q' > \"\$L/owner\" 2>/dev/null
 		date >> \"\$L/owner\" 2>/dev/null
 		exit 0
 	" >/dev/null 2>&1

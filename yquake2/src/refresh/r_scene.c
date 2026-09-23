@@ -68,8 +68,9 @@ R_SceneInit(void)
 	GLint samples, color_samples, depth_samples, default_samples, binding;
 	const char *ext = gl_config.extensions_string;
 	if (!gl_scene_resolve->value) return true;
-	/* Explicit experimental mode fails closed rather than quietly dropping
-	 * requested AA when the single-sample window cannot be backed by an FBO. */
+	/* Fails OPEN: without FBO/blit/MSAA support the game still starts, just
+	 * without antialiasing, and says so. Failing closed stopped the game
+	 * starting at all, which a machine profile cannot risk (#69). */
 	if (!R_SceneHasExtension(ext, "GL_EXT_framebuffer_object") ||
 		!R_SceneHasExtension(ext, "GL_EXT_framebuffer_multisample") ||
 		!R_SceneHasExtension(ext, "GL_EXT_framebuffer_blit") ||
@@ -123,9 +124,15 @@ R_SceneInit(void)
 		vid.width, vid.height, samples, color_samples, depth_samples, default_samples);
 	return true;
 failed:
-	ri.Con_Printf(PRINT_ALL, "Scene resolve unavailable: experimental mode requires native SDL, EXT FBO/blit/MSAA/packed-depth and matching sample storage. Disable gl_scene_resolve.\n");
 	R_SceneShutdown();
-	return false;
+	R_ApplyGLBuffer();
+	qglReadBuffer(GL_BACK);
+	qglGetError();
+	/* Latched, so this takes effect at the next video restart, where the
+	 * window gets its own MSAA request back. Never archived. */
+	ri.Cvar_Set("gl_scene_resolve", "0");
+	ri.Con_Printf(PRINT_ALL, "Scene resolve unavailable (needs native SDL, EXT FBO/blit/MSAA/packed-depth and matching sample storage); continuing without antialiasing.\n");
+	return true;
 }
 
 void

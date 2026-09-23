@@ -45,21 +45,15 @@ the source is left out.
 
 ## A/B one cvar without a rebuild
 
-### Experimental scene resolve
+### Scene resolve
 
-`gl_scene_resolve 1` is an opt-in, latched experiment for native SDL 1.2.
-It requests a single-sample window and moves the requested `gl_msaa_samples`
-into a full-resolution scene framebuffer, resolving once before bloom. Bloom,
-projected shadows and scene antialiasing remain enabled; the HUD and postprocess
-run single-sampled. Default is 0 and no machine profile enables it. It is not
-archived. Set it before startup, not in a late `exec` file.
-
-The experiment requires EXT framebuffer object, multisample, blit and packed
-depth/stencil support, a back-buffer mono context, and the exact requested
-scene sample count. Unsupported configurations fail initialization explicitly
-rather than silently disabling antialiasing. SDL12-compat is rejected because
-it owns its own framebuffer plumbing. This is not a universal replacement for
-the existing path and is not enabled on G3/G4/G5 or Apple Silicon profiles.
+`gl_scene_resolve 1` (latched, not archived; set it before startup) requests a
+single-sample window and renders the scene into an FBO with `gl_msaa_samples`,
+resolving once before bloom. The HUD and postprocess run single-sampled. It
+needs native SDL 1.2 (not sdl12-compat) and EXT FBO, multisample, blit and
+packed depth/stencil. Without them it logs why and continues without
+antialiasing. Only the imac-2019 profile enables it (8x: 176 fps vs 74 for
+window 8x with bloom, #69).
 
 ### Existing draw-time cvars
 

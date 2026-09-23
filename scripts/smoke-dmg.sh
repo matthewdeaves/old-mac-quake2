@@ -10,7 +10,8 @@
 #   demo  replaces {DEMO} in SMOKE_ARGS (default SMOKE_DEMO)
 #
 # How it launches, chosen from the host's OS and users, never from its name:
-#  - 10.6+, console user = ssh user: `open -n <app> --args ...` (LaunchServices)
+#  - 10.6+, console user = ssh user: `open -n <app> --args ...` (LaunchServices),
+#    bounded: if it hangs 30 s with no game, direct exec instead
 #  - before 10.6: first a bounded bare `open` of the app (what a player's double
 #    click does), reported as OPEN_CHECK, then the game is exec'd directly with
 #    its args, because `open` has no --args there. A Tiger first-launch consent
@@ -182,17 +183,28 @@ open_check() {
 # One generation of the game's own log survives: it may be a player's crash
 # log (halflife ADR 0018). Overwritten each run, never accumulated.
 [ -f "$SLOG" ] && mv -f "$SLOG" "$SLOG.prev"
-for p in ${PRE_RM[@]+"${PRE_RM[@]}"}; do rm -f "$HOME/$p"; done
-if [ "$old" = no ] && [ "$CUSER" = "$ME" ] && [ -z "$ARCH" ]; then
-	MODE=open
-	if [ ${#ARGS[@]} -gt 0 ]; then open -n "$DEST/$APP" --args "${ARGS[@]}" > "$OUTLOG" 2>&1
-	else open -n "$DEST/$APP" > "$OUTLOG" 2>&1; fi
-else
-	if [ "$old" = yes ] && [ "$CUSER" = "$ME" ]; then open_check; quit_game >/dev/null; fi
+launch_exec() {
 	MODE=exec
 	[ -x "$DEST/$EXE" ] || { echo "VERDICT UNTESTED $DEST/$EXE is not executable"; exit 0; }
 	( cd "$DEST" && if [ -n "$ARCH" ]; then exec arch "-$ARCH" "$DEST/$EXE" ${ARGS[@]+"${ARGS[@]}"}
 	  else exec "$DEST/$EXE" ${ARGS[@]+"${ARGS[@]}"}; fi ) > "$OUTLOG" 2>&1 < /dev/null &
+}
+for p in ${PRE_RM[@]+"${PRE_RM[@]}"}; do rm -f "$HOME/$p"; done
+if [ "$old" = no ] && [ "$CUSER" = "$ME" ] && [ -z "$ARCH" ]; then
+	MODE=open
+	# Bounded: LaunchServices once hung `open -n` for 3.5 h on a Lion mini
+	# with no game started (alephone, #96). 30 s with no game: exec instead.
+	if [ ${#ARGS[@]} -gt 0 ]; then open -n "$DEST/$APP" --args "${ARGS[@]}" > "$OUTLOG" 2>&1 &
+	else open -n "$DEST/$APP" > "$OUTLOG" 2>&1 & fi
+	op=$!; w=0
+	while kill -0 $op 2>/dev/null && [ $w -lt 30 ]; do alive && break; sleep 1; w=$((w+1)); done
+	if kill -0 $op 2>/dev/null; then
+		kill -TERM $op 2>/dev/null
+		alive || { echo "NOTE open -n hung ${w}s with no game; direct exec instead"; launch_exec; }
+	fi
+else
+	if [ "$old" = yes ] && [ "$CUSER" = "$ME" ]; then open_check; quit_game >/dev/null; fi
+	launch_exec
 fi
 echo "INFO mode=$MODE${ARCH:+ arch=$ARCH}"
 

@@ -1,0 +1,8 @@
+gui-precondition: mini-sl ready (probe: wake=no caffeinate locked=no display_power=4)
+[C-v212-bloom1] 08:39:32 start extra=[]
+[C-v212-bloom1] faults_before=676
+[C-v212-bloom1] engine md5: 2f7874ddbd9f78498d35dce1b107aa38
+[C-v212-bloom1] result: CLEAN (spawned t=7s, held 70s)
+[C-v212-bloom1] faults_after_quit=676 (delta 0)
+[C-v212-bloom1] "gl_bloom" is "1" "gl_msaa_samples" is "2" "gl_stencilshadow" is "1" "gl_mode" is "-1" 
+[C-v212-bloom1] 08:40:55 end

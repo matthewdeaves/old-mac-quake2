@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Quake II's hooks for the shared deploy-dmg.sh / smoke-dmg.sh
 # (old-mac-build-host#96). Ours, never synced. Sourced by both scripts.
 
@@ -19,6 +20,7 @@ preflight_local() {
 # person hand-edits the bundled controls cfg (sound on); keep lines there
 # that the new build doesn't ship. Never on fleet hosts: it would bring back
 # a line a release deliberately dropped. (#85)
+# shellcheck disable=SC2034  # read by the sourcing deploy-dmg.sh
 REMOTE_POST_STAGE='
 if [ "$HOST" = workstation ]; then
 	C=Quake2.app/Contents/Resources/autoexec-controls.cfg

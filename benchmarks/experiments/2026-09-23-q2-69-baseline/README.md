@@ -35,3 +35,18 @@ confirming each value. Invalid rows are kept in the CSV. Ignore:
 - `q2-86 candidate … (exec cfg)` at 50.6: the file was named
   `q2-86-cand.cfg`, the engine exec'd `q2` ("couldn't exec q2"), and the
   read-back shows shipped values.
+
+## #87: GPU tier (g5-tiger, 1680x1050, dev build 42ba3672, interleaved)
+
+`-nomachineoverlay` makes the G5 tower behave like an unmapped G5. CGL reported
+`0x00021800 256MB`, and `autoexec-gpu-r300-g5` was applied. The read-back
+confirms glows 1, aniso 16, flashblend 0, stencil 0, bloom 0, MSAA 0, and
+R_Init kept the profile ("GPU matches its overlay (radeon)").
+
+| Cell | fps |
+|---|---:|
+| tier (T1, T2) | 148.65, 148.70 |
+| tower overlay, bloom on (O1) | 50.20 |
+
+Bloom is two-thirds of the frame at this size on a Radeon 9600, so the tier,
+written for G5s of unknown CPU and desktop size, leaves it off.

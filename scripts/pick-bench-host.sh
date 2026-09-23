@@ -421,6 +421,24 @@ boot_group() {
 	esac
 }
 
+# #93: a partition that is not booted reads `hostkey`, which looks like a fault
+# (quake3 and the manager both took it for a changed key). Name the sibling that
+# IS booted, so the row explains itself. The note goes after OWNER, so the STATE
+# value and the column layout that fleet.py, preflight.sh and check-desktop-cruft
+# parse stay the same.
+hostkey_note() {
+	local h="$1" a out group
+	group="$(boot_group "$h")" || return 0
+	for a in $group; do
+		[ "$a" = "$h" ] && continue
+		out="$(probe "$a")" || continue
+		[ -n "$out" ] || continue
+		echo "  [not booted: $a is up, $(echo "$out" | awk '{print $3}')]"
+		return 0
+	done
+	echo "  [no sibling answers: check for a real host-key change]"
+}
+
 boot_live_alias() {
 	local target="$1" require_free="${2:-yes}" a out age procs os state want group
 	group="$(boot_group "$target")" || return 1
@@ -523,7 +541,9 @@ cmd_status() {
 			if [ -z "${out:-}" ]; then
 				[ "${BENCH_PROBE_VERBOSE:-0}" = 1 ] && \
 					printf 'probe %s: %s\n' "$h" "$(tr '\n' ' ' < "$errf")" >&2
-				printf '%-16s %-12s %-8s %-8s %-9s %-6s %s\n' "$h" "$why" - "${want:--}" - - -
+				warn=""
+				[ "$why" = hostkey ] && warn="$(hostkey_note "$h")"
+				printf '%-16s %-12s %-8s %-8s %-9s %-6s %s%s\n' "$h" "$why" - "${want:--}" - - - "$warn"
 				continue
 			fi
 		fi

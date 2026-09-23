@@ -182,9 +182,25 @@ DEST_STAGE="/Applications/.Quake2.stage.$$"
   exit 11
 }
 
+# Panther's hdiutil detaches only by DEVICE, not by mount path, so a path-only
+# detach leaked every Panther mount (quake3 eb3a4eb7; same fallback as
+# update-dmg.sh, #77). Retry by path, force, then detach the whole-disk device.
+detach_mount() {
+  m="$1"
+  for k in 1 2 3 4 5; do
+    hdiutil detach "$m" >/dev/null 2>&1 && return 0
+    [ "${2:-}" = once ] && break
+    sleep 2
+  done
+  hdiutil detach -force "$m" >/dev/null 2>&1 && return 0
+  dev=$(hdiutil info | awk -v mnt="$m" '$0 ~ mnt { print $1; exit }' | sed 's/s[0-9]*$//')
+  [ -n "$dev" ] && hdiutil detach "$dev" -force >/dev/null 2>&1
+  return 0
+}
+
 # fresh mountpoint — detach any stale attach, then rmdir (NEVER rm -rf a path
 # that might still be a mounted read-only volume).
-hdiutil detach "$MNT" >/dev/null 2>&1 || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
+detach_mount "$MNT" once
 rmdir "$MNT" 2>/dev/null || true
 mkdir -p "$MNT"
 # Exit 42 on attach failure specifically (not whatever hdiutil's own status
@@ -201,7 +217,7 @@ fi
 
 cleanup_remote_install() {
   [ -n "${DEST_STAGE:-}" ] && rm -rf "$DEST_STAGE"
-  hdiutil detach "$MNT" >/dev/null 2>&1 || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
+  detach_mount "$MNT" once
   rmdir "$MNT" 2>/dev/null || true
   rm -f "$HOME/.q2-clear-launch-quarantine.sh"
 }
@@ -295,12 +311,7 @@ DEST_STAGE=""
 
 # detach — retry until the slow-disk flush completes; only THEN rmdir the now-
 # empty mountpoint (rmdir can't touch mounted contents, so it's safe).
-detached=no
-for k in 1 2 3 4 5; do
-  if hdiutil detach "$MNT" >/dev/null 2>&1; then detached=yes; break; fi
-  sleep 2
-done
-[ "$detached" = yes ] || hdiutil detach -force "$MNT" >/dev/null 2>&1 || true
+detach_mount "$MNT"
 rmdir "$MNT" 2>/dev/null || true
 trap - EXIT HUP INT TERM
 

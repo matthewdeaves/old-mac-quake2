@@ -15,6 +15,7 @@
 | yosemite-tiger | 10.4.11 | v2.15.0 | PASS |
 | mini-g4 | 10.4.11 | v2.15.0 | PASS |
 | g5-panther | 10.3.9 | v2.15.0 | PASS (and rc2 PASS) |
+| g5-desktop | 10.5.8 | v2.15.0 | PASS |
 | g5-tiger | 10.4.11 | rc2 | PASS, frames checked (#86) |
 | mini-sl | 10.6.8 | v2.15.0 | PASS |
 | mini-intel2 | 10.7.5 | v2.15.0 | PASS |

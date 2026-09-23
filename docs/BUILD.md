@@ -104,32 +104,20 @@ baseq2/pak*.pak             the user's own data
 `SDLMain.m` chdirs the process to the `.app`'s parent directory on a Finder
 launch, so `basedir=.` resolves there.
 
-Both install paths refuse an occupied `/Applications/Quake2`, build a complete
-same-volume `/Applications/.Quake2.stage.<pid>` tree, verify the staged runtime
-binaries, and publish it with one rename. They copy existing
-`~/quake2-play/baseq2` data into the stage without changing that legacy tree, so
-the old install remains rollback. To update an already occupied canonical
-install, name the exact image version explicitly:
+A fresh install builds a same-volume `/Applications/.Quake2.stage.<pid>` tree,
+verifies the staged binaries and publishes it with one rename. To update an
+occupied install, name the exact image version:
 
 ```
 scripts/deploy-dmg.sh --update <machine> <version>
 ```
 
-The update path validates the DMG signature, SDL2 companion and all six slices
-before contacting the target. It inventories the occupied install, checks free
-space, copies the complete install to a same-volume stage, preserves every
-non-runtime `baseq2` file and replaces only the packaged runtime. Verified
-promotion leaves the complete predecessor at a unique
-`~/oldmac/quake2/rollbacks/Quake2.rollback-<timestamp>-<hash>` path — never
-loose in `/Applications`, which holds only the current install (user rule,
-issue #75). Pre-promotion failure leaves the original untouched; a failing
-post-promotion gate moves the rejected candidate aside (same rollbacks
-directory) and restores the original. It never reuses or removes an older
-backup. A named rollback can be restored with:
-
-```
-scripts/update-dmg.sh --restore <machine> <rollback-path>
-```
+The update checks the DMG signature, SDL2 companion and all six slices first,
+keeps every non-runtime `baseq2` file (paks, `players/`, a user `autoexec.cfg`),
+and replaces only the packaged runtime. The old install sits in
+`~/oldmac/quake2/swap/` only for the swap: it's restored if the new install
+fails verification, and deleted once it passes. No rollback copy is kept (fix
+forward, 2026-09-23); a bad release is replaced by a fixed one.
 
 If an existing `baseq2/autoexec.cfg` is present, the updater preserves it and
 prints that live cvar readback is required; the updater does not silently discard

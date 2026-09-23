@@ -11,14 +11,11 @@ setup_fixture() {
   ROOT="$TMP/$CASE"
   SOURCE="$ROOT/source"
   DEST="$ROOT/Quake2"
-  # Scope rollback/failed placement into this case's own throwaway tree
-  # instead of the real $HOME/oldmac — same filesystem as DEST, so the
-  # helper's same-volume restore check still passes. Per-case (not one
-  # shared dir across all fixtures below) because every fixture's fake
-  # engine content is byte-identical, so two cases landing in the same
-  # wall-clock second would otherwise compute the same rollback name and
-  # collide.
-  export Q2_UPDATE_ROLLBACK_ROOT="$ROOT/rollbacks"
+  # Scope the swap and the legacy rollbacks dir into this case's throwaway
+  # tree, never the real $HOME/oldmac. Same filesystem as DEST, so the swap is
+  # still a rename.
+  export Q2_UPDATE_SWAP_ROOT="$ROOT/swap"
+  export Q2_UPDATE_LEGACY_ROOT="$ROOT/rollbacks"
   mkdir -p "$SOURCE/Quake2.app/Contents/MacOS" "$SOURCE/baseq2"
   mkdir -p "$DEST/Quake2.app/Contents/MacOS" "$DEST/baseq2/players/male"
   printf 'new-engine\n' > "$SOURCE/Quake2.app/Contents/MacOS/quake2"
@@ -34,53 +31,38 @@ setup_fixture() {
   printf 'set sensitivity 7\n' > "$DEST/baseq2/autoexec.cfg"
 }
 
-setup_fixture pre_fail
-if Q2_UPDATE_ALLOW_TEST_ROOT=1 Q2_UPDATE_FAIL_STAGE=1 "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output" 2>&1; then
-  echo "pre-promotion failure injection unexpectedly passed" >&2
-  exit 1
-fi
-grep -q '^old-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
-grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
-[ -z "$(find "$Q2_UPDATE_ROLLBACK_ROOT" -maxdepth 1 -type d -name 'Quake2.rollback-*' -print 2>/dev/null)" ]
+# Fix forward: after any outcome, no copy of an install is left behind.
+no_copies_left() {
+  [ -z "$(find "$Q2_UPDATE_SWAP_ROOT" "$Q2_UPDATE_LEGACY_ROOT" -mindepth 1 -maxdepth 1 -name 'Quake2.*' -print 2>/dev/null)" ]
+}
 
-setup_fixture after_backup_fail
-if Q2_UPDATE_ALLOW_TEST_ROOT=1 Q2_UPDATE_FAIL_AFTER_BACKUP=1 "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output" 2>&1; then
-  echo "post-backup failure injection unexpectedly passed" >&2
-  exit 1
-fi
-grep -q '^old-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
-grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
-[ -z "$(find "$Q2_UPDATE_ROLLBACK_ROOT" -maxdepth 1 -type d -name 'Quake2.rollback-*' -print 2>/dev/null)" ]
-
-setup_fixture post_fail
-if Q2_UPDATE_ALLOW_TEST_ROOT=1 Q2_UPDATE_FAIL_POSTPUBLISH=1 "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output" 2>&1; then
-  echo "post-promotion failure injection unexpectedly passed" >&2
-  exit 1
-fi
-grep -q '^old-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
-grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
-[ -n "$(find "$Q2_UPDATE_ROLLBACK_ROOT" -maxdepth 1 -type d -name 'Quake2.failed-update-*' -print 2>/dev/null)" ]
+for injected in Q2_UPDATE_FAIL_STAGE Q2_UPDATE_FAIL_AFTER_BACKUP Q2_UPDATE_FAIL_POSTPUBLISH; do
+  setup_fixture "$injected"
+  if env Q2_UPDATE_ALLOW_TEST_ROOT=1 "$injected=1" "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output" 2>&1; then
+    echo "$injected: failure injection unexpectedly passed" >&2
+    exit 1
+  fi
+  grep -q '^old-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
+  grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
+  no_copies_left || { echo "$injected: a copy was left behind" >&2; exit 1; }
+done
 
 setup_fixture success
-# Older rollbacks and failed candidates are pruned after a verified update;
-# unrelated files next to them are not.
-mkdir -p "$Q2_UPDATE_ROLLBACK_ROOT/Quake2.rollback-20200101T000000Z-aaaaaaaaaaaa" \
-  "$Q2_UPDATE_ROLLBACK_ROOT/Quake2.failed-update-20200101T000000Z-bbbbbbbbbbbb"
-printf 'keep\n' > "$Q2_UPDATE_ROLLBACK_ROOT/marker"
+# Copies kept by earlier versions of the helper are removed; unrelated files
+# next to them are not.
+mkdir -p "$Q2_UPDATE_LEGACY_ROOT/Quake2.rollback-20200101T000000Z-aaaaaaaaaaaa" \
+  "$Q2_UPDATE_LEGACY_ROOT/Quake2.failed-update-20200101T000000Z-bbbbbbbbbbbb" \
+  "$Q2_UPDATE_SWAP_ROOT/Quake2.previous-20200101T000000Z-cccccccccccc"
+printf 'keep\n' > "$Q2_UPDATE_SWAP_ROOT/marker"
 Q2_UPDATE_ALLOW_TEST_ROOT=1 "$HELPER" "$SOURCE" "$DEST" >"$ROOT/output"
-[ ! -e "$Q2_UPDATE_ROLLBACK_ROOT/Quake2.rollback-20200101T000000Z-aaaaaaaaaaaa" ]
-[ ! -e "$Q2_UPDATE_ROLLBACK_ROOT/Quake2.failed-update-20200101T000000Z-bbbbbbbbbbbb" ]
-grep -q '^keep$' "$Q2_UPDATE_ROLLBACK_ROOT/marker"
 grep -q '^new-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
 grep -q '^retail-data$' "$DEST/baseq2/pak0.pak"
+grep -q '^user-model$' "$DEST/baseq2/players/male/tris.md2"
 grep -q '^set sensitivity 7$' "$DEST/baseq2/autoexec.cfg"
-ROLLBACK=$(awk -F= '/^ROLLBACK_PATH=/{print $2}' "$ROOT/output")
-[ -d "$ROLLBACK" ]
-grep -q '^old-engine$' "$ROLLBACK/Quake2.app/Contents/MacOS/quake2"
-Q2_UPDATE_ALLOW_TEST_ROOT=1 "$HELPER" --restore "$ROLLBACK" "$DEST" >"$ROOT/restore-output"
-grep -q '^old-engine$' "$DEST/Quake2.app/Contents/MacOS/quake2"
-SUPERSEDED=$(awk -F= '/^SUPERSEDED_PATH=/{print $2}' "$ROOT/restore-output")
-[ -d "$SUPERSEDED" ]
-grep -q '^new-engine$' "$SUPERSEDED/Quake2.app/Contents/MacOS/quake2"
+no_copies_left || { echo "success: a copy was left behind" >&2; exit 1; }
+grep -q '^keep$' "$Q2_UPDATE_SWAP_ROOT/marker"
+if grep -q '^ROLLBACK_PATH=' "$ROOT/output"; then echo "ROLLBACK_PATH still printed" >&2; exit 1; fi
+! Q2_UPDATE_ALLOW_TEST_ROOT=1 "$HELPER" --restore "$ROOT/x" "$DEST" >/dev/null 2>&1 || {
+  echo "--restore should no longer exist" >&2; exit 1; }
 
 echo "update-install fixtures: PASS"

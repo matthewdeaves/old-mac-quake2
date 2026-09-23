@@ -1,37 +1,10 @@
 #!/usr/bin/env bash
 # Validate an exact release DMG, then update an occupied /Applications/Quake2
-# through the canonical host claim and the rollback-safe target-side primitive.
+# through the canonical host claim and the verified-swap target-side primitive.
+# Fix forward: no rollback copy is kept; a bad release is replaced by a fixed one.
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
-if [ "${1:-}" = --restore ]; then
-  HOST=${2:?usage: update-dmg.sh --restore <machine> <rollback-path>}
-  ROLLBACK=${3:?usage: update-dmg.sh --restore <machine> <rollback-path>}
-  case "$ROLLBACK" in
-    */oldmac/quake2/rollbacks/Quake2.rollback-*) ;;
-    *) echo "refusing non-update rollback path: $ROLLBACK" >&2; exit 2 ;;
-  esac
-  case "$ROLLBACK" in
-    *[!A-Za-z0-9_./-]*) echo "rollback path contains unsafe characters" >&2; exit 2 ;;
-  esac
-  PICK="$REPO_ROOT/scripts/pick-bench-host.sh"
-  if [ "${RETRO_BENCH_LOCK:-}" != "$HOST" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ]; then
-    export RETRO_BENCH_LOCK="$HOST"
-    exec "$PICK" --run "$HOST" "restore-dmg" -- "$0" "$@"
-  fi
-  # Staged as a $HOME dotfile, never ~/Desktop (user rule).
-  scp -q "$REPO_ROOT/scripts/update-install-tree.sh" "$HOST:.q2-update-install-tree.sh"
-  ssh "$HOST" bash -s "$ROLLBACK" <<'RESTORE_EOF'
-set -e
-ROLLBACK=$1
-trap 'rm -f "$HOME/.q2-update-install-tree.sh"' EXIT HUP INT TERM
-bash "$HOME/.q2-update-install-tree.sh" --restore "$ROLLBACK" /Applications/Quake2
-rm -f "$HOME/.q2-update-install-tree.sh"
-trap - EXIT HUP INT TERM
-RESTORE_EOF
-  exit 0
-fi
 
 if [ "${1:-}" = --preflight ]; then
   PREFLIGHT_ONLY=1
@@ -121,7 +94,7 @@ if [ "$HOST" = workstation ]; then
     cat "$LOCAL_LINES" >> "/Applications/Quake2/$CONTROLS"
   fi
   rm -f "$LOCAL_LINES"
-  echo "[update-dmg workstation] installed and retained named rollback from $DMG_BASE"
+  echo "[update-dmg workstation] installed from $DMG_BASE (no rollback kept)"
   exit 0
 fi
 
@@ -196,4 +169,4 @@ rm -f "$HOME/.q2-update-install-tree.sh" "$DMG_PATH"
 trap - EXIT HUP INT TERM
 REMOTE_EOF
 
-echo "[update-dmg $HOST] installed and retained named rollback from $DMG_BASE"
+echo "[update-dmg $HOST] installed from $DMG_BASE (no rollback kept)"

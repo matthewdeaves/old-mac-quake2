@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Atomically replace an occupied Quake II install from an already-mounted DMG.
-# This is the target-side primitive used by deploy-dmg.sh --update. It never
-# deletes the old install: success leaves a uniquely named rollback under
-# ROLLBACK_ROOT (never beside DEST — user rule, /Applications holds only the
-# current install), while a failed post-publish gate moves the candidate
-# there too and restores the original path.
+# This is the target-side primitive used by deploy-dmg.sh --update. Fix
+# forward (user rule, 2026-09-23): no rollback copy is kept. The old install is
+# held in SWAP_ROOT only for the swap, restored if the candidate fails
+# verification, and deleted once the new install verifies. A failed candidate
+# is deleted, not kept. A bad release is fixed by deploying a fixed build.
 
 # Panther/Tiger ship Bash 2.05, whose `set` rejects pipefail. Every pipeline in
 # this target-side helper is either read-only inventory or checked by its final
@@ -52,11 +52,11 @@ copy_tree() {
   fi
 }
 
-# Never /Applications: a rollback/failed copy sitting beside the live install
-# is exactly the launch ambiguity + disk weight the user rule exists to stop
-# (old-mac-quake2#75, measured 217M loose on mini-g4). Overridable so the
-# test fixture can scope it into a throwaway tree instead of the real $HOME.
-ROLLBACK_ROOT="${Q2_UPDATE_ROLLBACK_ROOT:-$HOME/oldmac/quake2/rollbacks}"
+# Never /Applications: a copy beside the live install is the launch ambiguity
+# and disk weight old-mac-quake2#75 was about. Same volume as /Applications,
+# so the swap is a rename. Overridable for the test fixture.
+SWAP_ROOT="${Q2_UPDATE_SWAP_ROOT:-$HOME/oldmac/quake2/swap}"
+LEGACY_ROLLBACK_ROOT="${Q2_UPDATE_LEGACY_ROOT:-$HOME/oldmac/quake2/rollbacks}"
 
 validate_destination() {
   case "$1" in
@@ -67,66 +67,6 @@ validate_destination() {
       ;;
   esac
 }
-
-restore_install() {
-  ROLLBACK=${1:?usage: update-install-tree.sh --restore <rollback> <destination>}
-  DEST=${2:?usage: update-install-tree.sh --restore <rollback> <destination>}
-  validate_destination "$DEST"
-  [ -d "$DEST/Quake2.app" ] && [ ! -L "$DEST" ] || fail "current install is invalid: $DEST"
-  [ -d "$ROLLBACK/Quake2.app" ] && [ ! -L "$ROLLBACK" ] || fail "rollback is invalid: $ROLLBACK"
-  # Device-id comparison, not a shared parent dir: ROLLBACK now lives under
-  # ROLLBACK_ROOT (~/oldmac/...), a different directory tree from DEST
-  # (/Applications/...) but the same boot volume on every fleet Mac.
-  rollback_device=$(device_id "$ROLLBACK") || fail "cannot read rollback device"
-  current_device=$(device_id "$DEST") || fail "cannot read current device"
-  [ "$rollback_device" = "$current_device" ] || fail "restore must stay on one volume"
-
-  mkdir -p "$ROLLBACK_ROOT"
-  stamp=$(date -u +%Y%m%dT%H%M%SZ)
-  current_md5=$(file_md5 "$DEST/Quake2.app/Contents/MacOS/quake2")
-  rollback_md5=$(file_md5 "$ROLLBACK/Quake2.app/Contents/MacOS/quake2")
-  short_current=$(printf '%s' "$current_md5" | cut -c1-12)
-  SUPERSEDED="$ROLLBACK_ROOT/Quake2.superseded-$stamp-$short_current"
-  [ ! -e "$SUPERSEDED" ] && [ ! -L "$SUPERSEDED" ] || fail "restore target exists: $SUPERSEDED"
-
-  current_moved=no
-  # Invoked indirectly by the EXIT/signal traps below.
-  # shellcheck disable=SC2329
-  restore_cleanup() {
-    if [ "$current_moved" = yes ] && [ ! -e "$DEST" ] && [ -d "$SUPERSEDED" ]; then
-      mv "$SUPERSEDED" "$DEST" || true
-    fi
-  }
-  trap restore_cleanup EXIT
-  trap 'exit 129' HUP
-  trap 'exit 130' INT
-  trap 'exit 143' TERM
-  mv "$DEST" "$SUPERSEDED"
-  current_moved=yes
-  if ! mv "$ROLLBACK" "$DEST"; then
-    mv "$SUPERSEDED" "$DEST"
-    current_moved=no
-    fail "restore rename failed; current install returned to place"
-  fi
-  if [ "$(file_md5 "$DEST/Quake2.app/Contents/MacOS/quake2")" != "$rollback_md5" ]; then
-    FAILED="$ROLLBACK_ROOT/Quake2.failed-restore-$stamp-$short_current"
-    mv "$DEST" "$FAILED"
-    mv "$SUPERSEDED" "$DEST"
-    current_moved=no
-    fail "restored engine failed verification; prior current install returned to place"
-  fi
-  current_moved=no
-  trap - EXIT HUP INT TERM
-  echo "[update-tree] restored $DEST"
-  echo "SUPERSEDED_PATH=$SUPERSEDED"
-  echo "RESTORED_ENGINE_MD5=$rollback_md5"
-}
-
-if [ "${1:-}" = --restore ]; then
-  shift
-  restore_install "$@"
-  exit 0
-fi
 
 SOURCE=${1:?usage: update-install-tree.sh <mounted-dmg-root> <destination>}
 DEST=${2:?usage: update-install-tree.sh <mounted-dmg-root> <destination>}
@@ -146,12 +86,12 @@ new_md5=$(file_md5 "$SOURCE/Quake2.app/Contents/MacOS/quake2")
 short_old=$(printf '%s' "$old_md5" | cut -c1-12)
 short_new=$(printf '%s' "$new_md5" | cut -c1-12)
 STAGE="$PARENT/.Quake2.stage-$stamp-$$"
-BACKUP="$ROLLBACK_ROOT/Quake2.rollback-$stamp-$short_old"
-FAILED="$ROLLBACK_ROOT/Quake2.failed-update-$stamp-$short_new"
+BACKUP="$SWAP_ROOT/Quake2.previous-$stamp-$short_old"
+FAILED="$SWAP_ROOT/Quake2.failed-$stamp-$short_new"
 OLD_MANIFEST="${TMPDIR:-/tmp}/q2-update-old.$$.manifest"
 NEW_MANIFEST="${TMPDIR:-/tmp}/q2-update-new.$$.manifest"
 
-mkdir -p "$ROLLBACK_ROOT"
+mkdir -p "$SWAP_ROOT"
 for path in "$STAGE" "$BACKUP" "$FAILED"; do
   [ ! -e "$path" ] && [ ! -L "$path" ] || fail "refusing occupied update path: $path"
 done
@@ -187,6 +127,8 @@ cleanup_before_publish() {
     if [ ! -e "$DEST" ] && [ ! -L "$DEST" ] && [ -d "$BACKUP" ]; then
       mv "$BACKUP" "$DEST" || true
     fi
+    # Fix forward: the failed candidate is not kept.
+    if [ -d "$DEST" ] && [ ! -e "$BACKUP" ]; then rm -rf "$FAILED"; fi
   fi
   [ ! -e "$STAGE" ] || rm -rf "$STAGE"
   rm -f "$OLD_MANIFEST" "$NEW_MANIFEST"
@@ -197,7 +139,7 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 echo "[update-tree] current=$DEST engine=$old_md5 size=${needed_kb}KB"
-echo "[update-tree] stage=$STAGE rollback=$BACKUP"
+echo "[update-tree] stage=$STAGE swap=$BACKUP"
 inventory_baseq2 "$DEST/baseq2" "$OLD_MANIFEST"
 
 copy_tree "$DEST" "$STAGE"
@@ -269,7 +211,8 @@ rollback_after_publish() {
     exit 14
   fi
   ORIGINAL_MOVED=no
-  echo "[update-tree] FATAL: $reason; original restored, failed candidate retained at $FAILED" >&2
+  rm -rf "$FAILED"
+  echo "[update-tree] FATAL: $reason; original restored, failed candidate deleted" >&2
   exit 13
 }
 
@@ -292,17 +235,17 @@ if [ -x "$panther_ls" ]; then
 fi
 UPDATE_COMPLETE=yes
 trap - EXIT HUP INT TERM
-# Keep exactly one rollback: the install this update just replaced. Older ones
-# and earlier failed candidates piled up at ~220 MB each on every fleet Mac
-# (buildhost tidy, 2026-09-22). Only prune once the new install has verified.
-for old in "$ROLLBACK_ROOT"/Quake2.rollback-* "$ROLLBACK_ROOT"/Quake2.failed-update-*; do
+# Fix forward: the previous install is deleted once the new one verified.
+# Also clear anything earlier versions of this script kept (rollbacks,
+# failed candidates, superseded restores), so no fleet Mac carries copies.
+rm -rf "$BACKUP"
+for old in "$SWAP_ROOT"/Quake2.* "$LEGACY_ROLLBACK_ROOT"/Quake2.*; do
   [ -d "$old" ] && [ ! -L "$old" ] || continue
-  [ "$old" = "$BACKUP" ] && continue
-  rm -rf "$old" && echo "[update-tree] pruned older $(basename "$old")"
+  rm -rf "$old" && echo "[update-tree] removed old copy $(basename "$old")"
 done
+rmdir "$LEGACY_ROLLBACK_ROOT" 2>/dev/null || true
 echo "[update-tree] update complete"
 echo "CURRENT_PATH=$DEST"
-echo "ROLLBACK_PATH=$BACKUP"
 echo "OLD_ENGINE_MD5=$old_md5"
 echo "NEW_ENGINE_MD5=$new_md5"
 echo "PRESERVED_AUTOEXEC=$PRESERVED_AUTOEXEC"

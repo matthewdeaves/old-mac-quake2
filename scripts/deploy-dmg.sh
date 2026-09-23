@@ -28,7 +28,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 # Explicit occupied-install path, same primitive the auto-detect below routes
-# to; update-dmg.sh adds artifact preflight and a named rollback.
+# to; update-dmg.sh adds artifact preflight and a verified swap (no rollback kept).
 if [ "${1:-}" = --update ]; then
   shift
   exec "$REPO_ROOT/scripts/update-dmg.sh" "$@"
@@ -71,7 +71,7 @@ DMG_BASE=$(basename "$DMG")
 
 # #76: auto-detect occupied vs fresh, same as deploy.sh's #72, instead of
 # refusing. An occupied destination already has a working, tested updater
-# (--update above) with named-backup rollback — route there with the version
+# (--update above) with a verified swap — route there with the version
 # resolved from the DMG we just picked, rather than making the caller retry
 # by hand. (This is also the fix for release-fanout-quake2's Jenkins job,
 # which calls this plain form: one call site now handles both cases.)
@@ -163,7 +163,7 @@ install_via_local_mount_fallback() {
   trap - EXIT HUP INT TERM
 }
 
-echo "[deploy-dmg $HOST] mount + stage /Applications/Quake2 (preserving ~/quake2-play as rollback)"
+echo "[deploy-dmg $HOST] mount + stage /Applications/Quake2 (legacy ~/quake2-play, if any, is left as it was)"
 if ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
 set -e
 DMG_BASE="$1"

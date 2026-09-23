@@ -179,7 +179,9 @@ open_check() {
 	done
 }
 
-rm -f "$SLOG"
+# One generation of the game's own log survives: it may be a player's crash
+# log (halflife ADR 0018). Overwritten each run, never accumulated.
+[ -f "$SLOG" ] && mv -f "$SLOG" "$SLOG.prev"
 for p in ${PRE_RM[@]+"${PRE_RM[@]}"}; do rm -f "$HOME/$p"; done
 if [ "$old" = no ] && [ "$CUSER" = "$ME" ] && [ -z "$ARCH" ]; then
 	MODE=open

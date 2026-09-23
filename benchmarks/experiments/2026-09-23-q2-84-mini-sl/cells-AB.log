@@ -1,0 +1,16 @@
+gui-precondition: mini-sl ready (probe: wake=no caffeinate locked=no display_power=4)
+[A-bloom1] 07:55:27 start extra=[]
+[A-bloom1] faults_before=619
+[A-bloom1] result: CLEAN (spawned t=7s, held 70s)
+[A-bloom1] faults_after_quit=619 (delta 0)
+[A-bloom1] "gl_bloom" is "1" "gl_msaa_samples" is "2" "gl_stencilshadow" is "1" "gl_mode" is "-1" 
+[A-bloom1] bash: line 18: 20958 Killed                  ./Quake2.app/Contents/MacOS/quake2 -nolauncher +set logfile 2 +set s_initsound 0 +gl_bloom +gl_msaa_samples +gl_stencilshadow +gl_mode +set name 'q2-sl-A-bloom1' +connect '132.145.70.106:27910' > /dev/null 2>&1
+[A-bloom1] 07:56:50 end
+settle 120s
+[B-bloom0] 07:58:50 start extra=[+set gl_bloom 0]
+[B-bloom0] faults_before=619
+[B-bloom0] bash: line 18: 27671 Killed                  ./Quake2.app/Contents/MacOS/quake2 -nolauncher +set logfile 2 +set s_initsound 0 +set gl_bloom 0 +gl_bloom +gl_msaa_samples +gl_stencilshadow +gl_mode +set name 'q2-sl-B-bloom0' +connect '132.145.70.106:27910' > /dev/null 2>&1
+[B-bloom0] result: CLEAN (spawned t=7s, held 70s)
+[B-bloom0] faults_after_quit=619 (delta 0)
+[B-bloom0] "gl_bloom" is "0" "gl_msaa_samples" is "2" "gl_stencilshadow" is "1" "gl_mode" is "-1" 
+[B-bloom0] 08:00:14 end

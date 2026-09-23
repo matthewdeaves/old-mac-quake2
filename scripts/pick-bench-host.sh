@@ -53,6 +53,9 @@
 #                           (default 5400 = 90m; a bench sweep is much shorter
 #                           than a build, so this is half the build lock's 3h)
 #   BENCH_SKIP_OS_CHECK=1   bypass the booted-OS check (see below; last resort)
+#   BENCH_LOCK_WARN_SECS    a claim this old with no process reads IDLE (600)
+#   BENCH_IDLE_NOTIFY       command run once, as CMD HOST OWNER AGE WAITED, when
+#                           --acquire has waited WARN_SECS behind an IDLE claim
 #
 # ---------------------------------------------------------------------------
 # TWO THINGS MEASURED ON THIS FLEET THAT THE BUILD LOCK GETS AWAY WITH
@@ -398,6 +401,14 @@ classify() {
 # ~16-17 HOURS by two separate sessions, nearly triggering a false "this is
 # stale, force it" call on real, running work). Suffix the unit instead of
 # hoping the reader knows this column is seconds.
+# A claim held past WARN_SECS with no game or compiler process (#102). Display
+# and notice only: it never changes classify()'s free/stale/busy answer.
+is_idle() {
+	case "$1" in ''|*[!0-9-]*) return 1 ;; esac
+	case "$2" in ''|*[!0-9]*) return 1 ;; esac
+	[ "$1" -ge 0 ] && [ "$2" -eq 0 ] && [ "$1" -gt "$WARN_SECS" ] && [ "$1" -le "$STALE_SECS" ]
+}
+
 fmt_age() {
 	case "$1" in ''|*[!0-9]*) echo -; return ;; esac
 	local s="$1"
@@ -559,16 +570,7 @@ cmd_status() {
 		# genuinely busy (real work, correctly not stale) and still be worth
 		# a human glance if nothing has run on the host for a while.
 		warn=""
-		case "$age" in
-			''|*[!0-9-]*) : ;;
-			*) case "$procs" in
-				''|*[!0-9]*) : ;;
-				*) if [ "$age" -ge 0 ] && [ "$procs" -eq 0 ] \
-				      && [ "$age" -gt "$WARN_SECS" ] && [ "$age" -le "$STALE_SECS" ]; then
-					warn="  [idle $(fmt_age "$age"), no process -- claimed early?]"
-				   fi ;;
-			   esac ;;
-		esac
+		is_idle "$age" "$procs" && warn="  [IDLE $(fmt_age "$age"), no process]"
 		case "$age" in ''|*[!0-9-]*) age=- ;; *) [ "$age" -lt 0 ] && age=- || age="$(fmt_age "$age")" ;; esac
 		printf '%-16s %-12s %-8s %-8s %-9s %-6s %s%s\n' \
 			"$h" "$state" "${os:--}" "${want:--}" "$age" "$procs" "${owner:--}" "$warn"
@@ -657,14 +659,37 @@ cmd_acquire() {
 	# rather than ignoring it silently, since somebody set it expecting an effect.
 	[ "${BENCH_NO_LOCK:-0}" = 1 ] && \
 		echo "pick-bench-host: BENCH_NO_LOCK is set but --acquire always claims; use --run to bypass." >&2
-	local deadline=$(( $(date +%s) + WAIT_SECS )) rc
+	local start deadline rc now told="" look=0 p a n o
+	start="$(date +%s)"; deadline=$(( start + WAIT_SECS ))
+	# Hold-and-wait is how two claims deadlock (#102: one session held
+	# mini-intel2 while queued for imac-2019, and imac-2019 while queued for
+	# mini-intel2). A caller already holding another host does not queue.
+	if [ -n "${RETRO_BENCH_LOCK:-}" ] && [ "$RETRO_BENCH_LOCK" != "$h" ] && [ "$WAIT_SECS" -gt 0 ]; then
+		echo "pick-bench-host: you hold $RETRO_BENCH_LOCK, so not queueing for $h (hold-and-wait deadlocks, #102); release it first or run the legs one after the other" >&2
+		deadline="$start"
+	fi
 	ACQUIRE_LAST_REASON=""
 	while :; do
 		try_acquire "$h" "$label"; rc=$?
 		[ $rc -eq 0 ] && { echo "$h"; return 0; }
 		# wrong-os is not something waiting will fix.
 		[ $rc -eq 2 ] && return 1
-		[ "$(date +%s)" -ge "$deadline" ] && break
+		now="$(date +%s)"
+		[ "$now" -ge "$deadline" ] && break
+		# Queued WARN_SECS behind a claim with nothing running: say so once,
+		# and tell its owner through the hook if one is set (#102).
+		if [ -z "$told" ] && [ $(( now - start )) -ge "$WARN_SECS" ] && [ "$now" -ge "$look" ]; then
+			look=$(( now + 60 ))
+			if p="$(probe "$h")"; then
+				a="$(echo "$p" | awk '{print $1}')"; n="$(echo "$p" | awk '{print $2}')"
+				o="$(echo "$p" | cut -d' ' -f4-)"
+				if is_idle "$a" "$n"; then
+					told=1
+					echo "pick-bench-host: $h is IDLE: claimed $(fmt_age "$a") ago with no process, by: $o (you have waited $(fmt_age $(( now - start ))))" >&2
+					[ -n "${BENCH_IDLE_NOTIFY:-}" ] && $BENCH_IDLE_NOTIFY "$h" "$o" "$a" "$(( now - start ))" </dev/null >/dev/null 2>&1
+				fi
+			fi
+		fi
 		sleep 10
 	done
 	echo "pick-bench-host: $h is not available (${ACQUIRE_LAST_REASON:-unknown})" >&2

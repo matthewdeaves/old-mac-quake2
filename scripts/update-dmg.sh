@@ -56,15 +56,23 @@ if [ "$PREFLIGHT_ONLY" = 0 ]; then
 fi
 
 MOUNT=$(mktemp -d "${TMPDIR:-/tmp}/q2-update-preflight.XXXXXX")
+# Mount a private clone, not the shared dist/ file. Concurrent attaches of ONE
+# image file race in hdiutil ("Resource busy", 1 in 12 with four parallel
+# preflights), which silently skipped a g5-tiger update (#85). An APFS clone
+# costs nothing; other filesystems get a plain copy.
+PRIVATE_DMG="$MOUNT.dmg"
 mounted=no
 cleanup_preflight() {
   if [ "$mounted" = yes ]; then
     hdiutil detach "$MOUNT" >/dev/null 2>&1 || hdiutil detach -force "$MOUNT" >/dev/null 2>&1 || true
   fi
   rmdir "$MOUNT" 2>/dev/null || true
+  rm -f "$PRIVATE_DMG"
 }
 trap cleanup_preflight EXIT HUP INT TERM
-hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$DMG" >/dev/null
+cp -c "$DMG" "$PRIVATE_DMG" 2>/dev/null || cp "$DMG" "$PRIVATE_DMG"
+cmp -s "$DMG" "$PRIVATE_DMG" || { echo "private DMG copy differs from $DMG" >&2; exit 1; }
+hdiutil attach -nobrowse -readonly -mountpoint "$MOUNT" "$PRIVATE_DMG" >/dev/null
 mounted=yes
 
 for relative in Quake2.app/Contents/MacOS/quake2 ref_gl.so baseq2/game.so q2ded; do
@@ -90,11 +98,38 @@ for relative in Quake2.app/Contents/MacOS/quake2 ref_gl.so baseq2/game.so q2ded;
   echo "[update-dmg] $relative $(md5 "$MOUNT/$relative" | awk '{print $NF}')"
 done
 
+[ "$PREFLIGHT_ONLY" = 0 ] || exit 0
+
+# The workstation is the canonical picker's LOCAL target: no ssh, no staged
+# copy. Install straight from the verified mount. It is also the one Mac where
+# a person edits the bundled autoexec-controls.cfg by hand (sound on), so
+# lines there that the candidate does not ship are carried over and listed.
+# That would also carry a line a release deliberately dropped, which is why
+# this is limited to the workstation. (#85)
+if [ "$HOST" = workstation ]; then
+  [ -d /Applications/Quake2/Quake2.app ] && [ ! -L /Applications/Quake2 ] || {
+    echo "[update-dmg workstation] REFUSE: expected occupied install is absent or unsafe" >&2
+    exit 10
+  }
+  CONTROLS=Quake2.app/Contents/Resources/autoexec-controls.cfg
+  LOCAL_LINES="$MOUNT.controls"
+  grep -vxF -f "$MOUNT/$CONTROLS" "/Applications/Quake2/$CONTROLS" > "$LOCAL_LINES" 2>/dev/null || true
+  bash "$REPO_ROOT/scripts/update-install-tree.sh" "$MOUNT" /Applications/Quake2
+  if [ -s "$LOCAL_LINES" ]; then
+    echo "[update-dmg workstation] kept local lines in $CONTROLS:"
+    sed 's/^/    /' "$LOCAL_LINES"
+    cat "$LOCAL_LINES" >> "/Applications/Quake2/$CONTROLS"
+  fi
+  rm -f "$LOCAL_LINES"
+  echo "[update-dmg workstation] installed and retained named rollback from $DMG_BASE"
+  exit 0
+fi
+
 hdiutil detach "$MOUNT" >/dev/null
 mounted=no
 rmdir "$MOUNT"
+rm -f "$PRIVATE_DMG"
 trap - EXIT HUP INT TERM
-[ "$PREFLIGHT_ONLY" = 0 ] || exit 0
 
 ssh "$HOST" '[ -d /Applications/Quake2/Quake2.app ] && [ ! -L /Applications/Quake2 ]' || {
   echo "[update-dmg $HOST] REFUSE: expected occupied install is absent or unsafe" >&2

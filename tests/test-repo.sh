@@ -268,6 +268,15 @@ else
 fi
 rm -rf "$keep_tmp"
 
+# Issue #85. Concurrent attaches of one image file race in hdiutil ("Resource
+# busy"), so the local preflight must mount a private clone of the DMG.
+if grep -q 'hdiutil attach -nobrowse -readonly -mountpoint "\$MOUNT" "\$PRIVATE_DMG"' "$REPO_ROOT/scripts/update-dmg.sh" &&
+	! grep -q 'hdiutil attach -nobrowse -readonly -mountpoint "\$MOUNT" "\$DMG"' "$REPO_ROOT/scripts/update-dmg.sh"; then
+	pass "update-dmg preflight mounts a private DMG clone"
+else
+	fail "update-dmg preflight attaches the shared dist/ DMG (parallel updates collide, #85)"
+fi
+
 echo
 [ "$FAILED" = 0 ] && echo "all repo invariants hold" || echo "repo invariants FAILED"
 exit "$FAILED"

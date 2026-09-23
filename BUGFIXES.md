@@ -1,5 +1,17 @@
 # Bug fixes
 
+## 2026-09-23 — Parallel DMG updates could silently skip a host
+
+`update-dmg.sh` verified each candidate by attaching `dist/<dmg>` on the
+orchestration Mac. Concurrent attaches of one image file race in hdiutil:
+four parallel `--preflight` runs failed 1 in 12 with "Resource busy". During
+the v2.13.0 rollout that aborted a g5-tiger update, and the chained smoke then
+tested the old install; it was caught by md5. Fix: each run mounts a private
+APFS clone (a plain copy elsewhere), byte-compared to the original first.
+After the fix, 20 of 20 parallel preflights passed with no leftover mounts.
+`update-dmg.sh workstation` now installs locally and keeps the user's
+hand-added `autoexec-controls.cfg` lines. Refs #85.
+
 ## 2026-09-22 — PowerPC Macs at Thousands of colors could not launch
 
 The ppc member of the bundled `MacOSX/SDL.framework` (SDL 1.2.15) quit about

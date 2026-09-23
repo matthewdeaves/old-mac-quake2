@@ -11,7 +11,7 @@
 
 A Quake II port (yquake2 5.11) built as one six-slice fat PowerPC + Intel + Apple
 Silicon binary inside a single `Quake2.app`, tested on a range of old Macs, G3,
-G4, G5 and Intel, from a 1999 Power Mac to a 2019 iMac. The app carries three config layers: shared
+G4, G5, Intel and Apple Silicon, from a 1999 Power Mac to an M5. The app carries three config layers: shared
 controls, a per-arch baseline picked by the running slice, and a per-machine
 overlay picked at boot by `sysctl hw.model`. A headless Linux dedicated server
 builds from the same tree (see [`server/`](server/README.md)).

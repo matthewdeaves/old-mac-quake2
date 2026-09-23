@@ -1,0 +1,30 @@
+[update-dmg] artifact=Quake2-OldMac-v2.14.0.dmg sha256=9655e37ebe740e3759c708d0a33ba2c9068197a59f8c6375a09f09543dc7d26a
+[update-dmg] slices=ppc750 ppc7400 ppc970 x86_64 i386 arm64 signature=valid
+[update-dmg] Quake2.app/Contents/MacOS/quake2 586c75973f4fca42e7a8fed42bd4d19f
+[update-dmg] ref_gl.so b14539220a3d40d4dfcaf01d06e32508
+[update-dmg] baseq2/game.so a534f34a87162c317e792f10c516f62c
+[update-dmg] q2ded 0f39db7130bb4ee2a40a5a7eddd18ebd
+[update-dmg mini-intel] copy and verify Quake2-OldMac-v2.14.0.dmg
+[update-tree] current=/Applications/Quake2 engine=d32851f17fdebd0158f51815cee567f9 size=221904KB
+[update-tree] stage=/Applications/.Quake2.stage-20260923T095911Z-14053 rollback=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260923T095911Z-d32851f17fde
+clear-launch-quarantine: /Applications/Quake2/Quake2.app carried no quarantine flag
+clear-launch-quarantine: re-registered /Applications/Quake2/Quake2.app
+[update-tree] pruned older Quake2.rollback-20260922T232736Z-d23e8c27b2f1
+[update-tree] update complete
+CURRENT_PATH=/Applications/Quake2
+ROLLBACK_PATH=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260923T095911Z-d32851f17fde
+OLD_ENGINE_MD5=d32851f17fdebd0158f51815cee567f9
+NEW_ENGINE_MD5=586c75973f4fca42e7a8fed42bd4d19f
+PRESERVED_AUTOEXEC=no
+[update-dmg mini-intel] installed and retained named rollback from Quake2-OldMac-v2.14.0.dmg
+gui-precondition: mini-intel ready (probe: wake=no caffeinate locked=no display_power=4)
+[smoke mini-intel] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+2026-09-23 10:59:27.680 osascript[16143:707] Error loading /Library/ScriptingAdditions/Adobe Unit Types.osax/Contents/MacOS/Adobe Unit Types:  dlopen(/Library/ScriptingAdditions/Adobe Unit Types.osax/Contents/MacOS/Adobe Unit Types, 262): no suitable image found.  Did find:
+	/Library/ScriptingAdditions/Adobe Unit Types.osax/Contents/MacOS/Adobe Unit Types: no matching architecture in universal wrapper
+osascript: OpenScripting.framework - scripting addition "/Library/ScriptingAdditions/Adobe Unit Types.osax" declares no loadable handlers.
+[smoke mini-intel] renderer : <none>
+[smoke mini-intel] mode     : setting mode -1: 1024 768
+[smoke mini-intel] desktop  : Desktop is 800x600.
+[smoke mini-intel] result   : <NO FPS LINE>
+[smoke mini-intel] effective settings:
+[smoke mini-intel] FAIL — live cvar read-back missing: gl_bloom gl_msaa_samples gl_mode gl_customwidth gl_customheight vid_fullscreen vid_desktopfullscreen gl_swapinterval

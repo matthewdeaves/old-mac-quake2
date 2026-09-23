@@ -1,0 +1,35 @@
+[update-dmg] artifact=Quake2-OldMac-v2.14.0.dmg sha256=9655e37ebe740e3759c708d0a33ba2c9068197a59f8c6375a09f09543dc7d26a
+[update-dmg] slices=ppc750 ppc7400 ppc970 x86_64 i386 arm64 signature=valid
+[update-dmg] Quake2.app/Contents/MacOS/quake2 586c75973f4fca42e7a8fed42bd4d19f
+[update-dmg] ref_gl.so b14539220a3d40d4dfcaf01d06e32508
+[update-dmg] baseq2/game.so a534f34a87162c317e792f10c516f62c
+[update-dmg] q2ded 0f39db7130bb4ee2a40a5a7eddd18ebd
+[update-dmg mini-intel2] copy and verify Quake2-OldMac-v2.14.0.dmg
+[update-tree] current=/Applications/Quake2 engine=d32851f17fdebd0158f51815cee567f9 size=221892KB
+[update-tree] stage=/Applications/.Quake2.stage-20260923T100710Z-92998 rollback=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260923T100710Z-d32851f17fde
+clear-launch-quarantine: /Applications/Quake2/Quake2.app carried no quarantine flag
+clear-launch-quarantine: re-registered /Applications/Quake2/Quake2.app
+[update-tree] pruned older Quake2.rollback-20260923T071426Z-d23e8c27b2f1
+[update-tree] update complete
+CURRENT_PATH=/Applications/Quake2
+ROLLBACK_PATH=/Users/mini/oldmac/quake2/rollbacks/Quake2.rollback-20260923T100710Z-d32851f17fde
+OLD_ENGINE_MD5=d32851f17fdebd0158f51815cee567f9
+NEW_ENGINE_MD5=586c75973f4fca42e7a8fed42bd4d19f
+PRESERVED_AUTOEXEC=no
+[update-dmg mini-intel2] installed and retained named rollback from Quake2-OldMac-v2.14.0.dmg
+gui-precondition: mini-intel2 ready (probe: wake=no caffeinate locked=no display_power=0)
+[smoke mini-intel2] launching installed Quake2.app with PRODUCTION config (as a human would), demo=demo1
+[smoke mini-intel2] renderer : GL_RENDERER: Intel GMA 950 OpenGL Engine
+[smoke mini-intel2] mode     : setting mode -1: 1024 768
+[smoke mini-intel2] desktop  : Desktop is 1920x1080.
+[smoke mini-intel2] result   : 689 frames, 15.9 seconds: 43.2 fps
+[smoke mini-intel2] effective settings:
+    "gl_bloom" is "0"
+    "gl_msaa_samples" is "0"
+    "gl_mode" is "-1"
+    "gl_customwidth" is "1024"
+    "gl_customheight" is "768"
+    "vid_fullscreen" is "1"
+    "vid_desktopfullscreen" is "1"
+    "gl_swapinterval" is "1"
+[smoke mini-intel2] PASS — world rendered to completion on the production path

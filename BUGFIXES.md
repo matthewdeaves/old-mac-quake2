@@ -1,5 +1,23 @@
 # Bug fixes
 
+## 2026-09-23 — A renderer that failed to start crashed the game
+
+When `ref_gl.so`'s init failed, `VID_CheckChanges` fell back to `vid_ref gl`,
+which is already the only renderer, so nothing reloaded. The next frame then
+called through the freed renderer table: SIGSEGV in `SCR_UpdateScreen` and a
+macOS crash alert (imac-2019, forced scene-resolve failure on v2.13.0). It now
+stops with `Couldn't start the OpenGL renderer; see qconsole.log.`. Same
+forced failure: exit status 1, no crash report.
+
+## 2026-09-23 — Fresh installs leaked the DMG mount on Panther
+
+Panther's hdiutil detaches only by device. `deploy-dmg.sh`'s fresh-install
+path detached by mount path, so on 10.3 the image stayed attached (quake3 found
+the same bug in its own deploy). It now retries by path, forces, then detaches
+the whole-disk device, as `update-dmg.sh` already did (#77). Proved on the G3
+under 10.3.9: a path detach failed with the image attached; the new helper
+released it.
+
 ## 2026-09-23 — Parallel DMG updates could silently skip a host
 
 `update-dmg.sh` verified each candidate by attaching `dist/<dmg>` on the

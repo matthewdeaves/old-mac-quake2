@@ -47,6 +47,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
+/* backends/sdl_osx/SDLMain.m (#87) */
+int Q2_MainRendererInfo(unsigned long *family, unsigned long *vram_mb);
+
 static qboolean
 Q2_ExecConfigFromBundle(const char *basename)
 {
@@ -504,9 +507,12 @@ Qcommon_Init(int argc, char **argv)
 		Q2_ExecConfigFromBundle("autoexec-arm64");
 #endif
 
-		/* Layer 2: per-machine overlay, picked by hw.model at runtime. */
+		/* Layer 2: per-machine overlay, picked by hw.model at runtime.
+		 * -nomachineoverlay skips it, to measure the GPU tier on a
+		 * mapped bench Mac (#87). */
 		memset(model, 0, sizeof(model));
-		if (sysctlbyname("hw.model", model, &mlen, NULL, 0) == 0)
+		if (!COM_CheckParm("-nomachineoverlay") &&
+			sysctlbyname("hw.model", model, &mlen, NULL, 0) == 0)
 		{
 			for (i = 0; i < sizeof(q2_machine_map)/sizeof(q2_machine_map[0]); i++)
 			{
@@ -516,6 +522,36 @@ Qcommon_Init(int argc, char **argv)
 					mapped = 1;
 					break;
 				}
+			}
+		}
+
+		/*
+		 * Layer 2b (#87): no overlay matched, so pick a GPU tier from the
+		 * display's CGL renderer, which is known before VID_Init. Only
+		 * measured classes get a tier; anything else keeps the Layer-1
+		 * baseline. A tier cfg declares q2_overlay_gpu like an overlay, so
+		 * R_Init still drops it if the live GL_RENDERER disagrees.
+		 */
+		if (!mapped)
+		{
+			unsigned long family = 0, vram = 0;
+			const char *tier = NULL;
+
+			if (Q2_MainRendererInfo(&family, &vram))
+			{
+#if defined(Q2_ARCH_PPC970)
+				/* Radeon 9500-9800 / X600-X850 (R300/R420) with 128 MB+ on a
+				 * G5: the G5 tower's measured profile (#86). */
+				if (family == 0x00021800 && vram >= 128)
+					tier = "autoexec-gpu-r300-g5";
+#endif
+				Cvar_Get("q2_gpu", va("0x%08lx %luMB %s", family, vram,
+					tier ? tier : "no tier"), CVAR_NOSET);
+			}
+			if (tier)
+			{
+				Q2_ExecConfigFromBundle(tier);
+				mapped = 1;
 			}
 		}
 

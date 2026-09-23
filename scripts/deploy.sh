@@ -276,7 +276,7 @@ fi
 # a wide margin. (v2.2.0 shipped un-stripped and hit this; fixed v2.2.1.)
 for cfg in controls \
            ppc750 ppc7400 ppc970 i386 x86_64 arm64 \
-           yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019 g5-dual; do
+           yosemite sawtooth quicksilver mini-g4 imac-g5 imac-g4 mini-intel imac-2019 g5-dual gpu-r300-g5; do
   sed -e 's,//.*,,' -e 's/[[:space:]]*$//' \
       "$REPO_ROOT/scripts/bundle/autoexec-$cfg.cfg" \
     | grep -v '^[[:space:]]*$' \

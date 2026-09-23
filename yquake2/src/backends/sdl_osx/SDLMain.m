@@ -11,6 +11,7 @@
 #import <sys/param.h> /* for MAXPATHLEN */
 #import <unistd.h>
 #include <sys/sysctl.h>	/* hw.model for the settings GUI */
+#import <OpenGL/OpenGL.h>	/* CGL renderer query for the GPU tier (#87) */
 #include <math.h>
 //#import <iostream>
 
@@ -1122,6 +1123,40 @@ static BOOL Q2_ShouldShowLauncher(void)
 
 
 /* Main entry point to executable - should *not* be SDL_main! */
+/*
+ * #87: the main display's accelerated renderer, asked of CGL before any GL
+ * context exists, so common/misc.c can pick a GPU-tier cfg ahead of
+ * VID_Init (video-mode cvars cannot change after it, see misc.c). Returns 1
+ * and the renderer ID masked to its family, and its VRAM in MB; 0 if CGL
+ * has no accelerated renderer for the display. The old SDKs declare the
+ * out-parameters as long and the newer as GLint: both are 32 bits on every
+ * slice, hence the void * casts.
+ */
+int Q2_MainRendererInfo(unsigned long *family, unsigned long *vram_mb)
+{
+	CGLRendererInfoObj info = NULL;
+	GLint count = 0, i, accel, rid, vram;
+	int found = 0;
+
+	if (CGLQueryRendererInfo(CGDisplayIDToOpenGLDisplayMask(CGMainDisplayID()),
+			&info, (void *)&count) != kCGLNoError || info == NULL)
+		return 0;
+	for (i = 0; i < count && !found; i++)
+	{
+		accel = rid = vram = 0;
+		CGLDescribeRenderer(info, i, kCGLRPAccelerated, (void *)&accel);
+		if (!accel)
+			continue;
+		CGLDescribeRenderer(info, i, kCGLRPRendererID, (void *)&rid);
+		CGLDescribeRenderer(info, i, kCGLRPVideoMemory, (void *)&vram);
+		*family = (unsigned long)rid & 0x00FE7F00;	/* kCGLRendererIDMatchingMask */
+		*vram_mb = (unsigned long)vram / (1024 * 1024);
+		found = 1;
+	}
+	CGLDestroyRendererInfo(info);
+	return found;
+}
+
 int main (int argc, char **argv)
 {
     /* Copy the arguments into a global variable */

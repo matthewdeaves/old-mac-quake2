@@ -99,6 +99,11 @@ viewsize (#80); GPU check on mapped Macs (#79).
 2560x1440), which now fails open; a renderer that can't start exits with an
 error instead of crashing; GMA 950 profile says MSAA 0 (no hardware MSAA).
 
+**v2.15.0** (2026-09-23), G5 tower glows, lit glass, caustics, 16x aniso and
+retexturing (50.6 → 50.15 fps; stencil stays off at −10%, #86); a CGL GPU tier
+gives unmapped Radeon 9500-X850 G5s the tower profile without bloom (148.7 fps,
+#87); per-class baseline, no class under its floor (#69).
+
 ## Open
 
 - #69: per-class measurement for sawtooth, quicksilver and imac-g5 (off).

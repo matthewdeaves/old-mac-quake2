@@ -39,7 +39,7 @@ builds from the same tree (see [`server/`](server/README.md)).
 | **yosemite** PowerMac1,1 | 449 MHz G3 / Rage 128 | 10.3.9, 10.4.11 | `ppc750` |
 | **mini-g4** PowerMac10,1 | 1.25 GHz G4 / Radeon 9200 | 10.4.11 | `ppc7400` |
 | **sawtooth**, **quicksilver** | G4 / GeForce2 MX, Radeon 9000 | 10.4.11 (earlier releases) | `ppc7400` |
-| **G5 tower** PowerMac7,3 | dual 2.7 GHz G5 / Radeon 9600 | 10.3.9, 10.4.11, 10.5.8 | `ppc970` |
+| **G5 tower** PowerMac7,3 | dual 2.7 GHz G5 / Radeon 9600 | 10.4.11; 10.3.9, 10.5.8 earlier releases | `ppc970` |
 | **imac-g5** PowerMac8,2 | 2.0 GHz G5 / Radeon 9600 | 10.5.8 (earlier releases) | `ppc970` |
 | **mini-sl** Macmini3,1 | Core 2 Duo / GeForce 9400M | 10.6.8 | `x86_64` |
 | **mini-intel**, **mini-intel2** Macmini2,1 | Core 2 Duo / GMA 950 | 10.7.5 | `x86_64` |

@@ -243,20 +243,22 @@ new_claim() { echo "$$.$(date +%s).${RANDOM:-0}"; }
 # combined output back), a path captures it to a file (cmd_status wants the
 # REASON a probe failed), empty leaves it on the caller's stderr. Same
 # signature either way, so probe/try_acquire/cmd_release do not need to know
-# which transport they got.
+# which transport they got. Stdin is never read (-n, </dev/null): with --run
+# it belongs to CMD, and a probe that ate it made `--run H -- ssh H bash -s < f`
+# run nothing and exit 0 (#99).
 run_remote() {
 	local h="$1" script="$2" errsink="${3:-}"
 	if is_local_host "$h"; then
 		case "$errsink" in
-			"")   sh -c "$script" ;;
-			"&1") sh -c "$script" 2>&1 ;;
-			*)    sh -c "$script" 2>"$errsink" ;;
+			"")   sh -c "$script" </dev/null ;;
+			"&1") sh -c "$script" </dev/null 2>&1 ;;
+			*)    sh -c "$script" </dev/null 2>"$errsink" ;;
 		esac
 	else
 		case "$errsink" in
-			"")   ssh "${SSH_OPTS[@]}" "$h" "$script" ;;
-			"&1") ssh "${SSH_OPTS[@]}" "$h" "$script" 2>&1 ;;
-			*)    ssh "${SSH_OPTS[@]}" "$h" "$script" 2>"$errsink" ;;
+			"")   ssh -n "${SSH_OPTS[@]}" "$h" "$script" ;;
+			"&1") ssh -n "${SSH_OPTS[@]}" "$h" "$script" 2>&1 ;;
+			*)    ssh -n "${SSH_OPTS[@]}" "$h" "$script" 2>"$errsink" ;;
 		esac
 	fi
 }

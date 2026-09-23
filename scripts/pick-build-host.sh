@@ -80,7 +80,7 @@ CLAIM="${BENCH_LOCK_CLAIM:-}"
 # Non-zero exit means unreachable.
 probe() {
 	local h="$1" errsink="${2:-/dev/null}"
-	ssh "${SSH_OPTS[@]}" "$h" '
+	ssh -n "${SSH_OPTS[@]}" "$h" '
 		L=/tmp/.retro-build-lock
 		if [ -d "$L" ]; then
 			now=`date +%s`
@@ -259,7 +259,7 @@ try_acquire() {
 	# so two orchestrators retrying the same stale lock cannot both pass their
 	# age check, rm the other's fresh mkdir, and both build. stat-age-rm as three
 	# separate commands had exactly that interleaving.
-	ssh "${SSH_OPTS[@]}" "$h" "
+	ssh -n "${SSH_OPTS[@]}" "$h" "
 		L=$LOCK
 		if [ -d \"\$L\" ]; then
 			now=\`date +%s\`; m=\`stat -f %m \"\$L\" 2>/dev/null || echo \$now\`
@@ -312,7 +312,7 @@ cmd_release() {
 		echo "  sessions in $REPO_NAME apart. Export BENCH_LOCK_CLAIM around the" >&2
 		echo "  acquire and the release to get a strict one." >&2
 	fi
-	ssh "${SSH_OPTS[@]}" "$h" "
+	ssh -n "${SSH_OPTS[@]}" "$h" "
 		O=\"$LOCK/owner\"
 		if [ -d \"$LOCK\" ]; then
 			ok=0

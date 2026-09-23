@@ -85,25 +85,24 @@ fuzzing and fixed (ADR 0011). Documentation consolidated into `docs/adr/`.
 - Resolved stencil shadow configuration across G4 and sawtooth profiles (issues #7, #25, #34).
 - Linux dedicated server 8.70 with rate-limiting and security hardening for x86_64 and aarch64.
 
-**Current internal renderer work** (2026-09-12): the six-slice fat build
-includes a native `arm64` client, dedicated server, game module and SDL
-compatibility layer. The bloom readback fix is in Review; an unpublished
-config-only successor enables bloom on arm64 after a 264.55 fps warm median at
-1920x1080 with 4x MSAA. The release still requires the user's final gameplay
-gate across G3, G4, G5, Intel and Apple Silicon. Evidence is in
-`benchmarks/experiments/2026-09-12-bloom-readback/`.
+**v2.9.0 – v2.11.2**: see the GitHub tags and `benchmarks/releases/`.
+
+**v2.12.0** (2026-09-22), M5 stutter fix; G4 combined depth/stencil clear
+(40.6 → 55.7 fps); GeForce 9400 bloom partial restore (42.7 → 50.0); G3
+projected shadows (demo2 28.4).
+
+**v2.13.0** (2026-09-23), PowerPC launch at Thousands of colors (SDL#5, #83);
+imac-2019 4x MSAA (73.5 → 118.8 fps vsync on); bloom border at reduced
+viewsize (#80); GPU check on mapped Macs (#79).
+
+**v2.14.0**, imac-2019 8x MSAA through `gl_scene_resolve` (176 fps vs 74,
+2560x1440), which now fails open; a renderer that can't start exits with an
+error instead of crashing; GMA 950 profile says MSAA 0 (no hardware MSAA).
 
 ## Open
 
-- **Issue #7**, resolved for mini-g4: real-resolution stencil cost is 29%
-  (41.1 vs 57.6 fps demo1 1024x768), machine is fill-bound, and the floor is
-  settled as the raw bench number (`old-mac-build-host#22`) — 41.1 clears the
-  ~40 fps floor, kept ON, no config change needed. sawtooth and quicksilver
-  are still on the invalid `res=1` figures; re-bench when either is next
-  powered up (both off as of 2026-08-23).
-- Bloom fix awaits the user's final multi-machine gameplay gate. Issue #33.
-- GL1 gamma correction, 5.11 has none on the GL path (fixed-function has no
-  linear-space blending to correct; the hardware gamma ramp via SDL_SetGamma
-  already works).
-- Both fleet framerate rows marked stale in `README.md`: sawtooth and imac-2019
-  have not been benched since the stencil rollout.
+- #69: per-class measurement for sawtooth, quicksilver and imac-g5 (off).
+- #25: sawtooth's four features (off).
+- imac-2019: vsync caps at about 119 fps on a 60 Hz panel in desktop
+  fullscreen; cause open (#69).
+- GL1 gamma correction: 5.11 has none on the GL path; SDL_SetGamma works.

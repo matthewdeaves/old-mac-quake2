@@ -2,7 +2,7 @@
 
 [![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](yquake2/LICENSE)
 [![Platform: PPC + Intel + Apple Silicon macOS](https://img.shields.io/badge/Platform-PPC%20%7C%20Intel%20%7C%20Apple%20Silicon-lightgrey.svg)](#tested-machines)
-[![macOS: 10.3.9 → 15.7](https://img.shields.io/badge/macOS-10.3.9%20%E2%86%92%2015.7-success.svg)](#tested-machines)
+[![macOS: 10.3.9 → 26](https://img.shields.io/badge/macOS-10.3.9%20%E2%86%92%2026-success.svg)](#tested-machines)
 [![Engine: yquake2 5.11](https://img.shields.io/badge/Engine-yquake2%205.11-red.svg)](https://github.com/yquake2/yquake2)
 
 <p align="center">
@@ -34,93 +34,47 @@ builds from the same tree (see [`server/`](server/README.md)).
 
 ## Tested machines
 
-| Machine | CPU | GPU | OS | Slice |
-|---|---|---|---|---|
-| **yosemite** PowerMac1,1 1999 | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.3.9 Panther | `ppc750` |
-| **yosemite on Tiger** same Mac, 2nd partition | 449 MHz PPC 750 | ATI Rage 128 16 MB | 10.4.11 Tiger | `ppc750` |
-| **sawtooth** PowerMac3,1 1999 | 500 MHz PPC 7400 | NVIDIA GeForce2 MX 32 MB | 10.4.11 Tiger | `ppc7400` |
-| **quicksilver** PowerMac3,5 2001 | 733 MHz PPC 7450 | ATI Radeon 9000 Pro 64 MB | 10.4.11 Tiger | `ppc7400` |
-| **mini-g4** PowerMac10,1 2005 | 1.25 GHz PPC 7447A | ATI Radeon 9200 32 MB | 10.4.11 Tiger | `ppc7400` |
-| **imac-g5** PowerMac8,2 2004 | 2.0 GHz PPC 970FX | ATI Radeon 9600 128 MB | 10.5.8 Leopard (native 1440×900) | `ppc970` |
-| **mini-intel** Macmini2,1 2007 | 2.33 GHz Core 2 Duo | Intel GMA 950 64 MB | 10.7.5 Lion | `x86_64` |
-| **imac-2019** iMac19,1 2019 | 3.7 GHz i5-9600K | AMD Radeon Pro 580X 8 GB | 15.7 Sequoia | `x86_64` |
-
-### Which OS each CPU needs
-
-The binary carries one slice per CPU family, each stamped with its exact CPU subtype:
-
-| CPU | Slice | OS needed | Tested on |
+| Mac | CPU / GPU | OS tested | Slice |
 |---|---|---|---|
-| G3 (750) | `ppc750` | 10.3.9 Panther or later | 10.3.9 and 10.4.11 |
-| G4 (7400 / 7450 / 7447A) | `ppc7400` | 10.3.9 Panther or later | 10.4.11 |
-| G5 (970) | `ppc970` | **10.5 Leopard, a G5 on 10.3 or 10.4 is not supported** | 10.5.8 |
-| Intel, 64-bit | `x86_64` | 10.6 Snow Leopard or later | 10.7.5 and 15.7 |
-| Apple Silicon | `arm64` | 11 Big Sur or later | native slice built and checked on the orchestration Mac |
+| **yosemite** PowerMac1,1 | 449 MHz G3 / Rage 128 | 10.3.9, 10.4.11 | `ppc750` |
+| **mini-g4** PowerMac10,1 | 1.25 GHz G4 / Radeon 9200 | 10.4.11 | `ppc7400` |
+| **sawtooth**, **quicksilver** | G4 / GeForce2 MX, Radeon 9000 | 10.4.11 (earlier releases) | `ppc7400` |
+| **G5 tower** PowerMac7,3 | dual 2.7 GHz G5 / Radeon 9600 | 10.3.9, 10.4.11, 10.5.8 | `ppc970` |
+| **imac-g5** PowerMac8,2 | 2.0 GHz G5 / Radeon 9600 | 10.5.8 | `ppc970` |
+| **mini-sl** Macmini3,1 | Core 2 Duo / GeForce 9400M | 10.6.8 | `x86_64` |
+| **mini-intel**, **mini-intel2** Macmini2,1 | Core 2 Duo / GMA 950 | 10.7.5 | `x86_64` |
+| **imac-2019** iMac19,1 | i5-9600K / Radeon Pro 580X | 15.7 | `x86_64` |
+| **Apple M5** MacBook Air | Apple M5 | 26 | `arm64` |
 
-`dyld` picks a slice by CPU alone; the OS plays no part in it. A Mac running an OS
-older than its slice needs gets that slice anyway rather than falling back to a lower
-one, and won't launch, which is why the G3 and G4 slices are both built at min 10.3
-even though no G4 here runs Panther. Two rows are honest about the gap between what is
-built and what is tested: **a G4 on Panther and an Intel Mac on Snow Leopard should both
-work but neither has been run on hardware** (no such machine in the fleet). The G5 is the
-exception, its slice genuinely needs 10.5, so that row is a real floor, not a gap in
-testing.
-
-32-bit-only Intel Macs (Core Duo / Core Solo, 2006) **now have their own `i386`
-slice**, and Apple Silicon has a native `arm64` one, so there is no longer any Mac
-this binary cannot run on natively. The i386 slice has not been run on hardware
-here, and the arm64 slice has been built and checked on the orchestration Mac;
-Apple Silicon has not yet completed a fleet bench run. Both configs say so in
-their comments.
-
-The `arm64` slice is the only one that does not link a real SDL 1.2, because none
-exists for that architecture. It links `sdl12-compat` over an SDL 2.32.4 this project
-builds and ships itself, so the stack is two layers under our control rather than
-whatever a package manager resolves to. Every other slice keeps genuine SDL 1.2 and is
-untouched by it. See `docs/adr/0015`.
+`dyld` picks a slice by CPU alone. Every PowerPC slice is built for 10.3.9, so
+G3, G4 and G5 all run Panther through Leopard; a G4 on Panther is untested.
+`x86_64` needs 10.6, and `arm64` needs 11. The 32-bit Intel slice (`i386`, Core
+Duo/Solo, 10.4+) has never been run on hardware. Apple Silicon uses
+`sdl12-compat` over a bundled SDL 2.32.4; every other slice uses real SDL 1.2
+(`docs/adr/0015`).
 
 ## Framerate
 
-`timedemo demo1`, with the per-machine settings each Mac actually ships with,
-median of runs 2 & 3:
+`timedemo`, each Mac's shipped settings (all its effects on), vsync off. Live
+numbers are in [`benchmarks/results.csv`](benchmarks/results.csv).
 
-| Machine | 640×480 | 1024×768 |
-|---|---:|---:|
-| Mac mini Intel (Lion / GMA 950) | 207.9 | 92.6 |
-| Sawtooth (G4 / GeForce2 MX) † | 72.9 | 65.5 |
-| Mac mini G4 (Radeon 9200) | 77.0 | 41.1 |
-| Quicksilver (G4 / Radeon 9000) | 67.0 | 57.6 |
-| Yosemite (G3 / Panther / Rage 128) | 50.4 | 25.5 |
-| Yosemite (G3 / Tiger / Rage 128) | 49.1 | 25.8 |
-| iMac 27" (2019 / Radeon Pro 580X) † | 698.8 | 732.6 |
+| Class | Resolution | fps |
+|---|---|---:|
+| G3 / Rage 128 (Panther) | 1024×768 | 28.4 (demo2) |
+| G4 / Radeon 9200 | 1024×768 | 55.7 |
+| G5 / Radeon 9600 | 1680×1050 | 50.2 |
+| Core 2 Duo / GeForce 9400M | 1920×1080 | 44.9 (demo2) |
+| Core 2 Duo / GMA 950 | 1024×768 | 58.8 |
+| Radeon Pro 580X, 8x MSAA | 2560×1440 | 176 |
+| Apple M5, 4x MSAA | 1920×1080 | 264.6 |
 
-The iMac G5 runs native 1440×900 only (its Leopard driver hangs on a mode
-switch) at 46.8 fps, a deliberate visuals-over-framerate choice there.
-
-The two G3 rows are the same Mac booted from two partitions, running the
-byte-identical binary out of the same disk image: **the OS costs it nothing
-measurable.** On the production config both come out at 21.0 fps exactly.
-
-† Not benched for this release, sawtooth and the 2019 iMac were offline.
-Those rows are carried forward from before the v2.5.1 stencil-shadow rollout,
-so the sawtooth figures in particular are likely optimistic; treat them as
-stale rather than current.
-
-**On the G4 numbers.** Earlier releases quoted ~99–108 fps at 1024×768 for the
-Mac mini G4. That figure was wrong: the benches behind it were accidentally run
-at a 1×1-pixel render (a `1` landed in the resolution argument where the run
-count was meant to go), so they measured CPU cost with essentially no fill work
-and got quoted as if they were real. Every number in the table above is a
-genuine full-resolution run on a freshly rebooted machine. The honest position
-is that the mini G4 sits just under the 40 fps target at 1024×768 with the full
-visual stack, and comfortably over it at 640×480. `scripts/bench.sh` now
-rejects a malformed resolution instead of quietly benching nonsense. Live
-numbers in [`benchmarks/results.csv`](benchmarks/results.csv).
+The floors are 20 fps on a G3 and about 40 on a G4. Above them, frame rate is
+spent on effects. Sawtooth and quicksilver were off this cycle.
 
 ## How it's built and benchmarked
 
 One modern Mac drives the whole fleet over SSH. The Lion mini does double duty:
-it cross-builds the four PowerPC/Intel slices and benches itself. These diagrams
+it cross-builds the five PowerPC and Intel slices; `arm64` builds on the orchestration Mac. These diagrams
 cover the setup, the build pipeline and the timedemo bench loop.
 
 ![Build and bench rack: one orchestration Mac drives the fleet via the Lion mini cross-build host](docs/images/architecture.svg)
@@ -135,9 +89,7 @@ cover the setup, the build pipeline and the timedemo bench loop.
   `arm64`) in a self-contained `Quake2.app`; runs natively from Mac OS X 10.3.9
   Panther through modern Apple Silicon macOS.
 - **Native Apple Silicon support** through the `arm64` slice and bundled
-  `sdl12-compat`/SDL2 runtime. Bloom remains disabled because the fixed-function
-  path still produces a black screen on Apple Silicon; it is not counted as a
-  working feature.
+  `sdl12-compat`/SDL2 runtime, with bloom and MSAA on.
 - **Three config layers baked into the `.app`**, shared controls, a per-arch
   baseline picked by the running slice, and a per-machine overlay dispatched at
   boot by `sysctl hw.model` (all applied before video init, so the renderer
@@ -165,7 +117,7 @@ Download the latest disk image from
 Tiger, Leopard, Lion and modern macOS.
 
 1. Mount the `.dmg` and copy `Quake2.app`, `ref_gl.so`, `q2ded` and the `baseq2/`
-   folder into one directory (e.g. `~/Desktop/quake2/`).
+   folder into `/Applications/Quake2/`.
 2. **Add your retail data**, drop your own `pak0.pak`, `pak1.pak`, `pak2.pak`
    into `baseq2/`, and copy the whole `players/` folder from your retail
    `baseq2/` (models/skins, without it multiplayer models render invisible).
@@ -190,25 +142,12 @@ Same machines, same tooling, other id engines:
 (Quake) and [**old-mac-quake3**](https://github.com/matthewdeaves/old-mac-quake3)
 (Quake III Arena).
 
-### Where to put it on Apple Silicon and modern macOS
+### Why `/Applications` on modern macOS
 
-Put the game folder in **`/Applications`**, not on the Desktop.
-
-macOS asks an app for permission before it may read files in Desktop, Documents
-or Downloads, and it asks **every launch** for an app it cannot identify
-consistently. A game that lives in `/Applications` is outside those protected
-locations, so it never triggers the prompt and can read its own game data
-without being interrupted.
-
-So: drag the whole folder (the `.app` **and** the game data beside it) into
-`/Applications`, keeping them together. On first run, clear Gatekeeper with:
-
-```sh
-xattr -dr com.apple.quarantine /Applications/<folder>
-```
-
-PowerPC and Intel Macs running 10.3 through 10.7 have none of this and can keep
-the folder wherever you like.
+macOS asks for permission, every launch, before an app it cannot identify reads
+Desktop, Documents or Downloads. A game in `/Applications` never triggers that
+prompt. Keep the `.app` and its game data together there. Macs on 10.3 to 10.7
+don't have this restriction.
 
 ## Credits & licence
 

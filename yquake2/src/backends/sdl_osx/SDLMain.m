@@ -12,6 +12,7 @@
 #import <unistd.h>
 #include <sys/sysctl.h>	/* hw.model for the settings GUI */
 #import <OpenGL/OpenGL.h>	/* CGL renderer query for the GPU tier (#87) */
+#import <OpenGL/gl.h>		/* GLint: the 10.3/10.4 OpenGL.h does not define it */
 #include <math.h>
 //#import <iostream>
 

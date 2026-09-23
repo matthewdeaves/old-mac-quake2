@@ -7,7 +7,7 @@
 #
 # Stages a self-contained Quake2 install and atomically publishes it at
 # /Applications/Quake2. An existing destination is refused. The legacy
-# ~/quake2-play tree remains untouched as rollback and a game-data source.
+# ~/quake2-play tree remains untouched as a game-data source.
 #   Quake2.app/
 #     Contents/Info.plist
 #     Contents/MacOS/quake2                  (fat: ppc750 + ppc7400 + ppc970 + i386 + x86_64 + arm64)
@@ -192,7 +192,7 @@ if ssh "$HOST" '[ ! -e /Applications/Quake2 ] && [ ! -L /Applications/Quake2 ]';
   OCCUPIED=no
 else
   OCCUPIED=yes
-  echo "[deploy $HOST] /Applications/Quake2 already exists — upgrading in place with a rollback (#72)"
+  echo "[deploy $HOST] /Applications/Quake2 already exists — upgrading the runtime in place (#72)"
 fi
 
 # Stage layout locally, then rsync. Using a temp dir means we can ship
@@ -313,7 +313,7 @@ case "$REMOTE_STAGE" in
 esac
 
 if [ "$OCCUPIED" = no ]; then
-  echo "[deploy] prepare $HOST:$REMOTE_STAGE (legacy install remains rollback)"
+  echo "[deploy] prepare $HOST:$REMOTE_STAGE"
   ssh "$HOST" "set -e
     DEST='$REMOTE_DEST'
     STAGE='$REMOTE_STAGE'
@@ -323,7 +323,7 @@ if [ "$OCCUPIED" = no ]; then
     mkdir \"\$STAGE\"
     if [ -d \"\$HOME/quake2-play/baseq2\" ]; then
       ditto \"\$HOME/quake2-play/baseq2\" \"\$STAGE/baseq2\"
-      echo '[deploy] copied ~/quake2-play/baseq2; rollback left untouched'
+      echo '[deploy] copied ~/quake2-play/baseq2; source left untouched'
     elif [ -d \"\$LEGACY\" ]; then
       ditto \"\$LEGACY\" \"\$STAGE/baseq2\"
       echo '[deploy] copied the host legacy baseq2; source left untouched'
@@ -332,12 +332,8 @@ if [ "$OCCUPIED" = no ]; then
     fi
     rm -f \"\$STAGE/baseq2/autoexec.cfg\""
 else
-  # #72: DEST is occupied. update-install-tree.sh (invoked at publish time
-  # below) preserves the CURRENT install's baseq2 itself, verified by its
-  # own manifest comparison, and never reads SOURCE/baseq2 — so there is
-  # nothing useful to stage here, and populating it from quake2-play/legacy
-  # or .game-data/ would just be bandwidth spent on data that gets thrown
-  # away. Leave STAGE/baseq2 empty; the update primitive owns it.
+  # #72: DEST is occupied. Its baseq2 game data stays where it is, and only
+  # the runtime is swapped at publish time, so stage nothing but the runtime.
   echo "[deploy] prepare $HOST:$REMOTE_STAGE (occupied — game data comes from the live install, #72)"
   ssh "$HOST" "set -e
     STAGE='$REMOTE_STAGE'
@@ -360,9 +356,7 @@ done
 
 # Overlay the canonical workstation game data when present, while retaining all
 # other copied legacy content such as saves, mods, video and custom assets.
-# #72: skipped when occupied — update-install-tree.sh preserves the live
-# install's baseq2 itself at publish time and never reads this path, so
-# populating it here would only spend bandwidth on data that gets discarded.
+# #72: skipped when occupied; the live install keeps its own game data.
 if [ "$OCCUPIED" = yes ]; then
   :
 elif [ -f "$REPO_ROOT/.game-data/baseq2/pak0.pak" ]; then
@@ -417,20 +411,20 @@ if [ "$OCCUPIED" = no ]; then
     mv \"\$STAGE\" \"\$DEST\"
     touch \"\$DEST/Quake2.app\" \"\$DEST\" 2>/dev/null || true"
 else
-  # #72: hand off to the already-tested update primitive for the atomic
-  # swap + rollback. Staged as a $HOME dotfile, matching the
-  # clear-launch-quarantine.sh convention just above — never ~/Desktop.
-  scp -pq "$REPO_ROOT/scripts/update-install-tree.sh" "$HOST:.q2-update-install-tree.sh"
-  UPDATE_OUT=$(ssh "$HOST" "set -e
-    trap 'rm -f \"\$HOME/.q2-update-install-tree.sh\"' EXIT HUP INT TERM
-    bash \"\$HOME/.q2-update-install-tree.sh\" '$REMOTE_STAGE' '$REMOTE_DEST'
-    status=\$?
-    rm -rf '$REMOTE_STAGE'
-    exit \$status")
-  printf '%s\n' "$UPDATE_OUT"
-  ROLLBACK_PATH=$(printf '%s\n' "$UPDATE_OUT" | sed -n 's/^ROLLBACK_PATH=//p')
-  [ -n "$ROLLBACK_PATH" ] || { echo "[deploy] FATAL: update-install-tree.sh did not report a rollback path" >&2; exit 7; }
-  echo "[deploy] upgraded in place; rollback retained at $ROLLBACK_PATH"
+  # Occupied: replace only the runtime this script owns, fix forward (no
+  # copy kept), and leave baseq2's game data and every other file alone. The
+  # stage is on the same volume, so each move is a rename.
+  ssh "$HOST" "set -e
+    DEST='$REMOTE_DEST'
+    STAGE='$REMOTE_STAGE'
+    for rel in Quake2.app ref_gl.so q2ded baseq2/game.so; do
+      [ -e \"\$STAGE/\$rel\" ] || continue
+      rm -rf \"\$DEST/\$rel\"
+      mv \"\$STAGE/\$rel\" \"\$DEST/\$rel\"
+    done
+    rm -rf \"\$STAGE\"
+    touch \"\$DEST/Quake2.app\" \"\$DEST\" 2>/dev/null || true"
+  echo "[deploy] upgraded in place; game data untouched, no rollback kept"
 fi
 REMOTE_STAGE=""
 

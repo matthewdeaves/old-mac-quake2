@@ -276,13 +276,11 @@ echo "[build] sync sources Ubuntu → $BUILD_HOST:$REMOTE_PATH/"
 # two must not drift: a file this excludes cannot affect the build, and a file it
 # sends must change the stamp. See issue #17.
 ssh "$BUILD_HOST" "mkdir -p '$REMOTE_PATH'"
-# The minis are also install targets: deploy-dmg.sh/update-dmg.sh stage the DMG
-# at ~/oldmac/quake2/<dmg> and update-install-tree.sh holds the old install
-# in ~/oldmac/quake2/swap/ during an update, and both mount DMGs under ~/oldmac/quake2/mnt/.
-# The shared deploy-dmg.sh (old-mac-build-host#96) keeps all its state in /deploy/.
+# The minis are also install targets: the shared deploy-dmg.sh
+# (old-mac-build-host#96) keeps all its state in ~/oldmac/quake2/deploy/.
 # --delete never removes excluded receiver paths, and no pattern matches the
 # source tree, so the stamp is unaffected (#81).
-REMOTE_KEEP_EXCLUDES=(--exclude=/swap/ --exclude='/*.dmg' --exclude=/mnt/ --exclude=/deploy/)
+REMOTE_KEEP_EXCLUDES=(--exclude=/deploy/)
 # shellcheck disable=SC2046
 rsync -a --partial --inplace --delete \
   $(source_stamp_rsync_excludes "$SOURCE_STAMP_EXCLUDES") \

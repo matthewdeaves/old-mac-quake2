@@ -6,9 +6,8 @@ scripts/build-fat.sh                             # g3→g4→g5→lion + lipo, o
 scripts/build.sh <g3|g4|g5|lion>                 # one slice, for fast iteration only
 scripts/deploy.sh <machine>                      # ships build/q2-fat
 scripts/make-dmg.sh                              # → dist/, hdiutil step on a TIGER box
-scripts/deploy-dmg.sh <machine>                  # install from the image, as a human does
-scripts/deploy-dmg.sh --update <machine> <ver>   # occupied install, verified swap, no rollback kept
-scripts/smoke-dmg.sh <machine>                   # production-config launch test
+scripts/deploy-dmg.sh <machine> [ver]            # install/update from the image; shared (#96), no rollback
+scripts/smoke-dmg.sh <machine>                   # production-config launch test; shared (#96)
 scripts/bench.sh <machine> <demo> <WxH> [runs]
 scripts/check-frames.sh <machine> [--update]     # is the PICTURE still correct
 scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 container

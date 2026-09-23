@@ -199,12 +199,6 @@ else
 	pass "/Applications/Quake2 installs are staged, collision-safe and preserve game data"
 fi
 
-if "$REPO_ROOT/tests/test-update-install.sh"; then
-	pass "occupied-install updater preserves data, restores on failure and keeps no copies"
-else
-	fail "occupied-install updater fixture failed"
-fi
-
 # The Cocoa surface-setup callback also activates the app and marks the view
 # dirty. Calling it for every window update stalls the M5 in WindowServer IPC.
 detect_window_update_observer() {
@@ -246,37 +240,25 @@ fi
 rm -rf "$ov_tmp"
 
 # Issue #81. The build mirror's rsync --delete targets ~/oldmac/quake2, where a
-# mini that is also an install target keeps its staged DMG and in-flight swap copy.
+# mini that is also an install target keeps the shared deploy-dmg.sh's state.
 keep_tmp="$(mktemp -d)"
-mkdir -p "$keep_tmp/src/yquake2" "$keep_tmp/dst/swap/Quake2.previous-x" "$keep_tmp/dst/yquake2" "$keep_tmp/dst/mnt/install" "$keep_tmp/dst/deploy/incoming"
+mkdir -p "$keep_tmp/src/yquake2" "$keep_tmp/dst/yquake2" "$keep_tmp/dst/deploy/incoming"
 : > "$keep_tmp/src/yquake2/kept.c"
-: > "$keep_tmp/dst/Quake2-OldMac-vX.dmg"
-: > "$keep_tmp/dst/swap/Quake2.previous-x/quake2"
 : > "$keep_tmp/dst/yquake2/stale.c"
-: > "$keep_tmp/dst/mnt/install/README.txt"
 : > "$keep_tmp/dst/deploy/incoming/Quake2-OldMac-vX.dmg"
-if ! grep -q -- "REMOTE_KEEP_EXCLUDES=(--exclude=/swap/ --exclude='/\*.dmg' --exclude=/mnt/ --exclude=/deploy/)" "$REPO_ROOT/scripts/build.sh" ||
+if ! grep -q -- "REMOTE_KEEP_EXCLUDES=(--exclude=/deploy/)" "$REPO_ROOT/scripts/build.sh" ||
 	! grep -q -- '"\${REMOTE_KEEP_EXCLUDES\[@\]}"' "$REPO_ROOT/scripts/build.sh"; then
-	fail "build.sh source mirror does not protect staged DMGs and swap copies"
-elif ! rsync -a --delete --exclude=/swap/ --exclude='/*.dmg' --exclude=/mnt/ --exclude=/deploy/ "$keep_tmp/src/" "$keep_tmp/dst/"; then
+	fail "build.sh source mirror does not protect the deploy state"
+elif ! rsync -a --delete --exclude=/deploy/ "$keep_tmp/src/" "$keep_tmp/dst/"; then
 	fail "rsync protect-rule fixture could not run"
-elif [ ! -e "$keep_tmp/dst/Quake2-OldMac-vX.dmg" ] || [ ! -e "$keep_tmp/dst/swap/Quake2.previous-x/quake2" ] || [ ! -e "$keep_tmp/dst/mnt/install/README.txt" ] || [ ! -e "$keep_tmp/dst/deploy/incoming/Quake2-OldMac-vX.dmg" ]; then
-	fail "rsync --delete removed a staged DMG, swap copy or mounted image"
+elif [ ! -e "$keep_tmp/dst/deploy/incoming/Quake2-OldMac-vX.dmg" ]; then
+	fail "rsync --delete removed the deploy state"
 elif [ -e "$keep_tmp/dst/yquake2/stale.c" ] || [ ! -e "$keep_tmp/dst/yquake2/kept.c" ]; then
 	fail "protect rules stopped the mirror deleting stale sources"
 else
-	pass "build mirror keeps staged DMGs, swap copies and mounts, still deletes stale sources"
+	pass "build mirror keeps the deploy state, still deletes stale sources"
 fi
 rm -rf "$keep_tmp"
-
-# Issue #85. Concurrent attaches of one image file race in hdiutil ("Resource
-# busy"), so the local preflight must mount a private clone of the DMG.
-if grep -q 'hdiutil attach -nobrowse -readonly -mountpoint "\$MOUNT" "\$PRIVATE_DMG"' "$REPO_ROOT/scripts/update-dmg.sh" &&
-	! grep -q 'hdiutil attach -nobrowse -readonly -mountpoint "\$MOUNT" "\$DMG"' "$REPO_ROOT/scripts/update-dmg.sh"; then
-	pass "update-dmg preflight mounts a private DMG clone"
-else
-	fail "update-dmg preflight attaches the shared dist/ DMG (parallel updates collide, #85)"
-fi
 
 echo
 [ "$FAILED" = 0 ] && echo "all repo invariants hold" || echo "repo invariants FAILED"

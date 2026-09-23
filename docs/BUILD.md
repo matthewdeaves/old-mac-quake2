@@ -104,24 +104,20 @@ baseq2/pak*.pak             the user's own data
 `SDLMain.m` chdirs the process to the `.app`'s parent directory on a Finder
 launch, so `basedir=.` resolves there.
 
-A fresh install builds a same-volume `/Applications/.Quake2.stage.<pid>` tree,
-verifies the staged binaries and publishes it with one rename. To update an
-occupied install, name the exact image version:
+`deploy-dmg.sh` and `smoke-dmg.sh` are shared with the other ports
+(old-mac-build-host#96, synced byte-identical, never edited here). Quake II's
+part is `scripts/dmg-port.conf` and `scripts/dmg-hooks.sh`:
 
 ```
-scripts/deploy-dmg.sh --update <machine> <version>
+scripts/deploy-dmg.sh <machine> [version]
 ```
 
-The update checks the DMG signature, SDL2 companion and all six slices first,
-keeps every non-runtime `baseq2` file (paks, `players/`, a user `autoexec.cfg`),
-and replaces only the packaged runtime. The old install sits in
-`~/oldmac/quake2/swap/` only for the swap: it's restored if the new install
-fails verification, and deleted once it passes. No rollback copy is kept (fix
-forward, 2026-09-23); a bad release is replaced by a fixed one.
-
-If an existing `baseq2/autoexec.cfg` is present, the updater preserves it and
-prints that live cvar readback is required; the updater does not silently discard
-user configuration.
+It checks the DMG signature, SDL2 companion and all six slices first, then
+replaces only the runtime (`Quake2.app`, `ref_gl.so`, `q2ded`,
+`baseq2/game.so`) and md5-verifies it. The rest of `baseq2/` (paks, `players/`,
+a user `autoexec.cfg`) is never touched. No rollback copy is kept (fix forward,
+2026-09-23); a bad release is replaced by a fixed one. `deploy.sh` updates a
+dev install the same way.
 
 `rsync --delete` is scoped to the staged `Quake2.app` bundle. It never sweeps
 the install root or `baseq2/`, avoiding the historical deletion of player-model

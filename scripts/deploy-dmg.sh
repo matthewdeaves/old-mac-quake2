@@ -1,336 +1,319 @@
 #!/usr/bin/env bash
-# Install the release DMG onto a target Mac *exactly the way an end user would*:
-# copy the .dmg under ~/oldmac/quake2/, mount it, then atomically publish a new
-# /Applications/Quake2 install. The previous ~/quake2-play tree remains an
-# untouched rollback and supplies the user's existing game data. This is the
-# deliberate DMG path (not
-# deploy.sh's direct rsync) so the test loop exercises the same artifact and
-# the same install steps a human performs — that is where the 2026-05-31
-# corrupt-DMG / illegal-instruction bug hid (deploy.sh was clean, the DMG
-# wasn't). See MISTAKES.md.
+# deploy-dmg.sh -- install a port's release DMG onto a fleet Mac, the way a
+# player would get it: the same .dmg, mounted, its app copied into
+# /Applications/<Game>/. CANONICAL copy lives in old-mac-build-host (#96) and is
+# synced byte-identical into each port; never edit a port's copy. Per-port
+# differences live in that port's scripts/dmg-port.conf (and, rarely,
+# scripts/dmg-hooks.sh), which are the port's own files and never synced.
 #
-# usage: scripts/deploy-dmg.sh <machine> [version]
-#        scripts/deploy-dmg.sh --update <machine> <version>
-#   machine: yosemite | yosemite-tiger | sawtooth | quicksilver | mini-g4 |
-#            imac-g5 | mini-intel | imac-2019 (ssh alias). yosemite-tiger is
-#            the same Mac as yosemite on its 10.4 partition.
-#   version: e.g. v2.2.4  (default: newest dist/Quake2-OldMac-*.dmg)
+# usage: scripts/deploy-dmg.sh <host> [version | path/to.dmg]
+#        scripts/deploy-dmg.sh --update <host> <version>   (same as the above)
+#   host     any fleet alias, or `workstation` (this Mac, no ssh)
+#   version  e.g. v1.2.0 -> dist/<DMG_PREFIX>v1.2.0.dmg; default: newest in dist/
 #
-# Preserves the user's complete baseq2 tree by copying it into the staged install
-# before overlaying the app and loose runtime libraries from the image. An
-# occupied /Applications/Quake2 auto-detects and routes to update-dmg.sh's
-# named-backup updater (#76, same detection deploy.sh's #72 added) instead of
-# refusing, using the resolved version from the selected DMG. Explicit
-# --update still works directly and requires an exact version. The DMG stages
-# under ~/oldmac/quake2/, never ~/Desktop (user rule, #76/#75).
+# What it guarantees, each taken from the port that already did it best:
+#  - claims the host for the whole run (re-exec under pick-bench-host.sh --run)
+#  - md5-checks the DMG after transfer, and each VERIFY file after install
+#  - keeps ALL its state under ~/oldmac/<port>/deploy/ (incoming, mount.<pid>,
+#    stage), and removes it when done: one directory a port's build mirror can exclude: on the
+#    Lion minis ~/oldmac/<port> is also an rsync --delete build tree (quake2#81)
+#  - mounts read-only at a unique deploy/mount.<pid>, and detaches BY
+#    DEVICE: Panther's hdiutil ignores a mount path, so path detaches leaked an
+#    image per deploy there (quake3 eb3a4eb7, measured on g5-panther)
+#  - replaces ONLY the OWNED paths. Game data (DATA_DIR) and anything other
+#    scripts put in the install folder are never touched. An optional OWNED
+#    path missing from the new image is removed, so a stale BUILD-INFO or README
+#    does not outlive its release (halflife 4175fcf).
+#  - keeps NO rollback. User rule, 2026-09-23: "we dont need roll backs we
+#    should take a fix forward approach". The replaced files are deleted in the
+#    same run, and a bad install is fixed by deploying a fixed build.
+#
+# PRESTAGE=1 mounts the image on THIS Mac and rsyncs its contents across,
+# for a host whose own hdiutil attach fails (quad-tiger, DI_kextDriveActivate
+# after a fresh boot: halflife 2d46f0f). Everything after the mount is the same.
+#
+# Exit: 0 ok, 1 failed, 2 usage/config, 6 image would not mount,
+#       7 installed files failed verification (fix forward: redeploy),
+#       9 the game is running there (FORCE=1 overrides)
+set -uo pipefail
 
-set -euo pipefail
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SELF_DIR/.." && pwd)"
+usage() { sed -n '9,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 2; }
 
-# Explicit occupied-install path, same primitive the auto-detect below routes
-# to; update-dmg.sh adds artifact preflight and a verified swap (no rollback kept).
-if [ "${1:-}" = --update ]; then
-  shift
-  exec "$REPO_ROOT/scripts/update-dmg.sh" "$@"
-fi
+MODE=install
+case "${1:-}" in
+	--update)   shift ;;
+	--rollback) echo "deploy-dmg: there are no rollbacks (user rule 2026-09-23: fix forward). Deploy a fixed build." >&2; exit 2 ;;
+	-h|--help|'') usage ;;
+esac
+HOST="${1:-}"; [ -n "$HOST" ] || usage
+ARG="${2:-}"
 
-HOST="${1:?usage: $0 <machine> [version]}"
+# --- port config ----------------------------------------------------------------
+CONF="${DMG_PORT_CONF:-$SELF_DIR/dmg-port.conf}"
+[ -r "$CONF" ] || { echo "deploy-dmg: no port config at $CONF (see old-mac-build-host#96)" >&2; exit 2; }
+IMAGE_ROOT=.; DATA_DIR=; FIRST_SEED=(); PROC=; OWNED=(); VERIFY=(); REMOVE=()
+REMOTE_POST_STAGE=; REMOTE_POST_INSTALL=
+# shellcheck source=/dev/null
+. "$CONF"
+[ -r "$SELF_DIR/dmg-hooks.sh" ] && . "$SELF_DIR/dmg-hooks.sh"
+for v in PORT DMG_PREFIX INSTALL_DIR; do
+	[ -n "${!v:-}" ] || { echo "deploy-dmg: $CONF must set $v" >&2; exit 2; }
+done
+[ "${#OWNED[@]}" -gt 0 ] || { echo "deploy-dmg: $CONF must list OWNED paths" >&2; exit 2; }
+INSTALL_DIR="${DEST_DIR:-$INSTALL_DIR}"   # halflife's DEST_DIR still works
+case "$PORT" in *[!a-z0-9-]*|'') echo "deploy-dmg: PORT must be [a-z0-9-]" >&2; exit 2 ;; esac
 
-# Claim this machine for the whole run. See scripts/pick-bench-host.sh.
-#
-# Re-exec under the picker rather than acquire-here-and-trap: bash traps REPLACE
-# rather than compose, so a release trap installed at the top of a script that
-# later sets its own trap is silently discarded, and the machine stays claimed
-# until the stale reclaim. `--run` makes the lock a property of the INVOCATION,
-# so it is released however this exits, and no caller has to remember to do it.
-#
-# The lock lives on the target, so it serialises across repos, agents and
-# workstations, not just this checkout. It also refuses a host booted into an OS
-# its alias does not name, which the multi-boot machines otherwise allow.
-#
-# RETRO_BENCH_LOCK names the machine claimed further up the chain, which is what
-# stops the re-exec below recursing. Compare it against the target rather than
-# testing whether it is set: a step that targets a DIFFERENT machine still has
-# to claim that one, and the emptiness test skipped it silently. Issue #19.
-# BENCH_NO_LOCK=1 skips the lock, for when the picker itself is what you are
-# debugging. It is not a way to get past a machine someone else is using.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+# --- claim the host for the whole run -------------------------------------------
+# Re-exec under the picker, so the lock belongs to the invocation and is
+# released however this exits. RETRO_BENCH_LOCK names the host already held, so
+# a nested call on the SAME host does not deadlock on its own claim.
+_PICK="$SELF_DIR/pick-bench-host.sh"
 if [ "${RETRO_BENCH_LOCK:-}" != "$HOST" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$HOST"
-	exec "$_PICK" --run "$HOST" "deploy-dmg" -- "$0" "$@"
+	exec "$_PICK" --run "$HOST" "$PORT deploy-dmg $MODE" -- "$0" "$@"
 fi
-VERSION="${2:-}"
-if [ -z "$VERSION" ]; then
-  DMG=$(ls -t "$REPO_ROOT"/dist/Quake2-OldMac-*.dmg 2>/dev/null | head -1)
-  [ -n "$DMG" ] || { echo "no dist/Quake2-OldMac-*.dmg found — run scripts/make-dmg.sh" >&2; exit 1; }
+
+say()  { echo "[deploy-dmg $HOST] $*"; }
+die()  { echo "[deploy-dmg $HOST] FATAL: $1" >&2; exit "${2:-1}"; }
+lmd5() { md5 -q "$1" 2>/dev/null || md5sum "$1" | cut -d' ' -f1; }
+SSH_OPTS=(-o BatchMode=yes -o ConnectTimeout=15)
+if [ "$HOST" = workstation ]; then
+	run_host() { bash -s; }
+	put()      { cp "$1" "$HOME/$2"; }
 else
-  DMG="$REPO_ROOT/dist/Quake2-OldMac-$VERSION.dmg"
-  [ -f "$DMG" ] || { echo "missing $DMG" >&2; exit 1; }
-fi
-DMG_BASE=$(basename "$DMG")
-
-# #76: auto-detect occupied vs fresh, same as deploy.sh's #72, instead of
-# refusing. An occupied destination already has a working, tested updater
-# (--update above) with a verified swap — route there with the version
-# resolved from the DMG we just picked, rather than making the caller retry
-# by hand. (This is also the fix for release-fanout-quake2's Jenkins job,
-# which calls this plain form: one call site now handles both cases.)
-if ! ssh "$HOST" '[ ! -e /Applications/Quake2 ] && [ ! -L /Applications/Quake2 ]'; then
-  RESOLVED_VERSION="${DMG_BASE#Quake2-OldMac-}"
-  RESOLVED_VERSION="${RESOLVED_VERSION%.dmg}"
-  echo "[deploy-dmg $HOST] /Applications/Quake2 already exists — routing to update-dmg.sh $RESOLVED_VERSION (#76)" >&2
-  exec "$REPO_ROOT/scripts/update-dmg.sh" "$HOST" "$RESOLVED_VERSION"
+	run_host() { ssh "${SSH_OPTS[@]}" "$HOST" bash -s; }
+	put()      { scp -q "${SSH_OPTS[@]}" "$1" "$HOST:$2"; }
 fi
 
-# Panther (yosemite) ships rsync 2.5.x but scp is fine everywhere; use scp.
-# Stages under ~/oldmac/quake2/, never ~/Desktop (user rule, #76/#75) —
-# matches update-dmg.sh's convention for the same artifact.
-echo "[deploy-dmg $HOST] copy $DMG_BASE to ~/oldmac/quake2/"
-ssh "$HOST" 'mkdir -p ~/oldmac/quake2'
-scp -q "$DMG" "$HOST:oldmac/quake2/$DMG_BASE"
-
-# Verify the .dmg arrived intact (md5 the local vs remote copy) — defence in
-# depth on top of make-dmg.sh's own end-to-end content check.
-LCL_MD5=$(md5sum "$DMG" | cut -d' ' -f1)
-RMT_MD5=$(ssh "$HOST" "md5 'oldmac/quake2/$DMG_BASE' | awk '{print \$NF}'")
-[ "$LCL_MD5" = "$RMT_MD5" ] || { echo "[deploy-dmg $HOST] FATAL: scp corrupted the DMG ($LCL_MD5 != $RMT_MD5)" >&2; exit 1; }
-echo "[deploy-dmg $HOST] DMG on ~/oldmac/quake2/ verified intact ($RMT_MD5)"
-scp -q "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:.q2-clear-launch-quarantine.sh"
-
-# Fallback for a target whose own hdiutil can't attach ANY disk image
-# (old-mac-build-host#41, quad-tiger: exhaustively diagnosed there as a
-# userland DiskImages/DiskArbitration fault, survives reboot and a cold
-# power-cycle, not fixable from this script). Mount the DMG HERE instead
-# and rsync the extracted contents across, skipping hdiutil on the target
-# entirely. Mechanism proven by build-host end-to-end on the same machine
-# with quakespasm's DMG before this port wired it in.
-install_via_local_mount_fallback() {
-  echo "[deploy-dmg $HOST] remote hdiutil attach failed; falling back to local-mount + rsync (old-mac-build-host#41)" >&2
-  LMNT="$(mktemp -d "${TMPDIR:-/tmp}/q2install-mnt.XXXXXX")"
-  DEST="/Applications/Quake2"
-  DEST_STAGE="/Applications/.Quake2.stage.$$"
-  cleanup_local_fallback() {
-    if [ -n "${DEST_STAGE:-}" ]; then
-      ssh "$HOST" "rm -rf '$DEST_STAGE'; rm -f .q2-clear-launch-quarantine.sh 'oldmac/quake2/$DMG_BASE'" >/dev/null 2>&1 || true
-    fi
-    hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true
-    rmdir "$LMNT" 2>/dev/null || true
-  }
-  trap cleanup_local_fallback EXIT
-  trap 'exit 129' HUP
-  trap 'exit 130' INT
-  trap 'exit 143' TERM
-  hdiutil attach -nobrowse -readonly -mountpoint "$LMNT" "$DMG" >/dev/null
-
-  ssh "$HOST" "set -e
-    DEST='$DEST'
-    STAGE='$DEST_STAGE'
-    [ ! -e \"\$DEST\" ] && [ ! -L \"\$DEST\" ] || { echo 'REFUSE: /Applications/Quake2 already exists' >&2; exit 10; }
-    [ ! -e \"\$STAGE\" ] && [ ! -L \"\$STAGE\" ] || { echo 'REFUSE: staging path exists' >&2; exit 11; }
-    mkdir \"\$STAGE\"
-    if [ -d \"\$HOME/quake2-play/baseq2\" ]; then
-      ditto \"\$HOME/quake2-play/baseq2\" \"\$STAGE/baseq2\"
-    else
-      mkdir \"\$STAGE/baseq2\"
-    fi
-    rm -f \"\$STAGE/baseq2/autoexec.cfg\""
-
-  echo "[deploy-dmg $HOST] rsync Quake2.app (local mount -> target, hdiutil bypass)"
-  rsync -a --delete -e ssh "$LMNT/Quake2.app/" "$HOST:$DEST_STAGE/Quake2.app/"
-  scp -pq "$LMNT/ref_gl.so" "$HOST:$DEST_STAGE/ref_gl.so"
-  scp -pq "$LMNT/baseq2/game.so" "$HOST:$DEST_STAGE/baseq2/game.so"
-  [ -f "$LMNT/q2ded" ] && scp -pq "$LMNT/q2ded" "$HOST:$DEST_STAGE/q2ded"
-
-  # Same byte-for-byte standard as the remote path (MISTAKES.md — a corrupt
-  # renderer that loaded but misrendered is worse than one that failed loud).
-  for f in "Quake2.app/Contents/MacOS/quake2" "ref_gl.so" "baseq2/game.so"; do
-    l=$(md5 "$LMNT/$f" 2>/dev/null | awk '{print $NF}')
-    r=$(ssh "$HOST" "md5 '$DEST_STAGE/$f' | awk '{print \$NF}'")
-    [ "$l" = "$r" ] || { echo "[deploy-dmg $HOST] FATAL: $f corrupt after rsync fallback ($l != $r)" >&2; exit 7; }
-  done
-  echo "[deploy-dmg $HOST] [verify] staged binaries match the image byte-for-byte (local-mount fallback) ✅"
-
-  ssh "$HOST" "set -e
-    sh .q2-clear-launch-quarantine.sh '$DEST_STAGE/Quake2.app'
-    [ ! -e '$DEST' ] && [ ! -L '$DEST' ] || { echo 'REFUSE: destination appeared during staging' >&2; exit 10; }
-    mv '$DEST_STAGE' '$DEST'
-    file '$DEST/Quake2.app/Contents/MacOS/quake2' 2>/dev/null | sed 's/.*: //'
-    rm -f .q2-clear-launch-quarantine.sh 'oldmac/quake2/$DMG_BASE'"
-  DEST_STAGE=""
-
-  hdiutil detach "$LMNT" >/dev/null 2>&1 || hdiutil detach -force "$LMNT" >/dev/null 2>&1 || true
-  rmdir "$LMNT" 2>/dev/null || true
-  trap - EXIT HUP INT TERM
+# Everything the remote body needs, as quoted assignments ahead of it, so paths
+# with spaces ("Half-Life Mods.app") survive and nothing is re-parsed.
+qarr() { local n="$1"; shift; printf '%s=(' "$n"; [ $# -gt 0 ] && printf ' %q' "$@"; printf ' )\n'; }
+header() {
+	printf 'MODE=%q HOST=%q PORT=%q DEST=%q IMAGE_ROOT=%q DATA_DIR=%q PROC=%q FORCE=%q DMG_BASE=%q PRESTAGE=%q\n' \
+		"$MODE" "$HOST" "$PORT" "$INSTALL_DIR" "$IMAGE_ROOT" "$DATA_DIR" "$PROC" "${FORCE:-0}" "${DMG_BASE:-}" "${PRESTAGE:-0}"
+	qarr FIRST_SEED ${FIRST_SEED[@]+"${FIRST_SEED[@]}"}
+	qarr OWNED "${OWNED[@]}"
+	qarr VERIFY ${VERIFY[@]+"${VERIFY[@]}"}
+	qarr REMOVE ${REMOVE[@]+"${REMOVE[@]}"}
+	qarr EXPECT ${EXPECT[@]+"${EXPECT[@]}"}
+	printf 'POST_STAGE=%q\nPOST_INSTALL=%q\n' "$REMOTE_POST_STAGE" "$REMOTE_POST_INSTALL"
 }
 
-echo "[deploy-dmg $HOST] mount + stage /Applications/Quake2 (legacy ~/quake2-play, if any, is left as it was)"
-if ssh "$HOST" bash -s "$DMG_BASE" <<'REMOTE_EOF'
-set -e
-DMG_BASE="$1"
-# Under ~/oldmac/quake2/mnt, which the build mirror protects (build.sh).
-MNT="$HOME/oldmac/quake2/mnt/install"
-mkdir -p "$HOME/oldmac/quake2/mnt"
-DEST="/Applications/Quake2"
-DEST_STAGE="/Applications/.Quake2.stage.$$"
+# --- the DMG ----------------------------------------------------------------------
+if [ "$MODE" = install ]; then
+	if [ -n "$ARG" ] && [ -f "$ARG" ]; then DMG="$ARG"
+	elif [ -n "$ARG" ]; then DMG="$REPO_ROOT/dist/${DMG_PREFIX}${ARG}.dmg"
+	else DMG="$(ls -t "$REPO_ROOT"/dist/"${DMG_PREFIX}"*.dmg 2>/dev/null | head -1)"
+	fi
+	[ -n "$DMG" ] && [ -f "$DMG" ] || die "no DMG (${ARG:-newest dist/${DMG_PREFIX}*.dmg})" 2
+	DMG_BASE="$(basename "$DMG")"
 
-[ ! -e "$DEST" ] && [ ! -L "$DEST" ] || {
-  echo "REFUSE: $DEST already exists; leaving it and $HOME/quake2-play untouched" >&2
-  exit 10
-}
-[ ! -e "$DEST_STAGE" ] && [ ! -L "$DEST_STAGE" ] || {
-  echo "REFUSE: staging path exists: $DEST_STAGE" >&2
-  exit 11
-}
+	# A port's local checks run on a PRIVATE clone of the image, never the
+	# shared dist/ file: two updates from one Mac used to collide on one mount
+	# (quake2 9a387c0a).
+	if declare -F preflight_local >/dev/null; then
+		CLONE="$(mktemp -d "${TMPDIR:-/tmp}/buildhost-dmgpre.XXXXXX")" || die "mktemp"
+		cp "$DMG" "$CLONE/img.dmg" && mkdir "$CLONE/mnt" || die "clone for preflight"
+		PDEV="$(hdiutil attach -nobrowse -readonly -mountpoint "$CLONE/mnt" "$CLONE/img.dmg" | awk '/^\/dev\//{sub(/s[0-9]+$/,"",$1); print $1; exit}')"
+		[ -n "$PDEV" ] || { rm -rf "$CLONE"; die "preflight: image would not mount locally" 6; }
+		preflight_local "$CLONE/mnt"; prc=$?
+		hdiutil detach "$PDEV" >/dev/null 2>&1 || hdiutil detach -force "$PDEV" >/dev/null 2>&1
+		rm -rf "$CLONE"
+		[ $prc -eq 0 ] || die "preflight_local refused $DMG_BASE (rc=$prc)" 1
+	fi
 
-# Panther's hdiutil detaches only by DEVICE, not by mount path, so a path-only
-# detach leaked every Panther mount (quake3 eb3a4eb7; same fallback as
-# update-dmg.sh, #77). Retry by path, force, then detach the whole-disk device.
-detach_mount() {
-  m="$1"
-  for k in 1 2 3 4 5; do
-    hdiutil detach "$m" >/dev/null 2>&1 && return 0
-    [ "${2:-}" = once ] && break
-    sleep 2
-  done
-  hdiutil detach -force "$m" >/dev/null 2>&1 && return 0
-  dev=$(hdiutil info | awk -v mnt="$m" '$0 ~ mnt { print $1; exit }' | sed 's/s[0-9]*$//')
-  [ -n "$dev" ] && hdiutil detach "$dev" -force >/dev/null 2>&1
-  return 0
-}
-
-# fresh mountpoint — detach any stale attach, then rmdir (NEVER rm -rf a path
-# that might still be a mounted read-only volume).
-detach_mount "$MNT" once
-rmdir "$MNT" 2>/dev/null || true
-mkdir -p "$MNT"
-# Exit 42 on attach failure specifically (not whatever hdiutil's own status
-# happens to be) so the caller can tell "this host's hdiutil is broken, try
-# the local-mount fallback" apart from a real install failure below.
-# old-mac-build-host#41: quad-tiger's DiskImages/DiskArbitration stack fails
-# to attach ANY disk image — reboot, cold power-cycle, framework-version fix
-# all ruled out there, this is not a bug in this script.
-if ! hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$HOME/oldmac/quake2/$DMG_BASE" >/dev/null 2>&1; then
-  echo "  hdiutil attach failed on $(hostname -s 2>/dev/null || echo this host)" >&2
-  rmdir "$MNT" 2>/dev/null || true
-  exit 42
+	echo "mkdir -p \"\$HOME/oldmac/$PORT/deploy/incoming\"" | run_host || die "cannot reach $HOST"
+	EXPECT=()
+	if [ "${PRESTAGE:-0}" = 1 ]; then
+		CLONE="$(mktemp -d "${TMPDIR:-/tmp}/buildhost-prestage.XXXXXX")" || die "mktemp"
+		cp "$DMG" "$CLONE/img.dmg" && mkdir "$CLONE/mnt" || die "clone for prestage"
+		PDEV="$(hdiutil attach -nobrowse -readonly -mountpoint "$CLONE/mnt" "$CLONE/img.dmg" | awk '/^\/dev\//{sub(/s[0-9]+$/,"",$1); print $1; exit}')"
+		[ -n "$PDEV" ] || { rm -rf "$CLONE"; die "prestage: image would not mount locally" 6; }
+		# The host checks what it received against hashes taken from the image here.
+		for v in ${VERIFY[@]+"${VERIFY[@]}"}; do
+			if [ "$IMAGE_ROOT" = '*' ]; then EXPECT[${#EXPECT[@]}]=-
+			elif [ -e "$CLONE/mnt/$IMAGE_ROOT/$v" ]; then EXPECT[${#EXPECT[@]}]="$(lmd5 "$CLONE/mnt/$IMAGE_ROOT/$v")"
+			else EXPECT[${#EXPECT[@]}]=-; fi
+		done
+		say "PRESTAGE: copying the mounted image's contents to ~/oldmac/$PORT/deploy/prestage"
+		if [ "$HOST" = workstation ]; then
+			rsync -a --delete "$CLONE/mnt/" "$HOME/oldmac/$PORT/deploy/prestage/"; prc=$?
+		else
+			rsync -a --delete -e "ssh ${SSH_OPTS[*]}" "$CLONE/mnt/" "$HOST:oldmac/$PORT/deploy/prestage/"; prc=$?
+		fi
+		hdiutil detach "$PDEV" >/dev/null 2>&1 || hdiutil detach -force "$PDEV" >/dev/null 2>&1
+		rm -rf "$CLONE"
+		[ $prc -eq 0 ] || die "prestage copy failed (rsync rc=$prc)"
+	else
+		LMD5="$(lmd5 "$DMG")"
+		say "copy $DMG_BASE ($LMD5) to ~/oldmac/$PORT/deploy/incoming"
+		put "$DMG" "oldmac/$PORT/deploy/incoming/$DMG_BASE" || die "copy failed"
+		RMD5="$(printf 'f=%q\n%s\n' "oldmac/$PORT/deploy/incoming/$DMG_BASE" \
+			'cd; md5 -q "$f" 2>/dev/null || md5sum "$f" | cut -d" " -f1' | run_host)"
+		[ "$LMD5" = "$RMD5" ] || die "DMG damaged in transfer ($LMD5 != ${RMD5:-none})"
+		say "DMG arrived intact"
+	fi
 fi
 
-cleanup_remote_install() {
-  [ -n "${DEST_STAGE:-}" ] && rm -rf "$DEST_STAGE"
-  detach_mount "$MNT" once
-  rmdir "$MNT" 2>/dev/null || true
-  rm -f "$HOME/.q2-clear-launch-quarantine.sh"
+# --- on the host --------------------------------------------------------------------
+{ header; cat <<'REMOTE'
+set -u
+ROOT="$HOME/oldmac/$PORT/deploy"
+case "$DEST" in "~/"*) DEST="$HOME/${DEST#"~/"}" ;; esac   # tests install under ~, never /Applications
+say()  { echo "  $*"; }
+die()  { echo "  FATAL: $1" >&2; exit "${2:-1}"; }
+hmd5() { md5 -q "$1" 2>/dev/null || md5sum "$1" 2>/dev/null | cut -d' ' -f1; }
+# By device, never by path (Panther ignores a path). 5 tries, then force, then say so.
+detach() {
+	local d="$1" i=0
+	[ -n "$d" ] || return 0
+	while [ $i -lt 5 ]; do hdiutil detach "$d" >/dev/null 2>&1 && return 0; i=$((i+1)); sleep 1; done
+	hdiutil detach -force "$d" >/dev/null 2>&1 && return 0
+	echo "  WARN: $d is still attached" >&2; return 1
 }
-trap cleanup_remote_install EXIT
-trap 'exit 129' HUP
-trap 'exit 130' INT
-trap 'exit 143' TERM
-
-mkdir "$DEST_STAGE"
-if [ -d "$HOME/quake2-play/baseq2" ]; then
-  ditto "$HOME/quake2-play/baseq2" "$DEST_STAGE/baseq2"
-  echo "  [data] copied legacy baseq2 into the staged install; rollback left untouched"
-else
-  mkdir "$DEST_STAGE/baseq2"
-  echo "  [data] no legacy baseq2 found; add retail pak files before launching"
-fi
-
-# Migration, same as deploy.sh:254-260 — an earlier scheme staged the
-# per-machine cfg to baseq2/autoexec.cfg. It now ships inside
-# Quake2.app/Contents/Resources/. FS_ExecAutoexec (filesystem.c:1569) reads
-# $fs_basedir/baseq2/autoexec.cfg, and basedir is `.` here, so a leftover
-# resolves and is queued AFTER the bundle layers finish in Com_Init — it
-# would override the shipped overlay on a machine nobody would think to
-# check. The disk image never ships one (make-dmg.sh:193 stages only
-# game.so into baseq2/), so removing it here can only remove an orphan.
-rm -f "$DEST_STAGE/baseq2/autoexec.cfg"
-if [ -e "$DEST_STAGE/baseq2/autoexec.cfg" ]; then
-  echo "  FATAL: could not remove stale baseq2/autoexec.cfg" >&2; exit 7
-fi
-echo "  [config] no stale baseq2/autoexec.cfg (shipped cfg is the bundle's)"
-
-# md5 helper (portable Panther→Lion: `md5` on macOS prints "MD5 (f) = HASH").
-_md5() { md5 "$1" 2>/dev/null | awk '{print $NF}'; }
-
-# Copy one file from mount→dest and VERIFY the installed bytes match the source,
-# retrying on mismatch. The G3 (yosemite) has 25-yr-old disk + non-ECC RAM and
-# silently corrupts copies (~700 KB of a 1.9 MB ref_gl.so flipped once — see
-# MISTAKES.md). deploy used to verify only the DMG on arrival, never the final
-# installed file, so it shipped a corrupt renderer that loaded but misrendered.
-copy_verified() {
-  src="$1"; dst="$2"
-  [ -e "$src" ] || { echo "  MISSING in image: $src" >&2; return 1; }
-  want=$(_md5 "$src")
-  k=1
-  while [ $k -le 4 ]; do
-    rm -f "$dst"; cp -p "$src" "$dst"; sync
-    got=$(_md5 "$dst")
-    if [ "$got" = "$want" ]; then return 0; fi
-    echo "  [verify] $(basename "$dst") mismatch (try $k): $got != $want — retrying" >&2
-    k=$((k+1)); sleep 1
-  done
-  echo "  FATAL: $(basename "$dst") still corrupt after retries ($got != $want)" >&2
-  return 1
+running() {
+	[ -n "$PROC" ] || return 1
+	ps -axco command 2>/dev/null | grep -qx "$PROC"
 }
+if running && [ "$FORCE" != 1 ]; then
+	die "$PROC is running on this Mac; not replacing it under a live game (FORCE=1 overrides)" 9
+fi
+mkdir -p "$ROOT"
 
-# Replace the app wholesale so no stale bundle files survive. ditto keeps the
-# bundle bit, perms (+x on the binary) and resource forks. Verify the binary
-# inside the installed bundle byte-for-byte (with a ditto retry) since that is
-# the executable that actually runs.
-APP_BIN="Quake2.app/Contents/MacOS/quake2"
-appok=no
-for k in 1 2 3 4; do
-  rm -rf "$DEST_STAGE/Quake2.app"; ditto "$MNT/Quake2.app" "$DEST_STAGE/Quake2.app"; sync
-  if [ "$(_md5 "$DEST_STAGE/$APP_BIN")" = "$(_md5 "$MNT/$APP_BIN")" ]; then appok=yes; break; fi
-  echo "  [verify] app binary mismatch (try $k) — re-dittoing" >&2; sleep 1
+# Our own mounts left by an interrupted run: detach them by device first.
+mount | while read -r line; do
+	mp="${line#* on }"; mp="${mp% (*}"
+	d="${line%% on *}"; d="${d%s[0-9]*}"   # the whole disk, not the mounted slice
+	case "$mp" in "$ROOT"/mount.*) detach "$d"; rmdir "$mp" 2>/dev/null ;; esac
 done
-[ "$appok" = yes ] || { echo "  FATAL: app binary still corrupt after retries" >&2; exit 7; }
 
-# Loose runtime libs that live OUTSIDE the bundle (Q2 basedir=. resolves them).
-copy_verified "$MNT/ref_gl.so"       "$DEST_STAGE/ref_gl.so"       || exit 7
-copy_verified "$MNT/baseq2/game.so"  "$DEST_STAGE/baseq2/game.so"  || exit 7
-[ -f "$MNT/q2ded" ] && { copy_verified "$MNT/q2ded" "$DEST_STAGE/q2ded" || exit 7; }
-echo "  [verify] staged binaries match the image byte-for-byte ✅"
-
-# Strip com.apple.quarantine and re-register with LaunchServices. `ditto`
-# above PRESERVES quarantine from whatever carried it on the DMG (a real
-# human's browser-downloaded release DMG does), and a readme telling a
-# person to run `xattr -dr` by hand is not a fix — issue #35/#34. Local step
-# on the target, not piped over ssh (see the script's own header).
-[ -x "$HOME/.q2-clear-launch-quarantine.sh" ] && \
-  sh "$HOME/.q2-clear-launch-quarantine.sh" "$DEST_STAGE/Quake2.app"
-
-# Same-volume rename publishes the verified directory in one step. The legacy
-# tree remains in place as rollback and is never renamed or deleted here.
-[ ! -e "$DEST" ] && [ ! -L "$DEST" ] || {
-  echo "REFUSE: destination appeared during staging: $DEST" >&2
-  exit 10
-}
-mv "$DEST_STAGE" "$DEST"
-DEST_STAGE=""
-
-# detach — retry until the slow-disk flush completes; only THEN rmdir the now-
-# empty mountpoint (rmdir can't touch mounted contents, so it's safe).
-detach_mount "$MNT"
-rmdir "$MNT" 2>/dev/null || true
-trap - EXIT HUP INT TERM
-
-echo "installed into $DEST:"
-ls -la "$DEST" | awk '{print "  "$NF}' | grep -vE '^\s+\.$|^\s+\.\.$' | grep -v '^  $' || true
-echo "app binary archs:"
-file "$DEST/Quake2.app/Contents/MacOS/quake2" 2>/dev/null | sed 's/.*: //' || true
-rm -f "$HOME/.q2-clear-launch-quarantine.sh" "$HOME/oldmac/quake2/$DMG_BASE"
-REMOTE_EOF
-then
-  :
+# OLD holds the replaced files only while the swap runs; it is deleted either way.
+MNT="$ROOT/mount.$$"; STAGE="$ROOT/stage.$$"; OLD="$ROOT/old.$$"
+DEV=
+cleanup() { detach "$DEV"; rmdir "$MNT" 2>/dev/null; rm -rf "$STAGE" "$OLD"; rmdir "$ROOT/incoming" "$ROOT" 2>/dev/null; }
+trap cleanup EXIT
+if [ "$PRESTAGE" = 1 ]; then
+	MNT="$ROOT/prestage"; [ -d "$MNT" ] || die "no prestaged image contents" 1
 else
-  status=$?
-  if [ "$status" = 42 ]; then
-    install_via_local_mount_fallback
-  else
-    echo "[deploy-dmg $HOST] FATAL: remote install failed (exit $status)" >&2
-    exit "$status"
-  fi
+	mkdir -p "$MNT"
+	DEV="$(hdiutil attach -nobrowse -readonly -mountpoint "$MNT" "$ROOT/incoming/$DMG_BASE" 2>/dev/null | awk '/^\/dev\//{sub(/s[0-9]+$/,"",$1); print $1; exit}')"
+	[ -n "$DEV" ] || die "hdiutil attach gave no device for $DMG_BASE" 6
+fi
+# The hash a VERIFY file must have: from this Mac's mount, or (PRESTAGE) the
+# invoking Mac's, so a damaged rsync cannot vouch for itself.
+want() { local i=0 v; for v in ${VERIFY[@]+"${VERIFY[@]}"}; do
+	if [ "$v" = "$1" ]; then [ -n "${EXPECT[$i]:-}" ] && [ "${EXPECT[$i]}" != - ] && { echo "${EXPECT[$i]}"; return; }; break; fi
+	i=$((i+1)); done; hmd5 "$SRC/$1"; }
+
+# Units: normally one (IMAGE_ROOT -> DEST). IMAGE_ROOT='*' installs each
+# top-level folder of the image as /Applications-style sibling under DEST.
+UNITS=()
+if [ "$IMAGE_ROOT" = '*' ]; then
+	for d in "$MNT"/*; do
+		[ -d "$d" ] && [ ! -L "$d" ] && UNITS[${#UNITS[@]}]="$(basename "$d")"
+	done
+	[ ${#UNITS[@]} -gt 0 ] || die "image has no top-level folders to install" 1
+else
+	[ -d "$MNT/$IMAGE_ROOT" ] || die "image has no $IMAGE_ROOT" 1
+	UNITS[0]=.
 fi
 
-echo "[deploy-dmg $HOST] done — installed from $DMG_BASE at /Applications/Quake2"
+# Staging must be on the same volume as the install, so the final step is a
+# rename. ~/oldmac normally is; if not, stage hidden beside the install.
+vol() { df "$1" 2>/dev/null | awk 'NR==2{print $1}'; }
+mkdir -p "$DEST" || die "cannot create $DEST"
+[ "$(vol "$ROOT")" = "$(vol "$DEST")" ] || { STAGE="$(dirname "$DEST")/.$PORT.stage.$$"; OLD="$(dirname "$DEST")/.$PORT.old.$$"; }
+rm -rf "$STAGE" "$OLD"; mkdir -p "$STAGE" "$OLD" || die "cannot stage"
+
+for u in "${UNITS[@]}"; do
+	if [ "$u" = . ]; then SRC="$MNT/$IMAGE_ROOT"; UD="$DEST"; else SRC="$MNT/$u"; UD="$DEST/$u"; fi
+	un="$u"; [ "$u" = . ] && un=_main      # a real directory name for the one-unit case
+	ST="$STAGE/$un"; OU="$OLD/$un"; mkdir -p "$ST" "$OU" "$UD"
+
+	# What this unit owns: OWNED, with '*' meaning every top-level entry.
+	NAMES=()
+	for p in "${OWNED[@]}"; do
+		if [ "$p" = '*' ]; then
+			for e in "$SRC"/* "$SRC"/.[!.]*; do [ -e "$e" ] && NAMES[${#NAMES[@]}]="$(basename "$e")"; done
+		else NAMES[${#NAMES[@]}]="$p"
+		fi
+	done
+
+	for p in "${NAMES[@]}"; do
+		opt=no; case "$p" in *\?) opt=yes; p="${p%\?}" ;; esac
+		if [ -e "$SRC/$p" ]; then
+			mkdir -p "$(dirname "$ST/$p")"; ditto "$SRC/$p" "$ST/$p" || die "copy of $p failed"
+		elif [ $opt = no ]; then
+			die "the image lacks $p (listed in OWNED)"
+		fi
+	done
+
+	# Byte-for-byte check of what will run; re-copy up to 3 times (old disks
+	# and RAM do flip bytes: quake2/quake3 retry loops).
+	for v in ${VERIFY[@]+"${VERIFY[@]}"}; do
+		[ -e "$SRC/$v" ] || continue
+		k=1
+		while [ "$(hmd5 "$ST/$v")" != "$(want "$v")" ]; do
+			[ $k -ge 4 ] && die "$v still differs from the image after $k copies" 7
+			top="${v%%/*}"; rm -rf "$ST/$top"; ditto "$SRC/$top" "$ST/$top"; k=$((k+1))
+		done
+	done
+
+	# Hooks see HOST (quake2 merges cfg lines on the workstation only), SRC, DEST.
+	if [ -n "$POST_STAGE" ]; then ( cd "$ST" && SRC="$SRC" DEST="$UD" eval "$POST_STAGE" ) || die "post_stage hook failed"; fi
+
+	# An empty DATA_DIR is seeded from the first FIRST_SEED (relative to ~) that
+	# exists. Before the swap: an OWNED file may live inside DATA_DIR
+	# (quake2's baseq2/game.so), and after the swap the dir is never empty.
+	if [ -n "$DATA_DIR" ] && [ -z "$(ls -A "$UD/$DATA_DIR" 2>/dev/null)" ]; then
+		for fs in ${FIRST_SEED[@]+"${FIRST_SEED[@]}"}; do
+			[ -d "$HOME/$fs" ] || continue
+			mkdir -p "$UD/$DATA_DIR"; ditto "$HOME/$fs" "$UD/$DATA_DIR" && say "seeded $DATA_DIR from ~/$fs"; break
+		done
+	fi
+
+	# Swap: old OWNED paths aside (deleted below), staged ones into place.
+	for p in "${NAMES[@]}"; do
+		p="${p%\?}"
+		if [ -e "$UD/$p" ] || [ -L "$UD/$p" ]; then mkdir -p "$(dirname "$OU/$p")"; mv "$UD/$p" "$OU/$p"; fi
+		if [ -e "$ST/$p" ]; then mkdir -p "$(dirname "$UD/$p")"; mv "$ST/$p" "$UD/$p"; fi
+	done
+
+	bad=
+	for v in ${VERIFY[@]+"${VERIFY[@]}"}; do
+		[ -e "$SRC/$v" ] || continue
+		[ "$(hmd5 "$UD/$v")" = "$(want "$v")" ] || bad="$v"
+	done
+	rm -rf "$OU"
+	[ -z "$bad" ] || die "installed $bad does not match the image. Fix forward: redeploy (no rollback is kept)" 7
+
+	for r in ${REMOVE[@]+"${REMOVE[@]}"}; do
+		case "$r" in /*|*..*|'') continue ;; esac
+		for f in "$UD"/$r; do [ -e "$f" ] && rm -rf "$f" && say "removed legacy $r"; done
+	done
+	for p in "${NAMES[@]}"; do
+		p="${p%\?}"; [ -e "$UD/$p" ] || continue
+		find "$UD/$p" -name .DS_Store -exec rm -f {} \; 2>/dev/null
+		command -v xattr >/dev/null 2>&1 && xattr -dr com.apple.quarantine "$UD/$p" 2>/dev/null
+		case "$p" in *.app)
+			touch "$UD/$p"   # with lsregister below: Panther otherwise keeps the generic icon
+			for ls in /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+			          /System/Library/Frameworks/ApplicationServices.framework/Frameworks/LaunchServices.framework/Support/lsregister; do
+				[ -x "$ls" ] && { "$ls" -f "$UD/$p" >/dev/null 2>&1; break; }
+			done ;;
+		esac
+	done
+	if [ -n "$POST_INSTALL" ]; then ( cd "$UD" && DEST="$UD" eval "$POST_INSTALL" ) || die "post_install hook failed"; fi
+	say "installed $UD"
+done
+
+rm -f "$ROOT/incoming/$DMG_BASE"; [ "$PRESTAGE" = 1 ] && rm -rf "$ROOT/prestage"
+rm -rf "$ROOT/rollback"   # left by an earlier version of this script
+say "verified; the replaced files are deleted (no rollback is kept)"
+REMOTE
+} | run_host
+rc=$?
+[ $rc -eq 0 ] && say "done ($MODE)" || echo "[deploy-dmg $HOST] FAILED ($MODE, rc=$rc)" >&2
+exit $rc

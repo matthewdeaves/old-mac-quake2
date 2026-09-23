@@ -1,286 +1,226 @@
 #!/usr/bin/env bash
-# Smoke-test the installed copy of the game on a target Mac EXACTLY as a human
-# would launch it: the production bundle config (per-arch baseline + per-machine
-# overlay) drives the renderer — fullscreen, the machine's own resolution, full
-# visual tune. We do NOT pass -noarchautoexec and do NOT override vid/res (that
-# is what bench.sh does for deterministic measurement). The only thing we add is
-# a timedemo so the run AUTO-EXITS instead of sitting fullscreen forever — proof
-# the world actually rendered (an fps line) on the real production path.
+# smoke-dmg.sh -- launch a port's INSTALLED game on a fleet Mac, the way a
+# player would, and say whether it ran. CANONICAL copy lives in
+# old-mac-build-host (#96), synced byte-identical into each port; never edit a
+# port's copy. Per-port values come from scripts/dmg-port.conf, and a port may
+# post-process the verdict with smoke_verdict() in scripts/dmg-hooks.sh.
 #
-# This is the gate the corrupt-DMG bug slipped past: deploy+bench was clean, but
-# the human DMG-launch path crashed. So we test the as-installed, as-launched
-# artifact. See MISTAKES.md + memory/smoke-test-method.md.
+# usage: scripts/smoke-dmg.sh <host> [demo]
+#   host  any fleet alias, or `workstation`
+#   demo  replaces {DEMO} in SMOKE_ARGS (default SMOKE_DEMO)
 #
-# usage: scripts/smoke-dmg.sh <machine> [demo]
-#   machine: yosemite | yosemite-tiger | sawtooth | quicksilver | mini-g4 |
-#            imac-g5 | mini-intel | imac-2019 | workstation
-#   demo:    demo1 (default) | demo2
+# How it launches, chosen from the host's OS and users, never from its name:
+#  - 10.6+, console user = ssh user: `open -n <app> --args ...` (LaunchServices)
+#  - before 10.6: first a bounded bare `open` of the app (what a player's double
+#    click does), reported as OPEN_CHECK, then the game is exec'd directly with
+#    its args, because `open` has no --args there. A Tiger first-launch consent
+#    dialog blocks `open` with nobody to click it; after 30 s it is dismissed and
+#    retried, twice (quake3 a581603e). Panther's -10814 after a fresh install is
+#    retried every 15 s for up to 180 s (quake3 5165c5df: 20-89 s measured on the G3).
+#  - console user != ssh user: direct exec (LaunchServices does nothing then)
+#  - SMOKE_ARCH set: direct exec, since `open -n` picks the native slice
+# Direct exec runs SMOKE_EXEC (a port's launcher script, e.g. Half-Life's
+# xash3d, which picks the per-machine profile), under `arch -SMOKE_ARCH` if set.
 #
-# After this passes, the human starts a NEW GAME by hand — the timedemo proves
-# world render + correct res but NOT the live-server/entity spawn path (the G3
-# R_MarkLeaves / R300 map-load class of bug only shows there). See CLAUDE.md.
+# Pass: PASS_RE appears in the log, or (no PASS_RE) the game is still alive
+# after SMOKE_SECS. Fail: FAIL_RE appears, it exits early, or no pass within
+# SMOKE_TIMEOUT. Both can be set per CPU class, e.g. SMOKE_SECS_ppc750=14
+# (classes: ppc750 ppc7400 ppc7450 ppc970 x86 arm64, from `machine`).
+# Quit: AppleScript quit (bounded), TERM, then KILL only if KILL_OK=yes; it
+# always confirms the process is gone. SMOKE_MUTE=yes mutes and restores audio.
+# SMOKE_PRE_RM: files (relative to ~) removed before launch, e.g. a stale pid
+# file that makes the game open a modal dialog (quake3's ioq3.pid).
+#
+# Exit: 0 pass, 1 fail, 2 usage/config, 9 untested (game already running,
+#       screen locked, no install), others as a port's smoke_verdict returns
+set -uo pipefail
 
-set -euo pipefail
-HOST="${1:?usage: $0 <machine> [demo]}"
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HOST="${1:-}"; [ -n "$HOST" ] && [ "$HOST" != -h ] || { sed -n '8,10p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 2; }
+ENV_TIMEOUT="${SMOKE_TIMEOUT:-}"; ENV_SECS="${SMOKE_SECS:-}"
 
-# Claim this machine for the whole run. See scripts/pick-bench-host.sh.
-#
-# Re-exec under the picker rather than acquire-here-and-trap: bash traps REPLACE
-# rather than compose, so a release trap installed at the top of a script that
-# later sets its own trap is silently discarded, and the machine stays claimed
-# until the stale reclaim. `--run` makes the lock a property of the INVOCATION,
-# so it is released however this exits, and no caller has to remember to do it.
-#
-# The lock lives on the target, so it serialises across repos, agents and
-# workstations, not just this checkout. It also refuses a host booted into an OS
-# its alias does not name, which the multi-boot machines otherwise allow.
-#
-# RETRO_BENCH_LOCK names the machine claimed further up the chain, which is what
-# stops the re-exec below recursing. Compare it against the target rather than
-# testing whether it is set: a step that targets a DIFFERENT machine still has
-# to claim that one, and the emptiness test skipped it silently. Issue #19.
-# BENCH_NO_LOCK=1 skips the lock, for when the picker itself is what you are
-# debugging. It is not a way to get past a machine someone else is using.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+CONF="${DMG_PORT_CONF:-$SELF_DIR/dmg-port.conf}"
+[ -r "$CONF" ] || { echo "smoke-dmg: no port config at $CONF (see old-mac-build-host#96)" >&2; exit 2; }
+OWNED=(); SMOKE_ARGS=(); SMOKE_PRE_RM=(); PROC=; SMOKE_APP=; SMOKE_EXEC=; SMOKE_ARCH=; SMOKE_LOG=; SMOKE_DEMO=
+PASS_RE=; FAIL_RE=; KILL_OK=yes; SMOKE_MUTE=no; SMOKE_SECS=10; SMOKE_TIMEOUT=60
+# shellcheck source=/dev/null
+. "$CONF"
+[ -r "$SELF_DIR/dmg-hooks.sh" ] && . "$SELF_DIR/dmg-hooks.sh"
+for v in PORT INSTALL_DIR PROC; do
+	[ -n "${!v:-}" ] || { echo "smoke-dmg: $CONF must set $v" >&2; exit 2; }
+done
+INSTALL_DIR="${DEST_DIR:-$INSTALL_DIR}"
+if [ -z "$SMOKE_APP" ]; then
+	for p in "${OWNED[@]}"; do case "$p" in *.app|*.app\?) SMOKE_APP="${p%\?}"; break ;; esac; done
+fi
+[ -n "$SMOKE_APP" ] || { echo "smoke-dmg: set SMOKE_APP (no .app in OWNED)" >&2; exit 2; }
+[ -n "$SMOKE_EXEC" ] || SMOKE_EXEC="$SMOKE_APP/Contents/MacOS/$PROC"
+DEMO="${2:-$SMOKE_DEMO}"
+
+_PICK="$SELF_DIR/pick-bench-host.sh"
 if [ "${RETRO_BENCH_LOCK:-}" != "$HOST" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$HOST"
-	exec "$_PICK" --run "$HOST" "smoke-dmg" -- "$0" "$@"
-fi
-DEMO="${2:-demo1}"
-
-case "$HOST" in
-  yosemite)    TIMEOUT=300; COOLDOWN=5 ;;
-  # Same PowerMac1,1 on its Tiger partition — same hardware, same budget.
-  yosemite-tiger) TIMEOUT=300; COOLDOWN=5 ;;
-  sawtooth)    TIMEOUT=180; COOLDOWN=3 ;;
-  quicksilver) TIMEOUT=120; COOLDOWN=2 ;;
-  mini-g4)     TIMEOUT=120; COOLDOWN=2 ;;
-  imac-g5)     TIMEOUT=90;  COOLDOWN=2 ;;
-  mini-intel)  TIMEOUT=60;  COOLDOWN=1 ;;
-  imac-2019)   TIMEOUT=45;  COOLDOWN=1 ;;
-  g5-desktop|g5-tiger|g5-panther|quad-leopard|quad-tiger)
-               TIMEOUT=120; COOLDOWN=2 ;;
-  mini-intel2) TIMEOUT=60;  COOLDOWN=1 ;;
-  mini-sl)     TIMEOUT=60;  COOLDOWN=1 ;;
-  workstation) TIMEOUT=45;  COOLDOWN=1 ;;
-  *) echo "unknown machine: $HOST" >&2; exit 2 ;;
-esac
-
-# The canonical picker treats `workstation` as a local target: SSH-to-self is
-# neither required nor reliable there. Keep one smoke path and vary only the
-# transport used to execute a shell fragment or retrieve its log.
-host_exec () {
-  if [ "$HOST" = workstation ]; then
-    /bin/sh -c "$1"
-  else
-    ssh "$HOST" "$1"
-  fi
-}
-host_fetch () {
-  local relative="$1" destination="$2"
-  if [ "$HOST" = workstation ]; then
-    cp "$HOME/$relative" "$destination"
-  else
-    scp -q "$HOST:$relative" "$destination"
-  fi
-}
-host_game_processes () {
-  host_exec '
-    ps ax -o pid=,ucomm= 2>/dev/null | while IFS= read -r line; do
-      pid=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*//; s/[[:space:]].*$//")
-      exe=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//")
-      base=${exe##*/}
-      case "$base" in
-        xash3d|xash3d.bin|quake2|q2ded|quake3|ioquake3|ioq3ded|quakespasm|alephone|alephone-ppc-test|AlephOne|Marathon)
-          printf "%s %s\n" "$pid" "$base" ;;
-      esac
-    done'
-}
-
-# Both are overridable. The per-machine defaults are tuned for this port's
-# demo at that machine's production settings, and a heavier config or a busy
-# box can exceed them. When that happens the run is reported as a crash or
-# hang, which is far more alarming than the truth, and it leaves the engine
-# running for the NEXT run to trip over.
-TIMEOUT="${SMOKE_TIMEOUT:-$TIMEOUT}"
-COOLDOWN="${SMOKE_COOLDOWN:-$COOLDOWN}"
-
-# `open --args` is a Snow Leopard (10.6) addition; older `open` binaries don't
-# parse it (see the launch block below for what was measured where).
-case "$HOST" in
-  yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5| \
-  g5-desktop|g5-tiger|g5-panther|quad-leopard|quad-tiger)
-    OPEN_ARGS=0 ;;
-  *) OPEN_ARGS=1 ;;
-esac
-
-# The bench fleet is SHARED — multiple Claude agents (this Q2 port + the
-# QuakeSpasm Q1 sister project) drive the same Macs. Launching a second
-# fullscreen game on a box already running one wedges both. Bail if anything
-# Quake-ish is live; FORCE=1 overrides a stale process.
-BUSY="$(host_game_processes)"
-if [ -n "$BUSY" ] && [ "${FORCE:-0}" != "1" ]; then
-  echo "[smoke $HOST] ABORT — $HOST is already running a game (shared bench):" >&2
-  echo "$BUSY" | sed 's/^/    /' >&2
-  echo "[smoke $HOST] wait for it to finish, or re-run with FORCE=1 if it is stale." >&2
-  exit 2
+	exec "$_PICK" --run "$HOST" "$PORT smoke-dmg" -- "$0" "$@"
 fi
 
-# A locked or shielded console makes a launched game run behind loginwindow and
-# capture black (old-mac-build-host#88). That is untested, not a pass or a fail.
-if [ "$HOST" = workstation ]; then
-  "$(dirname "$_PICK")/gui-precondition.sh" || exit 1
-else
-  "$(dirname "$_PICK")/gui-precondition.sh" "$HOST" || exit 1
+say() { echo "[smoke $HOST] $*"; }
+if [ "$HOST" = workstation ]; then run_host() { bash -s; }
+else run_host() { ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST" bash -s; }; fi
+
+# A locked or display-dimmed console captures nothing (#88): untested, not failed.
+if [ "$HOST" != workstation ] && [ -x "$SELF_DIR/gui-precondition.sh" ]; then
+	"$SELF_DIR/gui-precondition.sh" "$HOST"; g=$?
+	[ $g -eq 3 ] && { say "UNTESTED: the console is locked"; exit 9; }
+	[ $g -ne 0 ] && say "WARN: could not probe the console (gui-precondition rc=$g); going ahead"
 fi
 
-echo "[smoke $HOST] launching installed Quake2.app with PRODUCTION config (as a human would), demo=$DEMO"
-# NB: production launch — no -noarchautoexec, no vid/res override.
-# TERM-before-KILL always: SIGTERM lets SDL restore the captured display — a
-# hard KILL black-screens the R300/Leopard G5 (see memory/smoke-test-method.md).
-#
-# Launched via LaunchServices `open`, the path a real double-click takes, not
-# a direct exec from inside the install dir. A direct exec's cwd is already
-# the app's own directory, which is exactly what masked issue #35: CLI/ssh
-# smoke passed while a real Finder double-click spun forever with no window,
-# because SDLMain.m's own chdir-to-bundle-parent only fires when
-# LaunchServices passes a "-psn_..." argument, which it stopped doing
-# around 10.9.
-#
-# `open --args` (added in Snow Leopard, 10.6) carries the SAME +set/+demomap
-# argv the direct-exec version always used, so timedemo behaves identically —
-# argv commands get the engine's own early/late split (Qcommon_Init), which a
-# cfg `exec` does not: tried routing the demo trigger through a temporary
-# autoexec.cfg instead (FS_ExecAutoexec) to dodge needing --args at all, and
-# it doesn't work — demomap queued that way never reaches CL_Disconnect's
-# cl_timedemo check (cl_network.c:303), so the demo just cycles maps forever
-# with no fps line. Caused a live incident on imac-2019 (loop mistaken for a
-# bench run); reverted rather than chased further.
-#
-# Panther/Tiger/Leopard's `open` predates --args entirely (measured directly:
-# g5-desktop/quad-leopard "unrecognized option \`--args'"; mini-g4/yosemite
-# don't even parse `-n` as a flag). Those OSes also aren't what #35 is about —
-# LaunchServices there still passes "-psn_...", so SDLMain.m's own
-# gFinderLaunch chdir already fires and a real double-click there gets no argv
-# either (SDLMain.m's own -psn handling discards all other args), so bare
-# `open` with a fixed wait is the faithful equivalent, not a weaker test: PASS
-# there means the renderer loaded and a new game started, checked below
-# without requiring an fps line.
-if [ "$OPEN_ARGS" = 1 ]; then
-  LAUNCH_CMD="open -n /Applications/Quake2/Quake2.app --args -nolauncher \\
-    +set logfile 2 \\
-    +gl_bloom +gl_msaa_samples +gl_mode +gl_customwidth +gl_customheight \\
-    +vid_fullscreen +vid_desktopfullscreen +gl_swapinterval \\
-    +set timedemo 1 +demomap $DEMO.dm2"
-else
-  LAUNCH_CMD="open /Applications/Quake2/Quake2.app"
-fi
-host_exec "
-  # Automated fleet tests are silent; preserve the production video settings.
-  osascript -e 'set volume 0' || exit 8
-  if killall -TERM quake2 2>/dev/null; then sleep 2; fi
-  killall -KILL quake2 2>/dev/null || true
-  sleep 1
-  [ -d /Applications/Quake2/Quake2.app ] || { echo 'NO_INSTALL'; exit 9; }
-  # Rotate, don't delete: a crash before this run writes/flushes its own log
-  # still leaves the previous run's transcript for comparison instead of
-  # nothing at all. Cross-port lesson from halflife's smoke-dmg.sh, issue #38.
-  mv -f ~/.yq2/baseq2/qconsole.log ~/.yq2/baseq2/qconsole.prev.log 2>/dev/null || true
-  $LAUNCH_CMD
-  j=0
-  while [ \$j -lt $TIMEOUT ]; do
-    if [ -f ~/.yq2/baseq2/qconsole.log ]; then
-      if grep -q 'frames.*seconds.*fps' ~/.yq2/baseq2/qconsole.log 2>/dev/null; then break; fi
-      if [ '$OPEN_ARGS' = 0 ] && grep -q 'GL_RENDERER' ~/.yq2/baseq2/qconsole.log 2>/dev/null && \\
-         grep -q 'Map:' ~/.yq2/baseq2/qconsole.log 2>/dev/null; then break; fi
-    fi
-    # bail early if the process died without producing that evidence (a crash).
-    # ps+grep, not pgrep: pgrep is absent on Panther/Tiger.
-    if ! ps ax 2>/dev/null | grep -v grep | grep -q '[Qq]uake2'; then break; fi
-    sleep 1; j=\$((j+1))
+ARGS=()
+for a in ${SMOKE_ARGS[@]+"${SMOKE_ARGS[@]}"}; do
+	a="${a//\{DEMO\}/$DEMO}"; ARGS[${#ARGS[@]}]="${a//\{DEST\}/$INSTALL_DIR}"
+done
+qarr() { local n="$1"; shift; printf '%s=(' "$n"; [ $# -gt 0 ] && printf ' %q' "$@"; printf ' )\n'; }
+
+OUT="$(mktemp "${TMPDIR:-/tmp}/buildhost-smoke.XXXXXX")" || exit 1
+LOG="$(mktemp "${TMPDIR:-/tmp}/buildhost-smokelog.XXXXXX")" || exit 1
+trap 'rm -f "$OUT" "$LOG"' EXIT
+
+{ printf 'PORT=%q DEST=%q APP=%q EXE=%q ARCH=%q PROC=%q SLOG=%q PASS_RE=%q FAIL_RE=%q KILL_OK=%q MUTE=%q FORCE=%q ENV_SECS=%q ENV_TIMEOUT=%q\n' \
+	"$PORT" "$INSTALL_DIR" "$SMOKE_APP" "$SMOKE_EXEC" "$SMOKE_ARCH" "$PROC" "$SMOKE_LOG" "$PASS_RE" "$FAIL_RE" \
+	"$KILL_OK" "$SMOKE_MUTE" "${FORCE:-0}" "$ENV_SECS" "$ENV_TIMEOUT"
+  qarr ARGS ${ARGS[@]+"${ARGS[@]}"}
+  qarr PRE_RM ${SMOKE_PRE_RM[@]+"${SMOKE_PRE_RM[@]}"}
+  # Per-class timings travel as plain assignments; the host picks its own.
+  for c in ppc750 ppc7400 ppc7450 ppc970 x86 arm64; do
+	for k in SMOKE_SECS SMOKE_TIMEOUT; do
+		vn="${k}_$c"; [ -n "${!vn:-}" ] && printf '%s=%q\n' "$vn" "${!vn}"
+	done
   done
-  killall -TERM quake2 2>/dev/null
-  sleep 2
-  killall -KILL quake2 2>/dev/null || true
-  sleep $COOLDOWN
-  true"
+  printf 'SMOKE_SECS=%q SMOKE_TIMEOUT=%q\n' "$SMOKE_SECS" "$SMOKE_TIMEOUT"
+  cat <<'REMOTE'
+set -u
+case "$DEST" in "~/"*) DEST="$HOME/${DEST#"~/"}" ;; esac
+case "$SLOG" in "") ;; "~/"*) SLOG="$HOME/${SLOG#"~/"}" ;; /*) ;; *) SLOG="$DEST/$SLOG" ;; esac
+ROOT="$HOME/oldmac/$PORT/deploy"
+OUTLOG="$ROOT/smoke-stdout.log"
+[ -n "$SLOG" ] || SLOG="$OUTLOG"
+[ -d "$DEST/$APP" ] || { echo "VERDICT UNTESTED no $DEST/$APP installed"; exit 0; }
 
-# Pull the log and report.
-TMP=$(mktemp)
-host_fetch ".yq2/baseq2/qconsole.log" "$TMP" 2>/dev/null || { echo "[smoke $HOST] FAIL: no qconsole.log (engine never wrote one)"; rm -f "$TMP"; exit 1; }
+# Not `pid=,command=`: with -c, Tiger prints an empty command column for that.
+pids() { ps -axco pid,command 2>/dev/null | awk -v p="$1" 'NR>1{pid=$1; sub(/^ *[0-9]+ +/,""); if ($0==p) print pid}'; }
+alive() { [ -n "$(pids "$PROC")" ]; }
+# ucomm of every port's game, so a smoke never lands on top of another game.
+busy=
+for g in xash3d.bin quake2 yquake2 q2ded ioquake3 quakespasm "Aleph One" "$PROC"; do [ -n "$(pids "$g")" ] && busy="$g"; done
+if [ -n "$busy" ] && [ "$FORCE" != 1 ]; then echo "VERDICT UNTESTED '$busy' is already running (FORCE=1 overrides)"; exit 0; fi
 
-FPS_LINE=$(grep -E 'frames.*seconds.*fps' "$TMP" 2>/dev/null | tail -1 || true)
-EFFECTIVE_CVARS="gl_bloom gl_msaa_samples gl_mode gl_customwidth gl_customheight vid_fullscreen vid_desktopfullscreen gl_swapinterval"
-EFFECTIVE_LINES=""
-MISSING_EFFECTIVE=""
-if [ "$OPEN_ARGS" = 1 ]; then
-  for cv in $EFFECTIVE_CVARS; do
-    line=$(grep -E "^\"$cv\" is \"" "$TMP" 2>/dev/null | tail -1 || true)
-    if [ -n "$line" ]; then
-      EFFECTIVE_LINES="${EFFECTIVE_LINES}${line}
-"
-    else
-      MISSING_EFFECTIVE="$MISSING_EFFECTIVE $cv"
-    fi
-  done
+OS="$(sw_vers -productVersion 2>/dev/null)"; min="${OS#10.}"; min="${min%%.*}"
+case "$OS" in 10.*) old=$([ "$min" -lt 6 ] && echo yes || echo no) ;; *) old=no ;; esac
+case "$(machine 2>/dev/null || uname -m)" in
+	ppc750) CLASS=ppc750 ;; ppc7400) CLASS=ppc7400 ;; ppc7450) CLASS=ppc7450 ;; ppc970) CLASS=ppc970 ;;
+	arm64*) CLASS=arm64 ;; *) CLASS=x86 ;;
+esac
+v="SMOKE_SECS_$CLASS"; SECS="${ENV_SECS:-${!v:-$SMOKE_SECS}}"
+v="SMOKE_TIMEOUT_$CLASS"; TMO="${ENV_TIMEOUT:-${!v:-$SMOKE_TIMEOUT}}"
+CUSER="$(ls -l /dev/console 2>/dev/null | awk '{print $3}')"; ME="$(id -un)"   # no stat on 10.3
+echo "INFO os=$OS class=$CLASS console=$CUSER ssh=$ME secs=$SECS timeout=$TMO"
+
+VOL=
+if [ "$MUTE" = yes ]; then
+	VOL="$(osascript -e 'output volume of (get volume settings)' 2>/dev/null)"
+	case "$VOL" in ''|*[!0-9]*) VOL=; echo "INFO cannot read the volume here, so not muting" ;; *) osascript -e 'set volume output volume 0' >/dev/null 2>&1 ;; esac
 fi
-# SDL 1.2 could not give us a fullscreen mode. On a Mac with no display attached
-# there are NO fullscreen modes at any size -- measured on mini-intel2
-# 2026-08-23, which refused 640x400 as well as its 1280x1024 desktop. That is a
-# property of the HOST, not of the build, and reporting it as a crash condemns a
-# good binary. See issue #27.
-NOMODE_LINE=$(grep -E 'SetVideoMode failed|No video mode large enough' "$TMP" 2>/dev/null | tail -1 || true)
-MODE_LINE=$(grep -E 'setting mode' "$TMP" 2>/dev/null | tail -1 || true)
-DESKTOP_LINE=$(grep -E 'Desktop is' "$TMP" 2>/dev/null | tail -1 || true)
-REND_LINE=$(grep -E 'GL_RENDERER' "$TMP" 2>/dev/null | tail -1 || true)
-MAP_LINE=$(grep -E 'Map:' "$TMP" 2>/dev/null | tail -1 || true)
-rm -f "$TMP"
+# Scratch goes with the run; the log travels back between LOG_BEGIN/LOG_END.
+restore() {
+	[ -n "$VOL" ] && osascript -e "set volume output volume $VOL" >/dev/null 2>&1
+	rm -f "$OUTLOG" "$ROOT/open.err" "$ROOT/open.sample"; rmdir "$ROOT" 2>/dev/null
+}
+trap restore EXIT
+mkdir -p "$ROOT"
 
-echo "[smoke $HOST] renderer : ${REND_LINE:-<none>}"
-echo "[smoke $HOST] mode     : ${MODE_LINE:-<none>}"
-echo "[smoke $HOST] desktop  : ${DESKTOP_LINE:-<none>}"
-echo "[smoke $HOST] result   : ${FPS_LINE:-<NO FPS LINE>}"
-if [ "$OPEN_ARGS" = 1 ]; then
-  echo "[smoke $HOST] effective settings:"
-  printf '%s' "$EFFECTIVE_LINES" | sed 's/^/    /'
-  # A host with no fullscreen mode never reaches the read-back; that is
-  # NOT TESTED (exit 3, below), not a failed build (mini-intel, headless).
-  if [ -n "$MISSING_EFFECTIVE" ] && [ -z "$NOMODE_LINE" ]; then
-    echo "[smoke $HOST] FAIL — live cvar read-back missing:$MISSING_EFFECTIVE" >&2
-    exit 4
-  fi
-fi
+quit_game() {
+	local n t
+	[ -n "$(pids "$PROC")" ] || { echo "QUIT none-running"; return 0; }
+	n="$(basename "$APP" .app)"
+	osascript -e "tell application \"$n\" to quit" >/dev/null 2>&1 & t=$!
+	for _ in 1 2 3 4 5 6; do [ -n "$(pids "$PROC")" ] || break; sleep 1; done
+	kill "$t" 2>/dev/null
+	[ -n "$(pids "$PROC")" ] || { echo "QUIT clean"; return 0; }
+	kill -TERM $(pids "$PROC") 2>/dev/null
+	for _ in 1 2 3 4 5 6 7 8 9 10; do [ -n "$(pids "$PROC")" ] || break; sleep 1; done
+	[ -n "$(pids "$PROC")" ] || { echo "QUIT term"; return 0; }
+	if [ "$KILL_OK" = yes ]; then
+		kill -KILL $(pids "$PROC") 2>/dev/null; sleep 2
+		[ -n "$(pids "$PROC")" ] || { echo "QUIT kill"; return 0; }
+	fi
+	echo "QUIT STILL_RUNNING pid $(pids "$PROC")"; return 1
+}
 
-if [ -n "$FPS_LINE" ]; then
-  echo "[smoke $HOST] PASS — world rendered to completion on the production path"
-  exit 0
-elif [ "$OPEN_ARGS" = 0 ] && [ -n "$REND_LINE" ] && [ -n "$MAP_LINE" ]; then
-  # This OS's `open` cannot carry the +demomap/+set timedemo argv a real
-  # double-click here wouldn't get either (LaunchServices still passes
-  # "-psn_...", which SDLMain.m's own arg handling uses to discard everything
-  # else) — so there is no fps line to check for. GL initialized AND a map
-  # loaded is the equivalent evidence: the renderer came up and a new game
-  # actually started, not just an engine-load check (ADR 0009).
-  echo "[smoke $HOST] PASS — renderer initialized and a new game started (no argv on this OS, see #35)"
-  exit 0
-elif [ -n "$NOMODE_LINE" ]; then
-  # NOT a pass. The build is unverified here and the message must never read as
-  # success -- a check that quietly downgrades is how "lsregister inconclusive"
-  # survived on a healthy box in a sister repo. Distinct exit code so a caller
-  # can tell this apart from both outcomes.
-  echo "[smoke $HOST] NOT TESTED — this host offers no fullscreen video mode:" >&2
-  echo "  $NOMODE_LINE" >&2
-  echo "  The build was NOT verified on $HOST. This is almost always a Mac with" >&2
-  echo "  no display attached; it is not evidence the binary is bad, and it is" >&2
-  echo "  not evidence it is good either." >&2
-  echo "  To verify by hand, windowed, on the host:" >&2
-  echo "    cd /Applications/Quake2 && ./Quake2.app/Contents/MacOS/quake2 \\" >&2
-  echo "      +set vid_fullscreen 0 +set s_initsound 0 +set logfile 2 \\" >&2
-  echo "      +set timedemo 1 +demomap demo1.dm2" >&2
-  echo "  then look for an 'N frames, N seconds: N fps' line in" >&2
-  echo "  ~/.yq2/baseq2/qconsole.log" >&2
-  exit 3
+# Pre-10.6: does a LaunchServices open start the game at all?
+open_check() {
+	local round=0 tries=0 k op err
+	while :; do
+		open "$DEST/$APP" > "$ROOT/open.err" 2>&1 & op=$!
+		k=0; while [ $k -lt 30 ]; do alive && break; kill -0 $op 2>/dev/null || break; sleep 1; k=$((k+1)); done
+		alive && { echo "OPEN_CHECK ok"; return 0; }
+		if ! kill -0 $op 2>/dev/null; then
+			wait $op && { sleep 5; alive && { echo "OPEN_CHECK ok"; return 0; }; echo "OPEN_CHECK no-process"; return 1; }
+			err="$(sed -n 's/.*returned \(-[0-9]*\).*/\1/p' "$ROOT/open.err" | head -1)"
+			if [ "$err" = -10814 ] && [ $tries -lt 12 ]; then
+				tries=$((tries+1)); echo "NOTE open -10814, retry $tries in 15s"; sleep 15; continue
+			fi
+			echo "OPEN_CHECK failed ${err:-no-LS-code}"; return 1
+		fi
+		round=$((round+1)); why=blocked
+		sample $op 2 -file "$ROOT/open.sample" >/dev/null 2>&1 && grep -q LSConsentToLaunch "$ROOT/open.sample" && why=consent-dialog
+		rm -f "$ROOT/open.sample"
+		echo "NOTE open $why for 30s with no game (round $round); dismissing"
+		killall -TERM UserNotificationCenter 2>/dev/null; sleep 3; kill -TERM $op 2>/dev/null
+		[ $round -ge 2 ] && { echo "OPEN_CHECK timeout-$why"; return 1; }
+	done
+}
+
+rm -f "$SLOG"
+for p in ${PRE_RM[@]+"${PRE_RM[@]}"}; do rm -f "$HOME/$p"; done
+if [ "$old" = no ] && [ "$CUSER" = "$ME" ] && [ -z "$ARCH" ]; then
+	MODE=open
+	if [ ${#ARGS[@]} -gt 0 ]; then open -n "$DEST/$APP" --args "${ARGS[@]}" > "$OUTLOG" 2>&1
+	else open -n "$DEST/$APP" > "$OUTLOG" 2>&1; fi
 else
-  echo "[smoke $HOST] FAIL — no fps line; the production launch did not render a demo (crash or hang)" >&2
-  exit 1
+	if [ "$old" = yes ] && [ "$CUSER" = "$ME" ]; then open_check; quit_game >/dev/null; fi
+	MODE=exec
+	[ -x "$DEST/$EXE" ] || { echo "VERDICT UNTESTED $DEST/$EXE is not executable"; exit 0; }
+	( cd "$DEST" && if [ -n "$ARCH" ]; then exec arch "-$ARCH" "$DEST/$EXE" ${ARGS[@]+"${ARGS[@]}"}
+	  else exec "$DEST/$EXE" ${ARGS[@]+"${ARGS[@]}"}; fi ) > "$OUTLOG" 2>&1 < /dev/null &
 fi
+echo "INFO mode=$MODE${ARCH:+ arch=$ARCH}"
+
+t=0; seen=no; verdict=
+while [ $t -lt "$TMO" ]; do
+	sleep 1; t=$((t+1))
+	alive && seen=yes
+	if [ -n "$FAIL_RE" ] && grep -Eq "$FAIL_RE" "$SLOG" "$OUTLOG" 2>/dev/null; then verdict="FAIL matched FAIL_RE after ${t}s"; break; fi
+	if [ -n "$PASS_RE" ] && grep -Eq "$PASS_RE" "$SLOG" "$OUTLOG" 2>/dev/null; then verdict="PASS matched PASS_RE after ${t}s"; break; fi
+	if [ -z "$PASS_RE" ] && [ $seen = yes ] && [ $t -ge "$SECS" ] && alive; then verdict="PASS alive ${t}s"; break; fi
+	if [ $seen = yes ] && ! alive && [ -z "$PASS_RE" ]; then verdict="FAIL exited after ${t}s"; break; fi
+	if [ $seen = yes ] && ! alive && [ -n "$PASS_RE" ]; then
+		grep -Eq "$PASS_RE" "$SLOG" "$OUTLOG" 2>/dev/null && verdict="PASS matched PASS_RE after ${t}s" || verdict="FAIL exited after ${t}s without PASS_RE"; break
+	fi
+done
+[ -n "$verdict" ] || verdict="FAIL no pass within ${TMO}s (process seen: $seen)"
+quit_game || verdict="FAIL $verdict; game would not quit"
+echo "VERDICT $verdict"
+echo "LOG_BEGIN"; tail -n 300 "$SLOG" 2>/dev/null; [ "$SLOG" != "$OUTLOG" ] && tail -n 50 "$OUTLOG" 2>/dev/null; echo "LOG_END"
+REMOTE
+} | run_host > "$OUT" 2>&1
+sed -n '/^LOG_BEGIN$/,/^LOG_END$/p' "$OUT" | sed '1d;$d' > "$LOG"
+sed '/^LOG_BEGIN$/,/^LOG_END$/d' "$OUT" | sed "s/^/[smoke $HOST] /"
+V="$(sed -n 's/^VERDICT //p' "$OUT" | tail -1)"
+case "$V" in PASS*) rc=0 ;; UNTESTED*) rc=9 ;; '') say "no verdict from $HOST"; rc=1 ;; *) rc=1 ;; esac
+
+# The port has the last word on its own log (quake2's cvar read-back and exit
+# 3, quake3's VALIDATION lines). It gets the log, our rc, and the INFO lines.
+if declare -F smoke_verdict >/dev/null && [ $rc -ne 9 ]; then
+	smoke_verdict "$LOG" "$rc" "$(grep '^INFO ' "$OUT" | tr '\n' ' ')"; rc=$?
+fi
+[ $rc -eq 0 ] && say "PASS" || say "result rc=$rc"
+exit $rc

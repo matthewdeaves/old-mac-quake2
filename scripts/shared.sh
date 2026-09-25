@@ -7,6 +7,19 @@
 # usage (from a port repo): scripts/shared.sh <script> [args...]
 #   e.g. scripts/shared.sh pick-bench-host.sh --pick mini-g4
 #        scripts/shared.sh deploy-dmg.sh quake3 /path/to.dmg
+#        scripts/shared.sh --resolve pick-bench-host.sh   (fetch, print cached path, no exec)
+#
+# build-host#118: a shared script that itself depends on ANOTHER shared
+# script by a $SELF_DIR-relative path (deploy-dmg.sh, smoke-dmg.sh and
+# bench-evidence.sh each re-exec under a co-located pick-bench-host.sh to
+# claim the host lock) breaks on a stone-cold cache: SELF_DIR is this pin's
+# cache dir once fetched via shared.sh, and the dependency is only there if
+# something ELSE already warmed the same cache first. `--resolve` lets such
+# a script pre-warm its own dependency instead of silently finding it
+# missing and skipping whatever guard depended on it (deploy-dmg.sh's case:
+# skipping the host-lock claim entirely, with no error). RETRO_SHARED_WRAPPER
+# (exported below, alongside RETRO_SHARED_CALLER_REPO) is this wrapper's own
+# absolute path, so an execed script can call back into it for exactly this.
 #
 # WHAT THIS REPLACES
 # -------------------
@@ -46,14 +59,22 @@
 set -uo pipefail
 
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SELF_PATH="$SELF/$(basename "${BASH_SOURCE[0]}")"
 REPO_ROOT="$(cd "$SELF/.." && pwd)"
 PIN_FILE="$REPO_ROOT/shared-scripts.pin"
 
 usage() {
-	echo "usage: $(basename "$0") <script> [args...]" >&2
+	echo "usage: $(basename "$0") [--resolve] <script> [args...]" >&2
 	echo "       reads $PIN_FILE for the pinned revision" >&2
+	echo "       --resolve <script>: fetch into cache, print the cached path, don't exec" >&2
 	exit 2
 }
+
+RESOLVE_ONLY=0
+if [ "${1:-}" = "--resolve" ]; then
+	RESOLVE_ONLY=1
+	shift
+fi
 
 SCRIPT="${1:-}"
 [ -n "$SCRIPT" ] || usage
@@ -65,6 +86,11 @@ case "$SCRIPT" in
 	exit 2
 	;;
 esac
+
+if [ "$RESOLVE_ONLY" -eq 1 ] && [ "$#" -gt 0 ]; then
+	echo "shared.sh: --resolve takes no script arguments ($*)" >&2
+	exit 2
+fi
 
 [ -r "$PIN_FILE" ] || {
 	echo "shared.sh: no pin file at $PIN_FILE" >&2
@@ -120,5 +146,17 @@ fi
 # an env var it doesn't read, so this is a no-op for them.
 RETRO_SHARED_CALLER_REPO="$(basename "$REPO_ROOT")"
 export RETRO_SHARED_CALLER_REPO
+
+# build-host#118: this wrapper's own absolute path, so a script it execs can
+# call back into it (e.g. `"$RETRO_SHARED_WRAPPER" --resolve pick-bench-host.sh`)
+# to pre-warm a sibling shared script into this same cache, instead of trusting
+# a $SELF_DIR-relative path that only resolves if something else already
+# fetched it this session.
+export RETRO_SHARED_WRAPPER="$SELF_PATH"
+
+if [ "$RESOLVE_ONLY" -eq 1 ]; then
+	echo "$DST"
+	exit 0
+fi
 
 exec "$DST" "$@"

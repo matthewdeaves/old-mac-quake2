@@ -36,9 +36,14 @@ and a sync can write into your tree mid-task, so stage by name and never
     Triage -> Measuring -> Ready -> In progress -> Blocked -> Review -> Done
 
 `Triage` is the user's gate; only a human moves work out of it. `Measuring` means
-approved: work it. STOP AT `Review` — `Done` is the user's, not yours. Write
-`Refs #12` in commit messages, never `Closes` or `Fixes`, or GitHub closes the
-issue behind your back while the column still says Review.
+approved: work it. **Close your own tickets once fixed and tested.** Evidence in
+a closing comment on the issue, then move it to `Done` yourself (`user,
+2026-09-22`, `retro-agents/briefs/_shared.md:32`). Still never write `Closes #12`
+or `Fixes #12` in a commit message: GitHub acts on those immediately, which can
+close an issue before its evidence comment is posted or before an unrelated
+commit means to touch it at all. Write `Refs #12` in commits, then close the
+issue and move the board column as a separate, deliberate step once the
+evidence is in place.
 
 Filing an issue does NOT put it on the board and nothing sets a status on a new
 item, so it lands in no column at all and looks like work nobody raised. Run

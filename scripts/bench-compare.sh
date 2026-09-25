@@ -45,15 +45,28 @@ for b in "${BASE[@]}" "${CAND[@]}"; do
 done
 [ -n "$U0" ] || U0=fps
 
-# Drop the first (coldest) round per side when more than one round is given.
-# (No nameref: workstation's stock /bin/bash is 3.2, which lacks `local -n`.)
-[ "${#BASE[@]}" -gt 1 ] && BASE=("${BASE[@]:1}")
-[ "${#CAND[@]}" -gt 1 ] && CAND=("${CAND[@]:1}")
-
-if [ "${#BASE[@]}" -lt 1 ] || [ "${#CAND[@]}" -lt 1 ]; then
+# build-host#114: this gate must look at how many rounds were actually
+# GIVEN, not how many are left after discarding a cold start. A single
+# round per side skips the discard below (`-gt 1` is false) and used to
+# reach the stats with n=1 on each side, so stdev=0, the noise band
+# collapses to the 0.0001 floor, and any nonzero difference between two
+# ordinary samples of the SAME build reads as a confident BETTER/WORSE.
+# Reproduced by quake2: two same-build, same-host single-round comparisons
+# read BETTER (diff 0.6, noise 0.0001) and WORSE (diff -5.1, noise 0.0001)
+# with no real change between them. Checked BEFORE the discard so a lone,
+# never-confirmed-warm round is never enough on its own, matching the
+# contract doc ("fewer than 2 rounds on either side -> INCONCLUSIVE").
+if [ "${#BASE[@]}" -lt 2 ] || [ "${#CAND[@]}" -lt 2 ]; then
 	echo "INCONCLUSIVE: fewer than 2 rounds on one side (need a warm round after discarding the cold start)"
 	exit 0
 fi
+
+# Drop the first (coldest) round per side. Always exactly one round left
+# over per side at minimum, now that the check above guarantees >= 2 were
+# given. (No nameref: workstation's stock /bin/bash is 3.2, which lacks
+# `local -n`.)
+BASE=("${BASE[@]:1}")
+CAND=("${CAND[@]:1}")
 
 stats_of() { local d; for d in "$@"; do cat "$d/stats.txt"; done; }
 

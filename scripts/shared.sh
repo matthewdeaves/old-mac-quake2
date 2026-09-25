@@ -34,7 +34,7 @@
 #    `git show <pin>:scripts/<script>` into a cache directory keyed by the
 #    pin, so two different pins (two ports on different revisions, or one
 #    port mid-bump) never collide and a pin's cached content is immutable
-#    once fetched — no atomic-replace-under-a-running-shell hazard like
+#    once fetched, no atomic-replace-under-a-running-shell hazard like
 #    sync-shared-scripts.sh's direct-copy install, because nothing here ever
 #    overwrites a path a previous fetch already wrote.
 # 4. exec the cached copy with the remaining arguments.
@@ -118,6 +118,7 @@ fi
 # before the exec below); export it so those two scripts can prefer it over
 # their own path-derived guess. Every other script this wrapper runs ignores
 # an env var it doesn't read, so this is a no-op for them.
-export RETRO_SHARED_CALLER_REPO="$(basename "$REPO_ROOT")"
+RETRO_SHARED_CALLER_REPO="$(basename "$REPO_ROOT")"
+export RETRO_SHARED_CALLER_REPO
 
 exec "$DST" "$@"

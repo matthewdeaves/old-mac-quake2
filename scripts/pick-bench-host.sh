@@ -199,7 +199,7 @@ expect_os() {
 		mini-intel|lion-build1)          echo 10.7 ;;
 		mini-intel2|lion-build2)         echo 10.7 ;;
 		imac-2019|imac|sequoia-build)    echo 15.7 ;;
-		workstation)                     echo 26 ;;
+		workstation)                     echo 27 ;;
 		*)                               echo "" ;;
 	esac
 }

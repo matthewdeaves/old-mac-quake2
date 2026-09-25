@@ -18,16 +18,11 @@
 
 PORT=quake2
 
-# bench-evidence.sh always does "$HOME/$INSTALL_BIN" (old-mac-build-host#107 --
-# the contract doc says INSTALL_BIN may be absolute, but the script does not
-# special-case a leading '/'). Quake2's install is root-level
-# (/Applications/Quake2/Quake2.app, scripts/deploy.sh:308), not under any
-# user's $HOME, so this is a path-traversal value that resolves correctly
-# rather than a real absolute path -- same open bug, same trick, as quake3's
-# adapter. Verified $HOME is /Users/<name> (2 components) on every active
-# bench host (mini-g4, imac-g5, mini-sl, mini-intel, mini-intel2, imac-2019).
-# Switch back to the plain absolute path once #107 is fixed.
-INSTALL_BIN='../../Applications/Quake2/Quake2.app/Contents/MacOS/quake2'
+# Quake2's install is root-level (scripts/deploy.sh:308), not under any
+# user's $HOME. old-mac-build-host#107 fixed bench-evidence.sh to special-
+# case a leading '/' instead of always prepending $HOME, so this is the
+# plain real path now (it used to need a $HOME/../../ traversal hack).
+INSTALL_BIN='/Applications/Quake2/Quake2.app/Contents/MacOS/quake2'
 
 BENCH_DEMO="${BENCH_DEMO:-demo1}"
 

@@ -68,6 +68,18 @@ REASONS=()
 NOTCHECKED=()
 
 # --- artefact + installed hash (build-host#40: never Apple's lipo on PPC) ---
+# #109: a hash that could not be compared is now INVALID, not "not checked"
+# -- the old NOTCHECKED path let a bundle with no BENCH_ARTEFACT at all read
+# VALID, which defeats the point of this file (an agent quoting verdict.txt
+# should never see VALID over an artefact nobody actually compared).
+# #107: INSTALL_BIN may be an absolute path (the contract doc always said
+# so); only prepend $HOME when it is NOT one -- the old code always did,
+# which collapsed an absolute path like /Applications/Quake3/... into
+# $HOME/Applications/Quake3/..., silently reading nothing.
+# #110: shasum (and any SHA-256-capable openssl) is missing entirely on
+# PowerPC Tiger/Leopard bench hosts, so hashing has to happen on the
+# workstation instead, over `ssh ... cat`, which every host can serve
+# regardless of its own toolchain age.
 ARTEFACT="${BENCH_ARTEFACT:-}"
 ARTEFACT_SHA=""; ARTEFACT_LIPO=""
 if [ -n "$ARTEFACT" ] && [ -f "$ARTEFACT" ]; then
@@ -75,15 +87,28 @@ if [ -n "$ARTEFACT" ] && [ -f "$ARTEFACT" ]; then
 	if command -v python3 >/dev/null 2>&1 && [ -x "$SELF_DIR/fat-slices.py" ]; then
 		ARTEFACT_LIPO="$(python3 "$SELF_DIR/fat-slices.py" "$ARTEFACT" 2>/dev/null | tr '\n' ';')"
 	fi
-else
-	NOTCHECKED+=("artefact hash: BENCH_ARTEFACT not set or not readable")
 fi
 
-INSTALLED_SHA="$(sh_host "shasum -a 256 \"\$HOME/$INSTALL_BIN\" 2>/dev/null | awk '{print \$1}'")"
+case "$INSTALL_BIN" in
+	/*) REMOTE_CAT="cat \"$INSTALL_BIN\" 2>/dev/null" ;;
+	*)  REMOTE_CAT="cat \"\$HOME/$INSTALL_BIN\" 2>/dev/null" ;;
+esac
+INSTALLED_TMP="$(mktemp "${TMPDIR:-/tmp}/buildhost-bench-evidence-installed.XXXXXX")"
+if [ "$HOST" = workstation ]; then
+	bash -c "$REMOTE_CAT" > "$INSTALLED_TMP" 2>/dev/null
+else
+	ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST" "$REMOTE_CAT" > "$INSTALLED_TMP" 2>/dev/null
+fi
+INSTALLED_SHA=""
+[ -s "$INSTALLED_TMP" ] && INSTALLED_SHA="$(shasum -a 256 "$INSTALLED_TMP" | awk '{print $1}')"
+rm -f "$INSTALLED_TMP"
+
 if [ -n "$ARTEFACT_SHA" ] && [ -n "$INSTALLED_SHA" ]; then
 	[ "$ARTEFACT_SHA" = "$INSTALLED_SHA" ] || REASONS+=("installed hash $INSTALLED_SHA != artefact hash $ARTEFACT_SHA")
+elif [ -z "$ARTEFACT_SHA" ]; then
+	REASONS+=("artefact hash not checked: BENCH_ARTEFACT not set or not readable")
 else
-	NOTCHECKED+=("installed-vs-artefact hash: one side unreadable")
+	REASONS+=("artefact hash not checked: installed binary unreadable on $HOST ($INSTALL_BIN)")
 fi
 
 # --- host identity ---
@@ -118,6 +143,19 @@ LAUNCH_OUT="$(bench_launch "$HOST" "$ROUND" "$EVROOT" 2>"$EVROOT/launch-stderr.t
 EXIT_CODE="$(echo "$LAUNCH_OUT" | sed -n 's/^EXIT=//p' | tail -1)"
 LPID="$(echo "$LAUNCH_OUT" | sed -n 's/^PID=//p' | tail -1)"
 [ -n "$EXIT_CODE" ] || EXIT_CODE="unknown"
+
+# #108: a failed launch must not verdict VALID just because the hash/
+# liveness/frame checks around it all happened to look fine. EXIT_CODE is
+# recorded in meta.json either way; this is the check that actually acts on
+# it, plus the stats.txt the contract requires bench_launch to have written
+# by the time it returns (docs/bench-evidence.md).
+case "$EXIT_CODE" in
+	0) ;;
+	unknown) REASONS+=("bench_launch did not report EXIT=<code> (adapter contract violation)") ;;
+	*[!0-9]*) REASONS+=("bench_launch reported a non-numeric EXIT=$EXIT_CODE") ;;
+	*) REASONS+=("bench_launch exited $EXIT_CODE") ;;
+esac
+[ -s "$EVROOT/stats.txt" ] || REASONS+=("stats.txt missing or empty after bench_launch returned")
 
 # --- liveness, only if the adapter left the process running ---
 if [ -n "$LPID" ]; then

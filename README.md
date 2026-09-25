@@ -60,8 +60,10 @@ numbers are in [`benchmarks/results.csv`](benchmarks/results.csv).
 | Radeon Pro 580X, 8x MSAA | 2560×1440 | 176 |
 | Apple M5, 4x MSAA | 1920×1080 | 264.6 |
 
-The floors are 20 fps on a G3 and about 40 on a G4. Above them, frame rate is
-spent on effects. Sawtooth, quicksilver, the iMac G5 and the quad G5 were off this cycle.
+The floors are 20 fps on a G3 and 25 fps on everything else (G4, G5,
+Intel-Lion, Apple Silicon). Above the floor, frame rate is won by optimising
+code, not by switching a feature off. Sawtooth, quicksilver, the iMac G5 and
+the quad G5 were off this cycle.
 
 ## How it's built and benchmarked
 

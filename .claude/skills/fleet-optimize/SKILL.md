@@ -32,9 +32,12 @@ next. It is the optimization loop, not the build system.
    switch on `imac-g5`**; it hard-hangs the whole OS and only the power button
    recovers it. Recover a wedged Mac with `ssh <m> '~/bin/qsreboot.sh'` and
    confirm it cycles. Never build two PPC slices on the same mini.
-3. **Respect the envelope.** Floors: **G3 ≥ 20 fps, G4 ≥ ~40 fps**, G5 and
-   modern uncapped. Above the floor, **effects beat fps** (user preference):
-   prefer adding a graphical feature to chasing framerate nobody needs.
+3. **Respect the envelope.** Floors (2026-09-25): **G3 ≥ 20 fps, everything
+   else (G4/G5/Intel-Lion/Apple Silicon) ≥ 25 fps**, G5 and modern uncapped
+   above their floor. A feature that keeps its class at or above the floor
+   stays on — win frame rate by **optimising code**, not by switching a
+   feature off. A class already above 25 fps with effects off is effects
+   work, not fps work. `docs/adr/0009` has the floor's history.
 4. **Measure, do not guess.** Profile the target class first; know whether it is
    CPU-bound or fill-bound. A regression that scales the same at two
    resolutions is CPU-bound.

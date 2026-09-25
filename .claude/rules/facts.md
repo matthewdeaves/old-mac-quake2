@@ -63,11 +63,14 @@
   Frames are bit-identical across runs of one binary, so the noise floor is
   zero. References live in `tests/frames/`, NOT `docs/screenshots/`, which is a
   curated gallery that deletes frames for being ugly. Issue #26.
-- **Playability floors: G3 ≥ 20 fps, G4 ≥ ~40 fps** (was 60; the user preference
-  is visuals over framerate). **A floor is the raw bench number** (`bench.sh`
-  runs vsync off), not what a player sees with vsync on — settled by the user,
-  `old-mac-build-host#22`, 2026-08-23. Above the floor, prefer a visual feature to
-  framerate nobody needs. `docs/adr/0009`
+- **Playability floors: G3 ≥ 20 fps, everything else (G4/G5/Intel-Lion/Apple
+  Silicon) ≥ 25 fps** (2026-09-25; was 35 for a few minutes the same day, was
+  ~40/60 before that — see `docs/adr/0009` for the history). **A floor is the
+  raw bench number** (`bench.sh` runs vsync off), not what a player sees with
+  vsync on — settled by the user, `old-mac-build-host#22`, 2026-08-23. Above
+  the floor, win frame rate by optimising code, not by switching a feature
+  off — a feature that keeps its class at or above the floor stays on.
+  `docs/adr/0009`
 - **Every per-machine default is an A/B on that machine**, never inferred from
   GPU class. `docs/adr/0010`
 - **We ship code and generated art, never game content.** `docs/adr/0012`

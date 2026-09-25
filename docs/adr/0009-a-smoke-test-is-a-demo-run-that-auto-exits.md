@@ -93,11 +93,17 @@ machine block the commit.
 ## Playability floors
 
 - **G3 ≥ 20 fps.**
-- **G4 ≥ ~40 fps** for feature work. It was 60 until 2026-05-29; the user
-  preference is visuals over framerate, and the older floor is why several
-  decisions in `MISTAKES.md` read as more conservative than they would be today.
-- G5 and modern are uncapped; the G5 deliberately spends framerate on native
-  resolution and MSAA (ADR 0008).
+- **G4, G5, Intel-Lion and Apple Silicon ≥ 25 fps** for feature work. History:
+  60 until 2026-05-29, then ~40 (visuals-over-framerate), then briefly 35
+  (2026-09-25, "the 60fps floor is too high, 35 is fine"), corrected the same
+  day to 25 ("any game is fine and playable at 25fps or more") — this is the
+  current number. A class above the floor with effects off is effects work,
+  not fps work: win frame rate by optimising code, not by switching features
+  off, and a feature that keeps its class at or above the floor stays on.
+  Several decisions in `MISTAKES.md` read as more conservative than they
+  would be against today's floor — that history is real, don't re-litigate it.
+- G5 and modern stay uncapped above their floor; the G5 deliberately spends
+  framerate on native resolution and MSAA (ADR 0008).
 
 ## The bench-integrity failure that made this ADR necessary
 

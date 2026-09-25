@@ -80,6 +80,30 @@ min_window_of() {
 	rm -f "$tmp"
 }
 
+# build-host#113: the contract doc has always listed "stats.txt byte-
+# identical to another round's stats.txt" as an INVALID-shaped finding,
+# "checked there, not at capture time" -- but nothing here ever checked it.
+# Reproduced live (old-mac-quakespasm#66, mini-intel): two independently
+# VALID bench-evidence.sh rounds with byte-identical stats.txt, silently
+# averaged together as if they were two real measurements. Checked pairwise
+# across every bundle actually feeding the statistics below (post cold-start
+# discard, same set BASE_STATS/CAND_STATS use) -- a stale/cached read is
+# exactly the failure shape this contract exists to catch mechanically
+# instead of trusting a table by eye.
+IDENTICAL_NOTE=""
+ALL_BUNDLES=("${BASE[@]}" "${CAND[@]}")
+i=0
+for a in "${ALL_BUNDLES[@]}"; do
+	i=$((i+1)); j=0
+	for b in "${ALL_BUNDLES[@]}"; do
+		j=$((j+1))
+		[ "$j" -le "$i" ] && continue
+		if cmp -s "$a/stats.txt" "$b/stats.txt"; then
+			IDENTICAL_NOTE="$(basename "$a") and $(basename "$b") have byte-identical stats.txt"
+		fi
+	done
+done
+
 BASE_STATS="$(stats_of "${BASE[@]}")"
 CAND_STATS="$(stats_of "${CAND[@]}")"
 BASE_MEAN="$(echo "$BASE_STATS" | mean_of)"
@@ -109,7 +133,7 @@ DIFF="$(awk -v b="$BASE_MEAN" -v c="$CAND_MEAN" 'BEGIN{printf "%.4f", c-b}')"
 ABS_DIFF="$(awk -v d="$DIFF" 'BEGIN{printf "%.4f", (d<0?-d:d)}')"
 
 VERDICT="NO-DIFFERENCE"
-if [ -n "$INTERLEAVE_NOTE" ]; then
+if [ -n "$INTERLEAVE_NOTE" ] || [ -n "$IDENTICAL_NOTE" ]; then
 	VERDICT="INCONCLUSIVE"
 elif awk -v d="$ABS_DIFF" -v n="$NOISE" 'BEGIN{exit !(d>n)}'; then
 	better_is_higher=1; [ "$U0" = ms ] && better_is_higher=0
@@ -141,4 +165,5 @@ printf 'candidate: mean=%s  worst=%s  min-window(worst10%%)=%s  stdev=%s%s\n' \
 	"$CAND_MEAN" "$CAND_WORST" "$CAND_WIN" "$CAND_SD" "${CAND_VS:+  $CAND_VS}"
 echo "diff: $DIFF  (noise band: $NOISE)"
 [ -n "$INTERLEAVE_NOTE" ] && echo "note: $INTERLEAVE_NOTE"
+[ -n "$IDENTICAL_NOTE" ] && echo "note: IDENTICAL-SAMPLES: $IDENTICAL_NOTE"
 exit 0

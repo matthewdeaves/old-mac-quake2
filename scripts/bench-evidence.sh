@@ -59,7 +59,15 @@ else
 	sh_host() { ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST" "$1"; }
 fi
 
-STAMP="$(date -u '+%Y%m%dT%H%M%SZ')"
+# PID suffix: macOS `date` has no sub-second resolution, and #109's own
+# repro (imac-2019, ~1s demo runs) means two real back-to-back rounds can
+# land in the same wall-clock second. Without a disambiguator, the second
+# round's mkdir -p would silently reuse the first round's directory and mix
+# its files with the new run's (found while testing the #109 frame-capture
+# fix above: two fast fixture rounds collided this way). The suffix sorts
+# after the timestamp, so bench-compare.sh's interleaving check (sorts by
+# directory name) is unaffected.
+STAMP="$(date -u '+%Y%m%dT%H%M%SZ')-$$"
 EVROOT="$HOME/oldmac/evidence/$PORT/$STAMP"
 mkdir -p "$EVROOT"
 say "bundle: $EVROOT"
@@ -124,20 +132,6 @@ else
 	NOTCHECKED+=("effective vs requested settings: no --requested given")
 fi
 
-# --- first frame, best-effort (build-host#91: not every host can) ---
-FRAME1=""
-if sh_host 'command -v screencapture >/dev/null 2>&1'; then
-	if [ "$HOST" = workstation ]; then
-		screencapture -x "$EVROOT/frame-first.png" 2>/dev/null && FRAME1=yes
-	else
-		ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST" \
-			"screencapture -x /tmp/buildhost-bench-evidence-frame1.png" 2>/dev/null \
-			&& scp -q -o BatchMode=yes "$HOST:/tmp/buildhost-bench-evidence-frame1.png" "$EVROOT/frame-first.png" 2>/dev/null \
-			&& FRAME1=yes
-	fi
-fi
-[ -n "$FRAME1" ] || NOTCHECKED+=("frame capture: not available on $HOST")
-
 # --- launch, via the adapter ---
 LAUNCH_OUT="$(bench_launch "$HOST" "$ROUND" "$EVROOT" 2>"$EVROOT/launch-stderr.txt")"
 EXIT_CODE="$(echo "$LAUNCH_OUT" | sed -n 's/^EXIT=//p' | tail -1)"
@@ -157,6 +151,42 @@ case "$EXIT_CODE" in
 esac
 [ -s "$EVROOT/stats.txt" ] || REASONS+=("stats.txt missing or empty after bench_launch returned")
 
+# --- frame capture, only meaningful while the adapter left the process
+# running (build-host#109, manager's fleet-wide repro 2026-09-25). A
+# synchronous adapter's bench_launch already blocks through the whole run
+# and returns only once the game has quit, so a "before launch" / "after
+# return" pair of captures both show the idle desktop -- they only
+# differed by luck (the menu-bar clock ticking over mid-run), which failed
+# this check on most otherwise-fully-valid bundles for any class whose
+# whole run fits inside one minute (confirmed on imac-2019, mini-intel and
+# imac-g5). Capture is only attempted now, AFTER bench_launch has returned
+# AND only when it left a live PID: two frames a few seconds apart while
+# the game is CONFIRMED running, the same shape as the liveness check right
+# below rather than idle-vs-running. A synchronous adapter gets "not
+# checked" here, same as liveness already does for it -- there is no live
+# frame available to capture once bench_launch has already returned with
+# the game gone, and reporting one anyway (as the old before/after pair
+# did) risks a false INVALID on a fully valid run, which is worse than not
+# checking at all.
+FRAME1=""
+if [ -n "$LPID" ] && sh_host 'command -v screencapture >/dev/null 2>&1'; then
+	if [ "$HOST" = workstation ]; then
+		screencapture -x "$EVROOT/frame-first.png" 2>/dev/null && FRAME1=yes
+	else
+		ssh -o BatchMode=yes -o ConnectTimeout=15 "$HOST" \
+			"screencapture -x /tmp/buildhost-bench-evidence-frame1.png" 2>/dev/null \
+			&& scp -q -o BatchMode=yes "$HOST:/tmp/buildhost-bench-evidence-frame1.png" "$EVROOT/frame-first.png" 2>/dev/null \
+			&& FRAME1=yes
+	fi
+fi
+if [ -z "$FRAME1" ]; then
+	if [ -z "$LPID" ]; then
+		NOTCHECKED+=("frame capture: adapter is synchronous (bench_launch already returned with the game quit) -- no live frame available")
+	else
+		NOTCHECKED+=("frame capture: not available on $HOST")
+	fi
+fi
+
 # --- liveness, only if the adapter left the process running ---
 if [ -n "$LPID" ]; then
 	L1="$(bench_liveness "$HOST" 2>/dev/null)"
@@ -170,7 +200,7 @@ else
 	NOTCHECKED+=("liveness: bench_launch left no PID (synchronous adapter)")
 fi
 
-# --- last frame, effective config ---
+# --- last frame ---
 if [ -n "$FRAME1" ]; then
 	if [ "$HOST" = workstation ]; then
 		screencapture -x "$EVROOT/frame-last.png" 2>/dev/null

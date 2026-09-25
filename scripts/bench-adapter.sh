@@ -16,12 +16,14 @@
 # (bench.sh:120) sees a matching claim and does not try to claim the host a
 # second time.
 
+# shellcheck disable=SC2034  # read by bench-evidence.sh after sourcing
 PORT=quake2
 
 # Quake2's install is root-level (scripts/deploy.sh:308), not under any
 # user's $HOME. old-mac-build-host#107 fixed bench-evidence.sh to special-
 # case a leading '/' instead of always prepending $HOME, so this is the
 # plain real path now (it used to need a $HOME/../../ traversal hack).
+# shellcheck disable=SC2034  # read by bench-evidence.sh after sourcing
 INSTALL_BIN='/Applications/Quake2/Quake2.app/Contents/MacOS/quake2'
 
 BENCH_DEMO="${BENCH_DEMO:-demo1}"
@@ -33,7 +35,7 @@ BENCH_DEMO="${BENCH_DEMO:-demo1}"
 # BENCH_RES to bench.sh's own required WxH argument and lets that guard do
 # its job.
 bench_launch() {
-	local host="$1" round="$2" workdir="$3"
+	local host="$1" workdir="$3"
 	local self_dir raw_dir out rc fps log_name
 
 	if [ -z "${BENCH_RES:-}" ]; then

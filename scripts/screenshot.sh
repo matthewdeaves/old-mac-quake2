@@ -233,7 +233,7 @@ echo "[screenshot] convert TGAs → PNGs ($CONV)"
 # Wipe any prior per-shot files for this OUT_TAG so a shorter run doesn't
 # leave stale shots from a previous longer run lying around. Note we wipe
 # OUT_TAG specifically — for demo2 runs that won't clobber demo1 shots.
-rm -f "$SHOT_DIR/${OUT_TAG}-"*.png
+rm -f "$SHOT_DIR/${OUT_TAG}-"[0-9][0-9].png
 i=0
 for tga in $TGAS; do
   OUT="$SHOT_DIR/${OUT_TAG}-$(printf "%02d" $i).png"

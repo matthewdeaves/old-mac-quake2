@@ -41,3 +41,33 @@ and A1/A2 share it since neither has an EXTRA). Both medians are preserved in
 Mid-bench, `old-mac-halflife-81` claimed imac-g5 for a v1.9.20 install smoke
 routed by buildhost (build-host#100) right as I released between arms;
 coordinated by mail, machine handed back after the A2 confirmation run.
+
+## Quality-trade follow-up: keep shipped, user overrides the hypothesis
+
+Manager asked (46.6 fps on a 60Hz panel could mean uneven 16/33ms frames) to
+test two same-session candidates against shipped and adopt one if it holds a
+steady 60 for a quality loss judged minor: (a) the most fill-heavy effect
+off, (b) one resolution step down.
+
+- **(a) `gl_msaa_samples 0`** (bloom is already off in the shipped profile;
+  MSAA is this cfg's own documented biggest fill-rate lever —
+  `autoexec-imac-g5.cfg:124-131`): demo1 @ 1440x900, 3 runs, **100.0, 100.0,
+  100.0 fps**, median 100.00. Clears 60 with room. Raw logs in `raw/`.
+- **(b) resolution step down**: not run. ADR 0008's guard applies —
+  fullscreen at any non-native resolution on this exact R300/Leopard combo
+  hard-hangs the whole OS (physical power button only to recover), and
+  `bench.sh` itself refuses it outright unless `G5_WINDOWED=1` (windowed,
+  safe at any res). Moot once (a) already clears 60 and the decision below
+  went the other way regardless.
+
+**Decision: kept the shipped profile, MSAA candidate not adopted.** Before
+running (b), the user played the current build on this exact imac-g5 and
+reported unprompted: *"from what i was seeing 46 fps on a 60 Hz screen was
+not an issue to my eye.. and i want the game to look the best it possibly
+can on g5 machines they can handle it!"* That's a direct real-world verdict
+on the actual question the manager's hypothesis was a proxy for (does 46 fps
+read badly on this panel), and it also restates this project's standing
+policy (`docs/adr/0009`: floors are the raw bench number, visuals over
+framerate above it — 46.6-46.9 fps clears the ~40 fps G4/G5 floor with
+headroom). No default changed. The 100 fps MSAA-off number is recorded for
+reference only, not shipped.

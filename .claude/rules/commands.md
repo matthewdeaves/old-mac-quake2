@@ -16,7 +16,7 @@ scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 c
 `BUILD_HOST=` pins a mini, `DMG_HOST=` the packaging box.
 
 **Smoke and the imac-g5 bench run via Jenkins now, not by hand** (user
-policy 2026-08-23, `retro-agents/briefs/_shared.md`): jobs
+policy 2026-08-23, `retro-agents/POLICY.md`): jobs
 `smoke-quake2-<machine>` (every smoke-capable node) and
 `bench-quake2-imac-g5` are proven equivalents of the scripts above (same
 scripts, same lock; `BENCH_CSV`/`BENCH_RAW_DIR` redirected so tracked

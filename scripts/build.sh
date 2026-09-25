@@ -9,8 +9,8 @@
 # usage: scripts/build.sh <g3|g4|g5|lion|i386>
 # output: build/q2-<target>/{quake2, ref_gl.so, baseq2/game.so, q2ded}
 # env:    BUILD_HOST (ssh alias; default: auto-picked from the free Intel minis
-#         by scripts/pick-build-host.sh)
-#         BUILD_HOSTS / BUILD_LOCK_WAIT — see scripts/pick-build-host.sh
+#         by scripts/shared.sh pick-build-host.sh)
+#         BUILD_HOSTS / BUILD_LOCK_WAIT — see scripts/shared.sh pick-build-host.sh --status
 
 set -euo pipefail
 
@@ -40,14 +40,14 @@ if [ -z "${BUILD_HOST:-}" ]; then
   # SEPARATE process and has to present the same claim this acquire made.
   export BENCH_LOCK_CLAIM="${BENCH_LOCK_CLAIM:-$$.$(date +%s).${RANDOM:-0}}"
   BUILD_HOST="$(BUILD_LOCK_WAIT="${BUILD_LOCK_WAIT:-900}" \
-    "$REPO_ROOT/scripts/pick-build-host.sh" --acquire "quake2 build.sh $TARGET")" || {
-    echo "build.sh: no free Intel build host; see scripts/pick-build-host.sh --status" >&2
+    "$REPO_ROOT/scripts/shared.sh" pick-build-host.sh --acquire "quake2 build.sh $TARGET")" || {
+    echo "build.sh: no free Intel build host; see scripts/shared.sh pick-build-host.sh --status" >&2
     exit 1
   }
   BUILD_HOST_CLAIMED=1
   echo "[build] claimed build host: $BUILD_HOST"
 fi
-trap '[ "$BUILD_HOST_CLAIMED" = 1 ] && "$REPO_ROOT/scripts/pick-build-host.sh" --release "$BUILD_HOST" >/dev/null 2>&1; true' EXIT
+trap '[ "$BUILD_HOST_CLAIMED" = 1 ] && "$REPO_ROOT/scripts/shared.sh" pick-build-host.sh --release "$BUILD_HOST" >/dev/null 2>&1; true' EXIT
 
 # Serialize concurrent invocations. Both targets rsync to
 # mini-intel:oldmac/quake2/

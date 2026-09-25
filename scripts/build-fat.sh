@@ -47,7 +47,7 @@ CLAIMED_HOSTS=""
 release_claimed_hosts() {
   local h
   for h in $CLAIMED_HOSTS; do
-    "$REPO_ROOT/scripts/pick-build-host.sh" --release "$h" >/dev/null 2>&1
+    "$REPO_ROOT/scripts/shared.sh" pick-build-host.sh --release "$h" >/dev/null 2>&1
   done
   true
 }
@@ -63,8 +63,8 @@ if [ -z "${BUILD_HOST:-}" ]; then
   # for.
   export BENCH_LOCK_CLAIM="${BENCH_LOCK_CLAIM:-$$.$(date +%s).${RANDOM:-0}}"
   BUILD_HOST="$(BUILD_LOCK_WAIT="${BUILD_LOCK_WAIT:-900}" \
-    "$REPO_ROOT/scripts/pick-build-host.sh" --acquire "quake2 build-fat")" || {
-    echo "[build-fat] no free Intel build host; see scripts/pick-build-host.sh --status" >&2
+    "$REPO_ROOT/scripts/shared.sh" pick-build-host.sh --acquire "quake2 build-fat")" || {
+    echo "[build-fat] no free Intel build host; see scripts/shared.sh pick-build-host.sh --status" >&2
     exit 1
   }
   export BUILD_HOST
@@ -105,7 +105,7 @@ fi
 # out of sync per-port.
 LION_HOST="$BUILD_HOST"
 if [ "$BUILD_HOST" != "imac-2019" ] && [ -n "${QUAKE2_USE_IMAC2019_LION:-}" ]; then
-  if IMAC_CLAIM="$("$REPO_ROOT/scripts/pick-build-host.sh" --acquire-host imac-2019 "quake2 build-fat lion leg" 2>/dev/null)"; then
+  if IMAC_CLAIM="$("$REPO_ROOT/scripts/shared.sh" pick-build-host.sh --acquire-host imac-2019 "quake2 build-fat lion leg" 2>/dev/null)"; then
     LION_HOST="$IMAC_CLAIM"
     CLAIMED_HOSTS="$CLAIMED_HOSTS $LION_HOST"
     echo "[build-fat] lion leg: claimed imac-2019 separately (QUAKE2_USE_IMAC2019_LION=1 -- verify LC_UNIXTHREAD before shipping)"

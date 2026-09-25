@@ -8,13 +8,13 @@ slices and cpusubtype stamping **ADR 0001**, the engine pin **ADR 0002**, SDL
 ## Commands
 
 ```sh
-scripts/pick-build-host.sh --status              # which mini is free
+scripts/shared.sh pick-build-host.sh --status    # which mini is free
 scripts/build.sh <g3|g4|g5|lion>                 # one slice, claims a host, flocks
 scripts/build-fat.sh                             # g3→g4→g5→lion + lipo; pinned host; imac-2019 lion leg opt-in (below)
 scripts/deploy.sh <machine>                      # ships build/q2-fat over ssh
 scripts/make-dmg.sh                              # → dist/Quake2-OldMac-<ver>.dmg, on a Tiger box
-scripts/deploy-dmg.sh <machine>                  # install from the mounted image, as a human does
-scripts/smoke-dmg.sh <machine>                   # launch the installed copy with the PRODUCTION config
+scripts/shared.sh deploy-dmg.sh <machine>        # install from the mounted image, as a human does
+scripts/shared.sh smoke-dmg.sh <machine>         # launch the installed copy with the PRODUCTION config
 scripts/bench.sh <machine> <demo> <WxH> [runs]   # see docs/BENCH.md
 ```
 
@@ -105,11 +105,32 @@ baseq2/pak*.pak             the user's own data
 launch, so `basedir=.` resolves there.
 
 `deploy-dmg.sh` and `smoke-dmg.sh` are shared with the other ports
-(old-mac-build-host#96, synced byte-identical, never edited here). Quake II's
-part is `scripts/dmg-port.conf` and `scripts/dmg-hooks.sh`:
+(old-mac-build-host#96). This repo no longer carries copies of them (or of
+`pick-build-host.sh`, `pick-bench-host.sh`, `bench-evidence.sh`,
+`bench-compare.sh`, `gui-precondition.sh`, `clear-launch-quarantine.sh`) —
+build-host#105's pin model (ADR 0007 in old-mac-build-host): `shared-scripts.pin`
+(repo root) names the revision, `scripts/shared.sh <name>.sh [args...]` fetches
+and execs it from a sibling `../old-mac-build-host` checkout
+(`OLDMAC_BUILDHOST_REPO` overrides). `source-stamp.sh` stays a real copy — it's
+sourced, not exec'd, so it can't go through the wrapper. Quake II's own part is
+`scripts/dmg-port.conf` and `scripts/dmg-hooks.sh`.
+
+Two things need an explicit override every call, because the pinned script
+locates port-specific files relative to its OWN path — the pin's read-only
+fetch cache once cached, not this repo:
+
+- **`bench-evidence.sh`** needs `BENCH_ADAPTER="$REPO_ROOT/scripts/bench-adapter.sh"`
+  (docs/BENCH.md already threads this through).
+- **`deploy-dmg.sh`** / **`smoke-dmg.sh`** need
+  `DMG_PORT_CONF="$REPO_ROOT/scripts/dmg-port.conf"`. `deploy-dmg.sh` also
+  derives its `dist/*.dmg` lookup from its own path when given a bare version
+  string — pass a full path instead of a version:
+  `DMG_PORT_CONF="$REPO_ROOT/scripts/dmg-port.conf" scripts/shared.sh deploy-dmg.sh <machine> "$REPO_ROOT/dist/Quake2-OldMac-<ver>.dmg"`.
+  Flagged to buildhost as a gap in the pin model itself (alephone#43); this is
+  the workaround until that lands.
 
 ```
-scripts/deploy-dmg.sh <machine> [version]
+DMG_PORT_CONF="$REPO_ROOT/scripts/dmg-port.conf" scripts/shared.sh deploy-dmg.sh <machine> [version]
 ```
 
 It checks the DMG signature, SDL2 companion and all six slices first, then

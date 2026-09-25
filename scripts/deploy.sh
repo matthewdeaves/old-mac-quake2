@@ -32,7 +32,7 @@ set -euo pipefail
 
 TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|mini-intel2|mini-sl|imac-2019|g5-panther|g5-tiger|g5-desktop|quad-tiger|quad-leopard>}"
 
-# Claim this machine for the whole run. See scripts/pick-bench-host.sh.
+# Claim this machine for the whole run. See scripts/shared.sh pick-bench-host.sh.
 #
 # Re-exec under the picker rather than acquire-here-and-trap: bash traps REPLACE
 # rather than compose, so a release trap installed at the top of a script that
@@ -50,10 +50,10 @@ TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|ima
 # to claim that one, and the emptiness test skipped it silently. Issue #19.
 # BENCH_NO_LOCK=1 skips the lock, for when the picker itself is what you are
 # debugging. It is not a way to get past a machine someone else is using.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared.sh"
 if [ "${RETRO_BENCH_LOCK:-}" != "$TARGET" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$TARGET"
-	exec "$_PICK" --run "$TARGET" "deploy" -- "$0" "$@"
+	exec "$_PICK" pick-bench-host.sh --run "$TARGET" "deploy" -- "$0" "$@"
 fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -396,7 +396,18 @@ verify_staged_file baseq2/game.so
 [ ! -f "$STAGE/q2ded" ] || verify_staged_file q2ded
 echo "[deploy] staged runtime binaries match the local build byte-for-byte"
 
-scp -pq "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$HOST:.q2-clear-launch-quarantine.sh"
+# clear-launch-quarantine.sh must exist as a real local file to scp onto the
+# target and run there -- scripts/shared.sh only fetches-and-execs locally, it
+# has no "just give me the path" mode. Warm its pin cache the same way
+# shared.sh would (any invocation populates the cache before shared.sh execs
+# it, so a deliberately-wrong arg count -- exit 2, usage message -- still
+# leaves the file behind), then scp the cached copy directly.
+"$REPO_ROOT/scripts/shared.sh" clear-launch-quarantine.sh >/dev/null 2>&1 || true
+CLQ_PIN="$(tr -d '[:space:]' < "$REPO_ROOT/shared-scripts.pin")"
+CLQ_BUILDHOST="${OLDMAC_BUILDHOST_REPO:-$REPO_ROOT/../old-mac-build-host}"
+CLQ_SHA="$(git -C "$CLQ_BUILDHOST" rev-parse --verify -q "${CLQ_PIN}^{commit}")"
+CLQ_LOCAL="${RETRO_SHARED_CACHE:-$HOME/.cache/retro-shared}/$CLQ_SHA/clear-launch-quarantine.sh"
+scp -pq "$CLQ_LOCAL" "$HOST:.q2-clear-launch-quarantine.sh"
 ssh "$HOST" "set -e
   STAGE='$REMOTE_STAGE'
   chmod +x \"\$STAGE/Quake2.app/Contents/MacOS/quake2\" 2>/dev/null

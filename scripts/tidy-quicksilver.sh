@@ -33,12 +33,12 @@ Q2DIR="${Q2DIR:-/Users/mini/Desktop/Quake 2}"
 # The DRY_RUN default does not make the claim optional. A dry run still sshes to
 # the box, and the point of the lock is that nobody else has to reason about
 # what our connection is doing there.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared.sh"
 # Compared against the target, not tested for emptiness: a step targeting a
 # DIFFERENT machine must still claim it. Issue #19.
 if [ "${RETRO_BENCH_LOCK:-}" != "$HOST" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$HOST"
-	exec "$_PICK" --run "$HOST" "tidy" -- "$0" "$@"
+	exec "$_PICK" pick-bench-host.sh --run "$HOST" "tidy" -- "$0" "$@"
 fi
 
 if [ "$DRY_RUN" = "1" ]; then

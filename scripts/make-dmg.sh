@@ -58,13 +58,13 @@ if [ -z "${DMG_HOST:-}" ]; then
   # and it graded on the wrong property: reachable is not free. It would happily
   # select a box another session was mid-bench on. Issue #18.
   for cand in quicksilver mini-g4; do
-    if [ "$("$REPO_ROOT/scripts/pick-bench-host.sh" --status "$cand" 2>/dev/null | awk 'NR>1{print $2}')" = free ]; then
+    if [ "$("$REPO_ROOT/scripts/shared.sh" pick-bench-host.sh --status "$cand" 2>/dev/null | awk 'NR>1{print $2}')" = free ]; then
       DMG_HOST="$cand"; break
     fi
   done
   if [ -z "${DMG_HOST:-}" ]; then
     echo "[make-dmg] no free Tiger G4 (quicksilver, mini-g4)" >&2
-    echo "[make-dmg] see: scripts/pick-bench-host.sh --status quicksilver mini-g4" >&2
+    echo "[make-dmg] see: scripts/shared.sh pick-bench-host.sh --status quicksilver mini-g4" >&2
     exit 1
   fi
   echo "[make-dmg] DMG_HOST not set — picker says free: $DMG_HOST"
@@ -80,12 +80,12 @@ fi
 # --status above is advisory and can go stale between the check and the claim.
 # That is fine: the claim below is the authority, and losing that race fails
 # loudly here rather than proceeding onto a machine someone else holds.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared.sh"
 # Compared against the target, not tested for emptiness: a step targeting a
 # DIFFERENT machine must still claim it. Issue #19.
 if [ "${RETRO_BENCH_LOCK:-}" != "$DMG_HOST" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$DMG_HOST" DMG_HOST
-	exec "$_PICK" --run "$DMG_HOST" "make-dmg" -- "$0" "$@"
+	exec "$_PICK" pick-bench-host.sh --run "$DMG_HOST" "make-dmg" -- "$0" "$@"
 fi
 VOLNAME="Quake2 OldMac $VERSION"
 OUT="$REPO_ROOT/dist/Quake2-OldMac-$VERSION.dmg"
@@ -218,7 +218,13 @@ cp "$BUILD_DIR/q2ded"          "$IMG/" 2>/dev/null || true
 # blocks it -- issue #34/#35 fixed the SSH path, this is the same fix for a
 # manual install. Runs from wherever the files actually ended up (README
 # says "copy EVERYTHING"), so it locates Quake2.app relative to ITSELF.
-cp "$REPO_ROOT/scripts/clear-launch-quarantine.sh" "$IMG/"
+# Real local file needed to ship inside the DMG, not to exec here -- same
+# pin-cache warm-then-locate as deploy.sh's scp of this same script.
+"$REPO_ROOT/scripts/shared.sh" clear-launch-quarantine.sh >/dev/null 2>&1 || true
+CLQ_PIN="$(tr -d '[:space:]' < "$REPO_ROOT/shared-scripts.pin")"
+CLQ_BUILDHOST="${OLDMAC_BUILDHOST_REPO:-$REPO_ROOT/../old-mac-build-host}"
+CLQ_SHA="$(git -C "$CLQ_BUILDHOST" rev-parse --verify -q "${CLQ_PIN}^{commit}")"
+cp "${RETRO_SHARED_CACHE:-$HOME/.cache/retro-shared}/$CLQ_SHA/clear-launch-quarantine.sh" "$IMG/"
 chmod +x "$IMG/clear-launch-quarantine.sh"
 cat > "$IMG/Fix and Install.command" <<'LAUNCHER'
 #!/bin/sh

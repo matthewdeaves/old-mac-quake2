@@ -44,7 +44,7 @@ set -euo pipefail
 
 TARGET="${1:?usage: $0 <target>}"
 
-# Claim this machine for the whole run. See scripts/pick-bench-host.sh.
+# Claim this machine for the whole run. See scripts/shared.sh pick-bench-host.sh.
 #
 # Re-exec under the picker rather than acquire-here-and-trap: bash traps REPLACE
 # rather than compose, so a release trap installed at the top of a script that
@@ -62,10 +62,10 @@ TARGET="${1:?usage: $0 <target>}"
 # to claim that one, and the emptiness test skipped it silently. Issue #19.
 # BENCH_NO_LOCK=1 skips the lock, for when the picker itself is what you are
 # debugging. It is not a way to get past a machine someone else is using.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared.sh"
 if [ "${RETRO_BENCH_LOCK:-}" != "$TARGET" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$TARGET"
-	exec "$_PICK" --run "$TARGET" "screenshot" -- "$0" "$@"
+	exec "$_PICK" pick-bench-host.sh --run "$TARGET" "screenshot" -- "$0" "$@"
 fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEMO="${DEMO:-demo1.dm2}"
@@ -167,7 +167,7 @@ echo "[screenshot]   cfg size: $LINES lines"
 scp -q "$STAGE_CFG" "$HOST:/Applications/Quake2/baseq2/autoshot.cfg"
 
 # A locked or shielded console captures black (old-mac-build-host#88).
-"$(dirname "$_PICK")/gui-precondition.sh" "$HOST" || exit 1
+"$_PICK" gui-precondition.sh "$HOST" || exit 1
 
 echo "[screenshot] launch quake2 → timedemo demo1.dm2 → capture series → quit"
 # Engine path auto-detect: fat deploys ship Quake2.app/Contents/MacOS/quake2;

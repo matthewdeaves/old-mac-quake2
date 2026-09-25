@@ -25,10 +25,10 @@ HOST="${1:?usage: $0 <machine> <address:port> [player-name]}"
 ADDR="${2:?usage: $0 <machine> <address:port> [player-name]}"
 
 # Claim the machine for the whole run; see smoke-dmg.sh for why this re-execs.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared.sh"
 if [ "${RETRO_BENCH_LOCK:-}" != "$HOST" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$HOST"
-	exec "$_PICK" --run "$HOST" "join-smoke" -- "$0" "$@"
+	exec "$_PICK" pick-bench-host.sh --run "$HOST" "join-smoke" -- "$0" "$@"
 fi
 
 # Quake II names are at most 15 characters.
@@ -64,9 +64,9 @@ if [ -n "$BUSY" ] && [ "${FORCE:-0}" != 1 ]; then
 fi
 
 if [ "$HOST" = workstation ]; then
-  "$(dirname "$_PICK")/gui-precondition.sh" || exit 1
+  "$_PICK" gui-precondition.sh || exit 1
 else
-  "$(dirname "$_PICK")/gui-precondition.sh" "$HOST" || exit 1
+  "$_PICK" gui-precondition.sh "$HOST" || exit 1
 fi
 
 INFO="$(host_exec '

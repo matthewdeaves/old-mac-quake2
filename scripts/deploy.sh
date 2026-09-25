@@ -32,7 +32,7 @@ set -euo pipefail
 
 TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|mini-intel2|mini-sl|imac-2019|g5-panther|g5-tiger|g5-desktop|quad-tiger|quad-leopard>}"
 
-# Claim this machine for the whole run. See scripts/shared.sh pick-bench-host.sh.
+# Claim this machine for the whole run. See scripts/pick-bench-host.sh.
 #
 # Re-exec under the picker rather than acquire-here-and-trap: bash traps REPLACE
 # rather than compose, so a release trap installed at the top of a script that
@@ -50,10 +50,10 @@ TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|ima
 # to claim that one, and the emptiness test skipped it silently. Issue #19.
 # BENCH_NO_LOCK=1 skips the lock, for when the picker itself is what you are
 # debugging. It is not a way to get past a machine someone else is using.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared.sh"
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
 if [ "${RETRO_BENCH_LOCK:-}" != "$TARGET" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$TARGET"
-	exec "$_PICK" pick-bench-host.sh --run "$TARGET" "deploy" -- "$0" "$@"
+	exec "$_PICK" --run "$TARGET" "deploy" -- "$0" "$@"
 fi
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 

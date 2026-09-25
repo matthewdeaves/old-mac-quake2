@@ -9,7 +9,7 @@ operational surface.
 
 ```sh
 scripts/bench.sh <machine> <demo> <WxH> [runs]   # deterministic measurement
-scripts/shared.sh smoke-dmg.sh <machine>         # production-config artifact test
+scripts/smoke-dmg.sh <machine>                   # production-config artifact test
 scripts/parallel-bench.sh [--quick]              # fleet grid
 scripts/bench-and-commit.sh "<label>" --quick    # lands official rows on a clean tree
 scripts/screenshot.sh <machine> …                # visual A/B
@@ -17,19 +17,21 @@ scripts/shared.sh bench-evidence.sh <machine> <round-label> [--requested k=v,...
 scripts/shared.sh bench-compare.sh --baseline B... --candidate C...                # verdict from bundles
 ```
 
-`pick-build-host.sh`, `pick-bench-host.sh`, `smoke-dmg.sh`, `bench-evidence.sh`,
-`bench-compare.sh`, `gui-precondition.sh` and `clear-launch-quarantine.sh` are
-fetched on demand through `scripts/shared.sh` (build-host#105's pin model) —
-see docs/BUILD.md.
+None of `pick-build-host.sh`, `pick-bench-host.sh`, `smoke-dmg.sh`,
+`bench-evidence.sh`, `bench-compare.sh`, `gui-precondition.sh` or
+`clear-launch-quarantine.sh` are real copies any more (build-host#105's pin
+model) — `pick-bench-host.sh` and `smoke-dmg.sh` are kept as thin shims at
+their old path (Jenkins invokes them by fixed path, build-host#119), so call
+them exactly as above; the rest have no such caller and go through
+`scripts/shared.sh <name>.sh [args...]` — see docs/BUILD.md.
 
 Machines: `yosemite`, `yosemite-tiger`, `sawtooth`, `quicksilver`, `mini-g4`,
 `imac-g5`, `mini-intel`, `imac-2019`.
 
 A smoke test is `scripts/bench.sh <machine> demo1 <WxH> 1`, or
-`scripts/shared.sh smoke-dmg.sh <machine>` for the shipped artifact (needs
-`DMG_PORT_CONF="$REPO_ROOT/scripts/dmg-port.conf"` — see docs/BUILD.md).
-`bench.sh` runs `+set timedemo 1 +demomap demo1.dm2`, polls `qconsole.log` for
-the `frames … seconds … fps` line, then kills.
+`scripts/smoke-dmg.sh <machine>` for the shipped artifact. `bench.sh` runs
+`+set timedemo 1 +demomap demo1.dm2`, polls `qconsole.log` for the `frames …
+seconds … fps` line, then kills.
 
 ## Safety rails the scripts enforce
 

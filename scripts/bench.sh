@@ -98,7 +98,7 @@ set -euo pipefail
 
 TARGET="${1:?usage: $0 <target> <demo> <WxH> [runs]}"
 
-# Claim this machine for the whole run. See scripts/shared.sh pick-bench-host.sh.
+# Claim this machine for the whole run. See scripts/pick-bench-host.sh.
 #
 # Re-exec under the picker rather than acquire-here-and-trap: bash traps REPLACE
 # rather than compose, so a release trap installed at the top of a script that
@@ -116,10 +116,10 @@ TARGET="${1:?usage: $0 <target> <demo> <WxH> [runs]}"
 # to claim that one, and the emptiness test skipped it silently. Issue #19.
 # BENCH_NO_LOCK=1 skips the lock, for when the picker itself is what you are
 # debugging. It is not a way to get past a machine someone else is using.
-_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shared.sh"
+_PICK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/pick-bench-host.sh"
 if [ "${RETRO_BENCH_LOCK:-}" != "$TARGET" ] && [ "${BENCH_NO_LOCK:-0}" != 1 ] && [ -x "$_PICK" ]; then
 	export RETRO_BENCH_LOCK="$TARGET"
-	exec "$_PICK" pick-bench-host.sh --run "$TARGET" "bench" -- "$0" "$@"
+	exec "$_PICK" --run "$TARGET" "bench" -- "$0" "$@"
 fi
 DEMO="${2:?demo (demo1|demo2|demo3)}"
 RES="${3:?resolution WxH}"
@@ -396,9 +396,9 @@ fi
 # A locked or shielded console makes a launched game run behind loginwindow and
 # capture black (old-mac-build-host#88). That is untested, not a measurement.
 if [ "$HOST" = workstation ]; then
-  "$_PICK" gui-precondition.sh || exit 1
+  "$(dirname "$_PICK")/shared.sh" gui-precondition.sh || exit 1
 else
-  "$_PICK" gui-precondition.sh "$HOST" || exit 1
+  "$(dirname "$_PICK")/shared.sh" gui-precondition.sh "$HOST" || exit 1
 fi
 
 declare -a FPS

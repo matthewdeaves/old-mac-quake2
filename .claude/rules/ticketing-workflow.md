@@ -7,25 +7,30 @@ covers all seven: <https://github.com/users/matthewdeaves/projects/8>.
 
 **Hardware is claimed, never assumed free.** The lock is a directory on the
 target, so it is shared with the build lock and visible to every repo, agent and
-workstation. Check `scripts/shared.sh pick-bench-host.sh --status` before
+workstation. Check `scripts/pick-bench-host.sh --status` before
 assuming a box is idle and NEVER work around a busy one.
 
 Neither picker is a copy in this repo any more (build-host#105's pin model,
 `shared-scripts.pin`, ADR 0007 in old-mac-build-host) — both are fetched
 on demand via `scripts/shared.sh <name>.sh [args...]` from a sibling
 `../old-mac-build-host` checkout (`OLDMAC_BUILDHOST_REPO` overrides).
+`pick-bench-host.sh` is still callable at this same path, though: it's a
+thin shim (`exec`s through `shared.sh`) kept in place because
+old-mac-build-host's generated Jenkins jobs invoke it by fixed path
+(build-host#119, halflife#49). `pick-build-host.sh` has no such caller and
+is genuinely gone — reach it as `scripts/shared.sh pick-build-host.sh ...`.
 
 Two pickers, and they claim differently. Seven scripts re-exec themselves under
-`shared.sh pick-bench-host.sh --run`, which ties the lock to the invocation so
-it is released however the run ends: `bench.sh`, `deploy.sh`, `deploy-dmg.sh`,
-`make-dmg.sh`, `screenshot.sh`, `smoke-dmg.sh`, `tidy-quicksilver.sh`.
-`build.sh` and `build-fat.sh` instead claim a build mini with
-`shared.sh pick-build-host.sh --acquire` and release on an EXIT trap, because
-that picker has no `--run` mode at all. `parallel-bench.sh` claims
-nothing itself; each leg is a `bench.sh` call that claims its own machine, and
-its reachability probe is left unclaimed on purpose. `build-arm64.sh` and
-`build-server-linux.sh` touch no fleet machine, running on the workstation and
-in Docker.
+`pick-bench-host.sh --run` (the shim above), which ties the lock to the
+invocation so it is released however the run ends: `bench.sh`, `deploy.sh`,
+`deploy-dmg.sh` (also a shim), `make-dmg.sh`, `screenshot.sh`, `smoke-dmg.sh`
+(also a shim), `tidy-quicksilver.sh`. `build.sh` and `build-fat.sh` instead
+claim a build mini with `scripts/shared.sh pick-build-host.sh --acquire` and
+release on an EXIT trap, because that picker has no `--run` mode at all.
+`parallel-bench.sh` claims nothing itself; each leg is a `bench.sh` call
+that claims its own machine, and its reachability probe is left unclaimed
+on purpose. `build-arm64.sh` and `build-server-linux.sh` touch no fleet
+machine, running on the workstation and in Docker.
 
 `BENCH_NO_LOCK=1` exists only for debugging the picker itself, and it is not an
 escape hatch for a busy machine. `pick-bench-host.sh --run` honours it and says

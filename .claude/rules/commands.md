@@ -1,42 +1,42 @@
 ## Commands
 
 ```sh
-scripts/shared.sh pick-build-host.sh --status    # which Intel mini is free
+scripts/shared.sh pick-build-host.sh --status    # which Intel mini is free (see below)
 scripts/build-fat.sh                             # g3→g4→g5→lion + lipo, one pinned host
 scripts/build.sh <g3|g4|g5|lion>                 # one slice, for fast iteration only
 scripts/deploy.sh <machine>                      # ships build/q2-fat
 scripts/make-dmg.sh                              # → dist/, hdiutil step on a TIGER box
-scripts/shared.sh deploy-dmg.sh <machine> [ver]  # install/update from the image; shared (#96), no rollback
-scripts/shared.sh smoke-dmg.sh <machine>         # production-config launch test; shared (#96)
+scripts/deploy-dmg.sh <machine> [ver]            # install/update from the image; shared (#96), no rollback
+scripts/smoke-dmg.sh <machine>                   # production-config launch test; shared (#96)
 scripts/bench.sh <machine> <demo> <WxH> [runs]
 scripts/check-frames.sh <machine> [--update]     # is the PICTURE still correct
 scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 container
 ```
 
-`BUILD_HOST=` pins a mini, `DMG_HOST=` the packaging box. `pick-build-host.sh`,
-`pick-bench-host.sh`, `deploy-dmg.sh`, `smoke-dmg.sh`, `bench-evidence.sh`,
-`bench-compare.sh`, `gui-precondition.sh` and `clear-launch-quarantine.sh` are
-fetched on demand via `scripts/shared.sh` (build-host#105's pin model,
-`shared-scripts.pin`) rather than kept as copies — see docs/BUILD.md for the
-`BENCH_ADAPTER`/`DMG_PORT_CONF` overrides two of them still need.
+`BUILD_HOST=` pins a mini, `DMG_HOST=` the packaging box. Since the #91/#105
+pin migration, none of `pick-build-host.sh`, `pick-bench-host.sh`,
+`deploy-dmg.sh`, `smoke-dmg.sh`, `bench-evidence.sh`, `bench-compare.sh`,
+`gui-precondition.sh` or `clear-launch-quarantine.sh` are copies any more —
+they're fetched on demand from `shared-scripts.pin`'s revision via
+`scripts/shared.sh <name>.sh [args...]`. **Three are kept as thin,
+path-stable shim files at their old path** (`pick-bench-host.sh`,
+`deploy-dmg.sh`, `smoke-dmg.sh` — each just `exec`s through `shared.sh`)
+because old-mac-build-host's generated Jenkins jobs invoke them by fixed
+path (build-host#119, halflife#49's fix for the gap this repo hit first) —
+call these three exactly as before, the indirection is invisible. The other
+five (`pick-build-host.sh`, `bench-evidence.sh`, `bench-compare.sh`,
+`gui-precondition.sh`, `clear-launch-quarantine.sh`) have no such caller and
+are genuinely gone — reach them with `scripts/shared.sh <name>.sh [args...]`
+(pick-build-host.sh --status: `scripts/shared.sh pick-build-host.sh
+--status`). See docs/BUILD.md for the `BENCH_ADAPTER`/`DMG_PORT_CONF`
+overrides two of them still need even from inside `shared.sh`.
 
 **Smoke and the imac-g5 bench run via Jenkins now, not by hand** (user
 policy 2026-08-23, `retro-agents/POLICY.md`): jobs
 `smoke-quake2-<machine>` (every smoke-capable node) and
 `bench-quake2-imac-g5` are proven equivalents of the scripts above (same
 scripts, same lock; `BENCH_CSV`/`BENCH_RAW_DIR` redirected so tracked
-results are untouched).
-
-**Known gap as of the #91 pin migration**: `jenkins/rebuild.sh`'s job
-generator (old-mac-build-host) still hardcodes
-`"$REPO/scripts/{pick-bench-host,pick-build-host,deploy-dmg,smoke-dmg}.sh"`
-for every port, not pin-aware. Flagged to buildhost; until it's fixed and
-`smoke-quake2-*`/`release-fanout-quake2` are regenerated, those two Jenkins
-jobs will fail on this repo (the files they call no longer exist here) —
-run the scripts directly instead (`scripts/shared.sh smoke-dmg.sh
-<machine>` per above), not via Jenkins, until the manager or buildhost says
-it's fixed. Manual-only jobs (no cron trigger), so nothing fires on its own
-in the meantime. Invoke:
+results are untouched). Invoke:
 
 ```sh
 ssh u25 'PW=$(cat ~/jenkins/home/secrets/initialAdminPassword); java -jar ~/jenkins/jenkins-cli.jar -s http://10.188.1.19:8080 -auth admin:$PW build smoke-quake2-<machine> -p FLEET_HOST=<machine> -s -v'

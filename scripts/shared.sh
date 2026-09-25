@@ -109,4 +109,15 @@ if [ ! -r "$DST" ]; then
 	mv -f "$TMP" "$DST"
 fi
 
+# build-host#119: pick-build-host.sh/pick-bench-host.sh derive REPO_NAME from
+# their own file's path to build their lock-owner identity (ME) -- correct
+# for a copied script, but exec'd from $DST above they'd see this cache
+# directory's basename ("retro-shared") instead of the real calling port,
+# colliding every migrated port's lock ownership together. We already know
+# the real caller here (REPO_ROOT, resolved from THIS wrapper's own path,
+# before the exec below); export it so those two scripts can prefer it over
+# their own path-derived guess. Every other script this wrapper runs ignores
+# an env var it doesn't read, so this is a no-op for them.
+export RETRO_SHARED_CALLER_REPO="$(basename "$REPO_ROOT")"
+
 exec "$DST" "$@"

@@ -195,6 +195,8 @@ if [ -n "$LPID" ]; then
 	printf '%s\t%s\n%s\t%s\n' "$(date +%s)" "$L1" "$(date +%s)" "$L2" > "$EVROOT/liveness.txt"
 	if [ -n "$L1" ] && [ "$L1" = "$L2" ]; then
 		REASONS+=("liveness counter did not advance ($L1 == $L2) -- paused, frozen or unfocused")
+	elif [ -z "$L1" ] && [ -z "$L2" ]; then
+		NOTCHECKED+=("liveness: bench_liveness returned no signal (adapter/install too old, or the game is not running yet)")
 	fi
 else
 	NOTCHECKED+=("liveness: bench_launch left no PID (synchronous adapter)")

@@ -2,7 +2,7 @@
 # Run a Q2 timedemo benchmark on a target machine.
 # Assumes the bundle is already deployed (scripts/deploy.sh first).
 #
-# usage: scripts/bench.sh <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|g5-tiger|g5-panther|g5-desktop|quad-tiger|quad-leopard|mini-intel|mini-intel2|mini-sl|imac-2019|workstation> <demo> <WxH> [runs]
+# usage: scripts/bench.sh <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|g5-tiger|g5-panther|g5-desktop|quad-tiger|quad-leopard|mini-intel|mini-intel2|mini-sl|imac-2019|workstation|qemu-tiger3d> <demo> <WxH> [runs]
 #   yosemite-tiger is the SAME Mac as yosemite on its 10.4 partition — one
 #   OS is booted at a time, so the two are never both live. Same for the
 #   three g5-* tower aliases (one PowerMac G5 Dual 2.7, one OS booted at a
@@ -230,6 +230,9 @@ case "$TARGET" in
   mini-sl)     HOST=mini-sl;     TIMEOUT=60;  COOLDOWN=1 ;;
   imac-2019)   HOST=imac-2019;   TIMEOUT=45;  COOLDOWN=1 ;;
   workstation) HOST=workstation; TIMEOUT=45;  COOLDOWN=1 ;;
+  # QemuMac's emulated G4 with an emulated Radeon 9700 PRO (the sister
+  # project's scripts/qemu-vm.sh starts it). Emulation is slow, hence 300s.
+  qemu-tiger3d) HOST=qemu-tiger3d; TIMEOUT=300; COOLDOWN=3 ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac
 
@@ -319,6 +322,7 @@ case "$TARGET" in
   mini-intel2) META_CPU="Core 2 Duo @ 1.83GHz";META_GPU="Intel GMA 950 64MB";         META_OS="10.7.5 Lion" ;;
   mini-sl)     META_CPU="Core 2 Duo @ 2.26GHz";META_GPU="NVIDIA GeForce 9400";        META_OS="10.6.8 Snow Leopard" ;;
   imac-2019)   META_CPU="i5-9600K @ 3.7GHz";   META_GPU="AMD Radeon Pro 580X 8GB";    META_OS="15.7 Sequoia" ;;
+  qemu-tiger3d) META_CPU="QEMU PPC 7400 (TCG)"; META_GPU="QEMU Radeon 9700 PRO 128MB"; META_OS="10.4.6 Tiger" ;;
   workstation)
     META_CPU="$(sysctl -n machdep.cpu.brand_string 2>/dev/null || sysctl -n hw.model 2>/dev/null || echo 'Apple Silicon')"
     META_GPU="$(system_profiler SPDisplaysDataType 2>/dev/null | awk -F': ' '/Chipset Model:/{print $2; exit}')"

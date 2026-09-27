@@ -37,6 +37,7 @@ builds from the same tree (see [`server/`](server/README.md)).
 | **mini-intel**, **mini-intel2** Macmini2,1 | Core 2 Duo / GMA 950 | 10.7.5 | `x86_64` |
 | **imac-2019** iMac19,1 | i5-9600K / Radeon Pro 580X | 15.7 | `x86_64` |
 | **Apple M5** MacBook Air | Apple M5 | 26 | `arm64` |
+| **qemu-tiger3d** [QemuMac](https://github.com/matthewdeaves/QemuMac) VM, PowerMac3,1 | emulated G4 / emulated Radeon 9700 PRO | 10.4.6 | `ppc7400` |
 
 `dyld` picks a slice by CPU alone. Every PowerPC slice is built for 10.3.9, so
 G3, G4 and G5 all run Panther through Leopard; a G4 on Panther is untested.

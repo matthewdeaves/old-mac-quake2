@@ -34,3 +34,6 @@ dist/
 # git-tracked; only this per-session bookkeeping is not).
 .claude/scheduled_tasks.lock
 .claude/settings.local.json
+
+# Codex CLI state
+.codex/

@@ -104,10 +104,22 @@ retexturing (50.6 → 50.15 fps; stencil stays off at −10%, #86); a CGL GPU ti
 gives unmapped Radeon 9500-X850 G5s the tower profile without bloom (148.7 fps,
 #87); per-class baseline, no class under its floor (#69).
 
+**v2.15.1** (2026-09-27), fix: `R_ApplyCapabilityTier()` never reset
+`gl_dynamic`/`gl_flashblend` on a capability-tier GPU mismatch, so a
+sawtooth-shaped real-hardware workaround (`gl_dynamic 0`, `gl_flashblend 1`)
+leaked onto qemu-tiger3d, which reports sawtooth's `hw.model` while emulating a
+different GPU (#99). No effect on real fielded hardware, which never hits the
+mismatch branch.
+
 ## Open
 
 - #69: per-class measurement for sawtooth, quicksilver and imac-g5 (off).
 - #25: sawtooth's four features (off).
+- #97: qemu-tiger3d's in-game `screenshot` command reads back solid black
+  (qemu#7, guest-side GPU emulation gap); host-side capture fix in progress.
+- #100: qemu-tiger3d shows magenta/purple corruption under real `gl_dynamic 1`
+  relighting — confirmed R300-emulation gap, not an engine bug, tracked as
+  qemu#15 on qemumac's side.
 - imac-2019: vsync caps at about 119 fps on a 60 Hz panel in desktop
   fullscreen; cause open (#69).
 - GL1 gamma correction: 5.11 has none on the GL path; SDL_SetGamma works.

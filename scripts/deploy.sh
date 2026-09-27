@@ -30,7 +30,7 @@
 
 set -euo pipefail
 
-TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|mini-intel2|mini-sl|imac-2019|g5-panther|g5-tiger|g5-desktop|quad-tiger|quad-leopard>}"
+TARGET="${1:?usage: $0 <yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|mini-intel2|mini-sl|imac-2019|g5-panther|g5-tiger|g5-desktop|quad-tiger|quad-leopard|qemu-tiger3d>}"
 
 # Claim this machine for the whole run. See scripts/pick-bench-host.sh.
 #
@@ -176,6 +176,21 @@ case "$TARGET" in
   quad-leopard)
     # Same G5 Quad, Leopard partition.
     HOST=quad-leopard
+    RSYNC_EXTRA=""
+    GAME_DATA_DIR='Desktop/Quake 2/baseq2'
+    ;;
+  qemu-tiger3d)
+    # QemuMac's emulated PowerMac3,1, Tiger 10.4.6 (build-host#120/#121,
+    # old-mac-quake2#96) — the ppc7400 iterative-dev target. Tiger rsync
+    # speaks protocol 29 natively (g5-tiger's own note above), and there is
+    # no legacy game-data install on a fresh VM, so this falls straight
+    # through to the .game-data/ canonical source like a brand-new box.
+    # NOTE: deploy-dmg.sh already has a release build at /Applications/Quake2
+    # on this VM (5e0efecc) — this script refuses an existing destination,
+    # so running it here would need that cleared first. Not run live against
+    # the shared VM while other sessions are mid-verification on it
+    # (old-mac-quake2#96); case added so the path exists when it's needed.
+    HOST=qemu-tiger3d
     RSYNC_EXTRA=""
     GAME_DATA_DIR='Desktop/Quake 2/baseq2'
     ;;

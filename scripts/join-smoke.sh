@@ -44,6 +44,9 @@ case "$HOST" in
                                       SPAWN_TIMEOUT=120; COOLDOWN=2 ;;
   mini-intel|mini-intel2|mini-sl)     SPAWN_TIMEOUT=90;  COOLDOWN=1 ;;
   imac-2019|workstation)              SPAWN_TIMEOUT=60;  COOLDOWN=1 ;;
+  # QemuMac's emulated G4, the slowest leg in bench.sh's own table
+  # (TIMEOUT=300, tied with yosemite) — same generous budget as yosemite.
+  qemu-tiger3d)                       SPAWN_TIMEOUT=240; COOLDOWN=5 ;;
   *) echo "unknown machine: $HOST" >&2; exit 2 ;;
 esac
 SPAWN_TIMEOUT="${JOIN_SPAWN_TIMEOUT:-$SPAWN_TIMEOUT}"

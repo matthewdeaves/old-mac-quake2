@@ -32,7 +32,7 @@ trap 'rm -f baseq2/vmshot.cfg' EXIT
 REMOTE
 SESSION_PID=$!
 CAPTURED=0
-for i in $(seq 1 150); do
+for _ in $(seq 1 150); do
     kill -0 "$SESSION_PID" 2>/dev/null || break
     if ssh "$HOST" 'grep -q VM_CAPTURE_READY ~/.yq2/baseq2/qconsole.log'; then
         scripts/shared.sh qemu-vm.sh screendump "$OUT"

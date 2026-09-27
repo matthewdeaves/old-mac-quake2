@@ -1,3 +1,8 @@
+---
+paths:
+  - "scripts/**"
+---
+
 ## Commands
 
 ```sh

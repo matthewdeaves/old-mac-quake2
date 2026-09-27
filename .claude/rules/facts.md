@@ -1,3 +1,9 @@
+---
+paths:
+  - "scripts/**"
+  - "yquake2/**"
+---
+
 ## Facts
 
 - **Six slices, graded by CPU subtype alone.** `ppc750` (G3, min 10.3),
@@ -63,13 +69,10 @@
   Frames are bit-identical across runs of one binary, so the noise floor is
   zero. References live in `tests/frames/`, NOT `docs/screenshots/`, which is a
   curated gallery that deletes frames for being ugly. Issue #26.
-- **Playability floors: G3 ≥ 20 fps, everything else (G4/G5/Intel-Lion/Apple
-  Silicon) ≥ 25 fps** (2026-09-25; was 35 for a few minutes the same day, was
-  ~40/60 before that — see `docs/adr/0009` for the history). **A floor is the
-  raw bench number** (`bench.sh` runs vsync off), not what a player sees with
-  vsync on — settled by the user, `old-mac-build-host#22`, 2026-08-23. Above
-  the floor, win frame rate by optimising code, not by switching a feature
-  off — a feature that keeps its class at or above the floor stays on.
+- **Playability floor numbers: see POLICY.md.** Here, only the non-obvious
+  part: **a floor is the raw bench number** (`bench.sh` runs vsync off), not
+  what a player sees with vsync on — settled by the user,
+  `old-mac-build-host#22`, 2026-08-23. Floor history: `docs/adr/0009`.
   `docs/adr/0009`
 - **Every per-machine default is an A/B on that machine**, never inferred from
   GPU class. `docs/adr/0010`

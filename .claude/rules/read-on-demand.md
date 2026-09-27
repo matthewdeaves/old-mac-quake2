@@ -1,3 +1,8 @@
+---
+paths:
+  - "docs/**"
+---
+
 ## Read on demand
 
 - `README.md`, public overview: fleet, framerates, install

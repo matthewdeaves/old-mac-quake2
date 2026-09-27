@@ -1,3 +1,9 @@
+---
+paths:
+  - "scripts/**"
+  - "docs/**"
+---
+
 ## Machines
 
 | Machine | CPU | GPU | OS | Slice |

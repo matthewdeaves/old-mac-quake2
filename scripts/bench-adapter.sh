@@ -28,6 +28,23 @@ INSTALL_BIN='/Applications/Quake2/Quake2.app/Contents/MacOS/quake2'
 
 BENCH_DEMO="${BENCH_DEMO:-demo1}"
 
+# ref_gl.so ships OUTSIDE the app bundle, next to the quake2 binary in the
+# same build/DMG-extract directory as BENCH_ARTEFACT (build.sh, make-dmg.sh:
+# both always place them side by side). Declaring it here closes
+# old-mac-build-host#131: a test-swapped renderer used to read fully VALID
+# because only INSTALL_BIN was ever hashed (qemu#15/QemuMac#19 confounded a
+# re-bench this way). BENCH_ARTEFACT is exported by whoever calls
+# bench-evidence.sh, so it's already in this adapter's environment -- no
+# extra plumbing needed. Left unset when BENCH_ARTEFACT isn't (matches
+# bench-evidence.sh's own existing INVALID-for-missing-BENCH_ARTEFACT check,
+# so this never needs a second "unset" reason of its own).
+if [ -n "${BENCH_ARTEFACT:-}" ]; then
+	# shellcheck disable=SC2034  # read by bench-evidence.sh after sourcing
+	EXTRA_ARTEFACT_LOCAL=("$(dirname "$BENCH_ARTEFACT")/ref_gl.so")
+	# shellcheck disable=SC2034  # read by bench-evidence.sh after sourcing
+	EXTRA_ARTEFACT_REMOTE=('/Applications/Quake2/ref_gl.so')
+fi
+
 # Resolution is never guessed here, for the same reason as quake3's adapter
 # (docs/adr/0008): bench.sh itself REFUSES a non-native fullscreen switch on
 # imac-g5 (the R300/Leopard hard-hang hazard), so this adapter does not add a

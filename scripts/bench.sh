@@ -230,8 +230,9 @@ case "$TARGET" in
   mini-sl)     HOST=mini-sl;     TIMEOUT=60;  COOLDOWN=1 ;;
   imac-2019)   HOST=imac-2019;   TIMEOUT=45;  COOLDOWN=1 ;;
   workstation) HOST=workstation; TIMEOUT=45;  COOLDOWN=1 ;;
-  # QemuMac's emulated G4 with an emulated Radeon 9700 PRO (the sister
-  # project's scripts/qemu-vm.sh starts it). Emulation is slow, hence 300s.
+  # QemuMac's emulated G4 with an emulated Radeon 9700 PRO (`scripts/shared.sh
+  # qemu-vm.sh up` starts it, old-mac-build-host#120's shared copy — no
+  # longer the sister repo's own). Emulation is slow, hence 300s.
   qemu-tiger3d) HOST=qemu-tiger3d; TIMEOUT=300; COOLDOWN=3 ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac

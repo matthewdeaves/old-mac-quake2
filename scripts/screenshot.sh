@@ -82,7 +82,7 @@ fi
 
 case "$TARGET" in
   yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|imac-g5|mini-intel|imac-2019| \
-  g5-desktop|g5-panther|g5-tiger|quad-leopard|quad-tiger|mini-sl|mini-intel2) HOST="$TARGET" ;;
+  g5-desktop|g5-panther|g5-tiger|quad-leopard|quad-tiger|mini-sl|mini-intel2|qemu-tiger3d) HOST="$TARGET" ;;
   *) echo "unknown target: $TARGET" >&2; exit 2 ;;
 esac
 
@@ -101,6 +101,16 @@ SS_FS=1; SS_DFS=1; SS_W=1024; SS_H=768
 case "$TARGET" in
   yosemite|yosemite-tiger|sawtooth|quicksilver|mini-g4|mini-intel|imac-2019)
     # Rage 128, GeForce2 MX, Radeon 9000/9200, Intel GMA950, AMD — none R300.
+    SS_DFS=0
+    ;;
+  qemu-tiger3d)
+    # QemuMac's emulated Radeon 9700 IS R300-family, but this is a VM: a hang
+    # costs a VM restart, not a physical power-button trip, and the switch
+    # path is already proven here — bench.sh launches it directly (no
+    # desktopfullscreen) and it plays demo1 1024x768 correctly (5e0efecc).
+    # The opposite is what actually broke: the "safe" no-switch native-mode
+    # path this case skips captured 10 byte-identical 99-byte black PNGs on
+    # this target (old-mac-quake2#96) -- untested/broken, not a real frame.
     SS_DFS=0
     ;;
   *)

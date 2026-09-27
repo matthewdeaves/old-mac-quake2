@@ -1343,9 +1343,12 @@ R_ApplyShadowDefaults(const char *renderer)
  * 1 = no per-machine overlay ran, 2 = one did and declared the GPU it was
  * measured on in q2_overlay_gpu (a lowercase GL_RENDERER substring). A
  * matching overlay keeps its hand-benched values. A mismatch (swapped card,
- * a model number shared by several GPUs) means those values were never
- * measured here, so the fill-heavy extras go off and the cheap per-frame
- * effects follow the GPU family, as on unmapped hardware. Draw-time cvars
+ * a model number shared by several GPUs, or a VM reporting a real Mac's
+ * hw.model over different hardware entirely — issue #99) means those values
+ * were never measured here, so the fill-heavy extras go off, dynamic lights
+ * go back to real per-surface relight instead of a possibly-unrelated
+ * billboard-halo fallback, and the cheap per-frame effects follow the GPU
+ * family, as on unmapped hardware. Draw-time cvars
  * only: never a video-mode cvar, which would reload the refresh DLL (fatal
  * on the Rage 128, misc.c). Cleared after use so an in-session vid_restart
  * does not re-clobber a value the player changed at the console. */
@@ -1377,6 +1380,20 @@ R_ApplyCapabilityTier(const char *renderer)
 			expect[0] ? expect : "(undeclared)", renderer);
 		ri.Cvar_Set("gl_bloom", "0");
 		ri.Cvar_Set("gl_stencilshadow", "0");
+		/* An overlay's gl_dynamic/gl_flashblend pair is measured evidence
+		 * about ONE specific machine, not a GPU-family fact — sawtooth's
+		 * gl_dynamic 0 + gl_flashblend 1 exists because its 500 MHz G4 CPU
+		 * is too slow to rebuild lightmaps every frame (MISTAKES.md), a
+		 * cost that has nothing to do with which GPU is plugged into it.
+		 * A mismatch means we no longer know that CPU's identity either
+		 * (issue #99: qemu-tiger3d reports sawtooth's hw.model but is an
+		 * emulated machine with a different CPU and GPU entirely), so keep
+		 * the crude billboard hack from leaking onto hardware it was never
+		 * measured on. Reset to the engine's own registered defaults (real
+		 * per-surface relight); anything that still can't afford it needs
+		 * its own measured overlay, the same as every other mapped box. */
+		ri.Cvar_Set("gl_dynamic", "1");
+		ri.Cvar_Set("gl_flashblend", "0");
 	}
 
 	/* Family evidence: Radeon 9000/9200/9600 measured ~free for all three

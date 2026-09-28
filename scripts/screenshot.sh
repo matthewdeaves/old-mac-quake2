@@ -120,7 +120,12 @@ esac
 
 # Where the PNGs land. Defaults to the docs set that README.md and index.html
 # link. scripts/check-frames.sh points this at a temp dir so a verification
-# capture never touches the committed images.
+# capture never touches the committed images. A peer running this port's
+# bench through old-mac-build-host's shared evidence pipeline
+# (bench-evidence.sh, build-host#135) exports BENCH_OUT_DIR instead, so a
+# screenshot pass driven that way lands there rather than in this repo's
+# tracked docs/screenshots/ (SHOT_DIR itself still wins when set explicitly).
+SHOT_DIR="${SHOT_DIR:-${BENCH_OUT_DIR:+$BENCH_OUT_DIR/screenshots}}"
 SHOT_DIR="${SHOT_DIR:-$REPO_ROOT/docs/screenshots}"
 
 # The docs set is ALSO the reference the visual check compares against, so

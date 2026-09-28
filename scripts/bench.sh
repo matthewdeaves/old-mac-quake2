@@ -50,6 +50,13 @@
 #   BENCH_RAW_DIR override the raw qconsole.log directory. Default
 #                benchmarks/raw/ is ALSO git-tracked (old-mac-build-host#28);
 #                redirect this alongside BENCH_CSV, not just the CSV alone.
+#   BENCH_OUT_DIR fallback base for both of the above when BENCH_CSV/
+#                BENCH_RAW_DIR are themselves unset (old-mac-build-host#135):
+#                bench-evidence.sh exports this for a peer running this
+#                port's bench through its shared evidence pipeline, so that
+#                run's output never lands in this repo's tracked tree.
+#                Explicit BENCH_CSV/BENCH_RAW_DIR still win when both are
+#                set; only unset dimensions fall back to BENCH_OUT_DIR.
 #   BENCH_DESKTOP_FULLSCREEN 0 or 1; overrides vid_desktopfullscreen for
 #                non-R300 targets. Use 1 when measuring the shipped same-mode
 #                fullscreen path. The iMac G5 safety rail remains authoritative.
@@ -290,8 +297,10 @@ TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 # point BOTH at a gitignored path instead — old-mac-build-host#28 caught
 # BENCH_CSV alone still leaving qconsole.log copies in the tracked
 # benchmarks/raw/.
-RAW_DIR="${BENCH_RAW_DIR:-$REPO_ROOT/benchmarks/raw}"
-CSV="${BENCH_CSV:-$REPO_ROOT/benchmarks/results.csv}"
+RAW_DIR="${BENCH_RAW_DIR:-${BENCH_OUT_DIR:+$BENCH_OUT_DIR/raw}}"
+RAW_DIR="${RAW_DIR:-$REPO_ROOT/benchmarks/raw}"
+CSV="${BENCH_CSV:-${BENCH_OUT_DIR:+$BENCH_OUT_DIR/results.csv}}"
+CSV="${CSV:-$REPO_ROOT/benchmarks/results.csv}"
 mkdir -p "$RAW_DIR" "$(dirname "$CSV")"
 
 # Per-machine hardware/OS metadata. Hardcoded rather than detected on

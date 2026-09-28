@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # q2-launch.sh - source me. The one way this repo starts the engine on a fleet
 # host: through the shared launch-game.sh (build-host#147, our #108), which
 # refuses while ANY game is already running there, arms a guest-side watchdog,

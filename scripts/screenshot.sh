@@ -164,8 +164,8 @@ TMPD=$(mktemp -d)
 # and never reassigned, so both spellings behave identically here, and baking
 # the literal path in means an rm -rf trap cannot be redirected by a later
 # reassignment. Issue #22.
-# shellcheck disable=SC2064
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/q2-launch.sh"
+# shellcheck disable=SC2064
 trap "q2_stop '$HOST' >/dev/null 2>&1 || true; rm -rf '$STAGE_CFG' '$TMPD'" EXIT
 
 {

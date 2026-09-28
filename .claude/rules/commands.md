@@ -14,6 +14,7 @@ scripts/make-dmg.sh                              # → dist/, hdiutil step on a 
 scripts/deploy-dmg.sh <machine> [ver]            # install/update from the image; shared (#96), no rollback
 scripts/smoke-dmg.sh <machine>                   # production-config launch test; shared (#96)
 scripts/bench.sh <machine> <demo> <WxH> [runs]
+# every engine start/stop (bench, screenshot, join-smoke, vm-frame-check) goes through scripts/q2-launch.sh -> shared launch-game.sh (one game per host)
 scripts/check-frames.sh <machine> [--update]     # is the PICTURE still correct
 scripts/build-server-linux.sh [--arch aarch64]   # Linux q2ded, in a Debian 11 container
 ```

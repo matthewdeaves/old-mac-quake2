@@ -448,7 +448,7 @@ for i in $(seq 1 $RUNS); do
       sleep 1; j=\$((j+1))
     done
     true" 2>&1 | grep -v "^$" | tail -3 || true
-  q2_stop "$HOST" || { echo "[bench $TARGET] engine ignored TERM on $HOST; NOT sending KILL, quit it by hand" >&2; exit 1; }
+  q2_stop "$HOST" || { echo "[bench $TARGET] engine could not be stopped on $HOST, quit it by hand" >&2; exit 1; }
   # Post-run cooldown: gives the GPU driver time to restore display state.
   # Critical on yosemite where the Rage 128 LUT can hang the machine if the
   # next run starts before the driver settles.

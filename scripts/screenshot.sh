@@ -220,7 +220,7 @@ ssh "$HOST" "j=0
   done
   sleep 2
   ls ~/.yq2/baseq2/scrnshot/ 2>&1 | head -15"
-q2_stop "$HOST" || { echo "[screenshot] engine ignored TERM on $HOST; NOT sending KILL, quit it by hand" >&2; exit 1; }
+q2_stop "$HOST" || { echo "[screenshot] engine could not be stopped on $HOST, quit it by hand" >&2; exit 1; }
 
 echo "[screenshot] fetch TGAs"
 scp -q "$HOST:.yq2/baseq2/scrnshot/quake0*.tga" "$TMPD/" || true

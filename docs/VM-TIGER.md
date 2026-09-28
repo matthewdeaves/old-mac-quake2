@@ -13,9 +13,12 @@ GUI process runs. Inspect the resulting image for rendering faults.
 
 This is separate from `check-frames.sh`: a wall-clock host capture is not a
 replacement for its deterministic guest-frame comparisons. Guest screenshot
-readback remains tracked in matthewdeaves/qemu#7 and this repo's #97. Do not
-replace the reference image set with black guest screenshots or claim that an
-FPS pass proves visual correctness.
+readback was broken on this target (matthewdeaves/qemu#7, this repo's #97)
+but is fixed upstream as of qemu#7 (b60a6d9936+, QemuMac#20 step 4) —
+`screenshot.sh`/`check-frames.sh` now use the same frame-exact in-engine
+`screenshot` path here as every other machine (#105). Do not replace the
+reference image set with black guest screenshots or claim that an FPS pass
+proves visual correctness.
 
 Validated on 2026-09-27: the helper captured visible `demo1.dm2` gameplay at
 1024x768, including world textures, viewmodel and HUD, then logged a normal

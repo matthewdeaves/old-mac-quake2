@@ -113,10 +113,8 @@ mismatch branch.
 
 ## Open
 
-- #69: per-class measurement for sawtooth, quicksilver and imac-g5 (off).
+- #69: per-class measurement for sawtooth (off); quicksilver and imac-g5 done.
 - #25: sawtooth's four features (off).
-- #97: qemu-tiger3d's in-game `screenshot` command reads back solid black
-  (qemu#7, guest-side GPU emulation gap); host-side capture fix in progress.
 - #100: qemu-tiger3d shows magenta/purple corruption under real `gl_dynamic 1`
   relighting — confirmed R300-emulation gap, not an engine bug, tracked as
   qemu#15 on qemumac's side.

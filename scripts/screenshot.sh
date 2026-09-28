@@ -140,137 +140,14 @@ fi
 
 mkdir -p "$SHOT_DIR"
 
-# qemu-tiger3d: the in-game `screenshot` command's guest-side glReadPixels
-# comes back solid black on this emulated R300 (qemu#7, old-mac-quake2#97) --
-# live rendering and bench.sh's timedemo fps are both fine, only the TGA
-# readback is broken. buildhost's own fix for the equivalent bench-evidence.sh
-# gap (build-host#123) is host-side: `qemu-vm.sh screendump` reads the
-# emulated framebuffer straight off QEMU's HMP monitor socket, bypassing the
-# guest entirely. That capability is explicitly NOT wired into screenshot.sh
-# from buildhost's side ("port's own tree... will mail the five ports once
-# useful") -- this is that wiring, this port's own.
-#
-# This can't reuse the generic autoshot.cfg path below: that stages all 10
-# `screenshot` console commands as one continuous in-guest command chain under
-# `timedemo 1` (frames advance as fast as the engine can process commands, no
-# real-time pacing), whereas `qemu-vm.sh screendump` is triggered from OUTSIDE
-# the guest over ssh, so it needs the demo actually paced in real time
-# (`timedemo 0` + a capped `cl_maxfps`) to leave a big enough real-world
-# window around each marker for the ssh-poll-then-screendump round trip to
-# land before playback moves on. vm-frame-check.sh already proved this same
-# echo-marker-into-qconsole.log-then-external-screendump primitive works for
-# one frame; this is the same idea spread across 10.
-#
-# HONEST LIMIT, unlike the generic path: capture timing here depends on
-# workstation-side ssh/poll latency, not in-guest frame-exact scheduling, so
-# these frames do NOT carry check-frames.sh's normal bit-identical-across-runs
-# guarantee (its own header comment). Expect some non-zero run-to-run RMSE
-# noise specific to this target -- if that turns out to exceed the shared
-# 0.04 threshold in practice, this target needs its own threshold or a
-# coarser comparison, decided from measured noise, not guessed here.
-if [ "$HOST" = qemu-tiger3d ]; then
-  echo "[screenshot $TARGET] qemu-tiger3d: host-side qemu-vm.sh screendump capture (qemu#7 workaround)"
-  "$(dirname "$_PICK")/shared.sh" gui-precondition.sh "$HOST" || exit 1
-
-  QNUM_SHOTS=10
-  QINITIAL_GAP=900  # frames before the FIRST marker (~15s) -- boot + demo
-                     # precache + plaque clear settle, same idea as the
-                     # generic path's INITIAL_WAITS but measured empirically
-                     # for real-time (not timedemo) playback on this VM. The
-                     # loading/connect screen renders unthrottled (cl_maxfps
-                     # doesn't gate it), so it burns through hundreds of
-                     # `wait` frames in well under a second of real time --
-                     # 300 still caught shots 00 AND 01 in boot console text
-                     # (live-tested 2026-09-28); 900 is the next empirical step.
-  QMARKER_GAP=180   # frames between markers at cl_maxfps 60 below (~3s real time)
-  QBUFFER_WAITS=3600 # idle frames held after the LAST marker (~60s) -- a
-                     # generous safety net only, NOT what actually ends the
-                     # run: an in-cfg fixed-frame `quit` races the host-side
-                     # screendump for the last marker (its ssh+convert round
-                     # trip has no fixed duration), and any value here is a
-                     # guess at that race, not a fix for it. 120 then 600
-                     # both measured too tight and still came back solid
-                     # black some runs. The host now sends its own
-                     # killall -TERM once it has confirmed the last
-                     # screendump on disk (below); this wait count only
-                     # covers the case where that explicit kill is somehow
-                     # missed.
-
-  ssh "$HOST" 'mkdir -p ~/.yq2/baseq2; : > ~/.yq2/baseq2/qconsole.log'
-
-  QCFG=$(mktemp)
-  trap 'rm -f "$QCFG"' EXIT
-  {
-    for _ in $(seq 1 $QINITIAL_GAP); do echo wait; done
-    echo 'echo VM_SHOT_00'
-    n=1
-    while [ $n -lt $QNUM_SHOTS ]; do
-      for _ in $(seq 1 $QMARKER_GAP); do echo wait; done
-      printf 'echo VM_SHOT_%02d\n' "$n"
-      n=$((n+1))
-    done
-    for _ in $(seq 1 $QBUFFER_WAITS); do echo wait; done
-    echo quit
-  } > "$QCFG"
-  scp -q "$QCFG" "$HOST:/Applications/Quake2/baseq2/vmshot.cfg"
-
-  ssh "$HOST" "cd /Applications/Quake2
-    killall -TERM quake2 2>/dev/null && sleep 2 || true
-    killall -KILL quake2 2>/dev/null || true
-    sleep 1
-    if [ -x ./Quake2.app/Contents/MacOS/quake2 ]; then
-      ENGINE=./Quake2.app/Contents/MacOS/quake2
-    else
-      ENGINE=./quake2
-    fi
-    \$ENGINE -nolauncher \\
-      +set vid_fullscreen 1 +set vid_desktopfullscreen 0 \\
-      +set gl_mode -1 +set gl_customwidth $SS_W +set gl_customheight $SS_H \\
-      +set s_initsound 0 +set scr_centertime 0 +set logfile 2 \\
-      +set timedemo 0 +set cl_maxfps 60 \\
-      ${EXTRA:-} \\
-      +demomap $DEMO +exec vmshot.cfg" &
-  SESSION_PID=$!
-
-  rm -f "$SHOT_DIR/${OUT_TAG}-"[0-9][0-9].png
-  n=0
-  while [ $n -lt $QNUM_SHOTS ]; do
-    marker=$(printf 'VM_SHOT_%02d' "$n")
-    found=0
-    for _ in $(seq 1 60); do
-      kill -0 "$SESSION_PID" 2>/dev/null || break
-      if ssh "$HOST" "grep -q $marker ~/.yq2/baseq2/qconsole.log" 2>/dev/null; then
-        found=1; break
-      fi
-      sleep 1
-    done
-    if [ "$found" = 1 ]; then
-      "$REPO_ROOT/scripts/shared.sh" qemu-vm.sh screendump "$SHOT_DIR/${OUT_TAG}-$(printf '%02d' "$n").png"
-    else
-      echo "[screenshot $TARGET] WARNING: marker $marker never appeared" >&2
-    fi
-    n=$((n+1))
-  done
-  # The last screendump is on disk now (or the marker never appeared and we
-  # gave up on it) -- end the run ourselves instead of racing the cfg's own
-  # fixed-frame quit against that capture.
-  ssh "$HOST" 'killall -TERM quake2 2>/dev/null' || true
-  wait "$SESSION_PID" || true
-  ssh "$HOST" 'rm -f /Applications/Quake2/baseq2/vmshot.cfg' 2>/dev/null || true
-
-  GOT=$(ls "$SHOT_DIR/${OUT_TAG}-"[0-9][0-9].png 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$GOT" -eq 0 ]; then
-    echo "[screenshot] no frames captured on $HOST" >&2
-    exit 1
-  fi
-  if [ "$DEMO_BASE" = "demo1" ]; then
-    HERO="$SHOT_DIR/${TARGET}-06.png"
-    [ -f "$HERO" ] && cp "$HERO" "$SHOT_DIR/${TARGET}.png"
-  fi
-  echo "[screenshot] OK — $GOT PNGs (qemu-tiger3d host-side capture)"
-  ls -la "$SHOT_DIR/${OUT_TAG}"*.png 2>&1 | head -15
-  exit 0
-fi
+# qemu-tiger3d used to need a host-side qemu-vm.sh screendump workaround here
+# (#97, #105): the in-game `screenshot` command's guest-side glReadPixels came
+# back solid black on this emulated R300 (qemu#7), even though live rendering
+# and bench.sh's timedemo fps were both fine. qemu#7 is fixed upstream
+# (b60a6d9936+, QemuMac#20 step 4) as of 2026-09-28 -- in-engine `screenshot`
+# reads back correctly here now, so this target uses the same frame-exact
+# generic path below as every other machine, with the same bit-identical
+# guarantee (no more wall-clock/ssh-timing capture noise, measured in #105).
 
 # Schedule: 10 shots evenly spread across the first ~635 demo frames of
 # demo1.dm2 (which is 689 frames end-to-end). With timedemo 1 each wait

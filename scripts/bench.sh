@@ -264,7 +264,7 @@ host_fetch () {
 }
 host_game_processes () {
   host_exec '
-    ps ax -o pid=,ucomm= 2>/dev/null | while IFS= read -r line; do
+    ps ax -o pid,ucomm 2>/dev/null | sed 1d | while IFS= read -r line; do
       pid=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*//; s/[[:space:]].*$//")
       exe=$(printf "%s\n" "$line" | sed "s/^[[:space:]]*[0-9][0-9]*[[:space:]]*//; s/[[:space:]]*$//")
       base=${exe##*/}

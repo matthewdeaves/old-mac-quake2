@@ -165,7 +165,8 @@ TMPD=$(mktemp -d)
 # the literal path in means an rm -rf trap cannot be redirected by a later
 # reassignment. Issue #22.
 # shellcheck disable=SC2064
-trap "rm -rf '$STAGE_CFG' '$TMPD'" EXIT
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/q2-launch.sh"
+trap "q2_stop '$HOST' >/dev/null 2>&1 || true; rm -rf '$STAGE_CFG' '$TMPD'" EXIT
 
 {
   # First settle window
@@ -194,45 +195,32 @@ scp -q "$STAGE_CFG" "$HOST:/Applications/Quake2/baseq2/autoshot.cfg"
 "$(dirname "$_PICK")/shared.sh" gui-precondition.sh "$HOST" || exit 1
 
 echo "[screenshot] launch quake2 → timedemo demo1.dm2 → capture series → quit"
-# Engine path auto-detect: fat deploys ship Quake2.app/Contents/MacOS/quake2;
-# per-target deploys ship a flat ./quake2 next to the binary. Both are
-# invoked with CWD = /Applications/Quake2/ so basedir=. picks up ref_gl.so and
-# baseq2/ in the parent directory either way.
-ssh "$HOST" "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
-  killall -KILL quake2 2>/dev/null || true
-  sleep 1
-  cd /Applications/Quake2
-  rm -f ~/.yq2/baseq2/scrnshot/quake*.tga
-  rm -f ~/.yq2/baseq2/qconsole.log
-  if [ -x ./Quake2.app/Contents/MacOS/quake2 ]; then
-    ENGINE=./Quake2.app/Contents/MacOS/quake2
-  else
-    ENGINE=./quake2
-  fi
-  \$ENGINE -nolauncher \\
-    +set vid_fullscreen $SS_FS +set vid_desktopfullscreen $SS_DFS \\
-    +set gl_mode -1 +set gl_customwidth $SS_W +set gl_customheight $SS_H \\
-    +set s_initsound 0 \\
-    +set scr_centertime 0 \\
-    +set deathmatch 0 +set coop 0 \\
-    +set logfile 2 \\
-    +set timedemo 1 \\
-    ${EXTRA:-} \\
-    +demomap $DEMO +exec autoshot.cfg > /dev/null 2>&1 &
-  PID=\$!
-  # Wait for engine to produce the last shot, exit, or time out.
-  # G3 at ~15 fps × 600 frames = ~40 sec; 180 sec is a safe ceiling.
-  j=0
+# Launch through the shared launch-game.sh (#108); q2-launch.sh resolves the
+# engine path (fat app vs flat ./quake2) and CWD=/Applications/Quake2.
+q2_pretidy "$HOST" || true
+ssh "$HOST" "rm -f ~/.yq2/baseq2/scrnshot/quake*.tga ~/.yq2/baseq2/qconsole.log"
+# shellcheck disable=SC2086 # EXTRA is a space-separated cvar list on purpose
+q2_launch "$HOST" 300 -nolauncher \
+  +set vid_fullscreen "$SS_FS" +set vid_desktopfullscreen "$SS_DFS" \
+  +set gl_mode -1 +set gl_customwidth "$SS_W" +set gl_customheight "$SS_H" \
+  +set s_initsound 0 \
+  +set scr_centertime 0 \
+  +set deathmatch 0 +set coop 0 \
+  +set logfile 2 \
+  +set timedemo 1 \
+  ${EXTRA:-} \
+  +demomap "$DEMO" +exec autoshot.cfg || { echo "[screenshot] launch refused or failed on $HOST" >&2; exit 1; }
+# Wait for engine to produce the last shot, exit, or time out.
+# G3 at ~15 fps × 600 frames = ~40 sec; 180 sec is a safe ceiling.
+ssh "$HOST" "j=0
   while [ \$j -lt 180 ]; do
     if [ -f ~/.yq2/baseq2/scrnshot/quake0$((NUM_SHOTS - 1)).tga ]; then break; fi
-    if ! kill -0 \$PID 2>/dev/null; then break; fi
+    if ! kill -0 $Q2_PID 2>/dev/null; then break; fi
     sleep 1; j=\$((j+1))
   done
   sleep 2
-  killall -TERM quake2 2>/dev/null
-  sleep 2
-  killall -KILL quake2 2>/dev/null
   ls ~/.yq2/baseq2/scrnshot/ 2>&1 | head -15"
+q2_stop "$HOST" || { echo "[screenshot] engine ignored TERM on $HOST; NOT sending KILL, quit it by hand" >&2; exit 1; }
 
 echo "[screenshot] fetch TGAs"
 scp -q "$HOST:.yq2/baseq2/scrnshot/quake0*.tga" "$TMPD/" || true

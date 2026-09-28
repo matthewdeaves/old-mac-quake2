@@ -84,16 +84,19 @@ echo "[join $HOST] name=$NAME hold=${HOLD}s spawn-timeout=${SPAWN_TIMEOUT}s"
 # The remote loop prints markers; this side stamps them as they arrive.
 START_UTC="$(utc)"
 echo "[join $HOST] $START_UTC launch"
+# Launch through the shared launch-game.sh (#108): refuses while any game is
+# already up on the host, TERM-only stop. Names/addresses must not contain
+# quotes (launch-game.sh wraps the command in single quotes on the guest).
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/q2-launch.sh"
+trap 'q2_stop "$HOST" >/dev/null 2>&1 || true' EXIT INT TERM
+q2_pretidy "$HOST" || true
+host_exec "mv -f ~/.yq2/baseq2/qconsole.log ~/.yq2/baseq2/qconsole.prev.log 2>/dev/null || true; test -d /Applications/Quake2 || exit 9"
+q2_launch "$HOST" $((SPAWN_TIMEOUT + HOLD + 120)) -nolauncher +set logfile 2 +set s_initsound 0 \
+  +set name "$NAME" +connect "$ADDR" || { echo "[join $HOST] launch refused or failed" >&2; exit 9; }
+{
 host_exec "
-  if killall -TERM quake2 2>/dev/null; then sleep 2; fi
-  killall -KILL quake2 2>/dev/null || true
-  sleep 1
-  cd /Applications/Quake2 || exit 9
-  mv -f ~/.yq2/baseq2/qconsole.log ~/.yq2/baseq2/qconsole.prev.log 2>/dev/null || true
-  ./Quake2.app/Contents/MacOS/quake2 -nolauncher +set logfile 2 +set s_initsound 0 \\
-    +set name '$NAME' +connect '$ADDR' > /dev/null 2>&1 &
-  PID=\$!
   L=~/.yq2/baseq2/qconsole.log
+  PID=$Q2_PID
   j=0; spawned=0
   while [ \$j -lt $SPAWN_TIMEOUT ]; do
     if [ -f \$L ] && grep -q '$NAME entered the game' \$L 2>/dev/null; then spawned=1; break; fi
@@ -114,12 +117,10 @@ host_exec "
   else
     kill -0 \$PID 2>/dev/null && echo MARK_NOSPAWN || echo MARK_DIED
   fi
-  killall -TERM quake2 2>/dev/null
-  sleep 2
-  killall -KILL quake2 2>/dev/null || true
-  wait \$PID 2>/dev/null
-  sleep $COOLDOWN
-  true" 2>&1 | while IFS= read -r line; do
+  true" 2>&1
+q2_stop "$HOST" >/dev/null 2>&1 || echo MARK_SURVIVED_TERM
+sleep "$COOLDOWN"
+} | while IFS= read -r line; do
     case "$line" in MARK_*) echo "[join $HOST] $(utc) ${line#MARK_}" ;; esac
   done | tee "${TMPDIR:-/tmp}/join-$HOST.marks"
 END_UTC="$(utc)"

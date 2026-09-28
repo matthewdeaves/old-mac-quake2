@@ -132,6 +132,7 @@ DEMO="${2:?demo (demo1|demo2|demo3)}"
 RES="${3:?resolution WxH}"
 RUNS="${4:-3}"
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/q2-launch.sh"
 
 W="${RES%x*}"; H="${RES#*x}"
 
@@ -383,9 +384,7 @@ NOTES_CSV=$(echo "$NOTES_RAW" | tr ',' ';' | head -c 240)
 # the R300. Same TERM-grace-KILL policy as the run loop; costs nothing on a
 # normal exit because there is no engine left to find.
 bench_cleanup () {
-  host_exec "if killall -TERM quake2 2>/dev/null; then sleep 3; fi
-    killall -KILL quake2 2>/dev/null
-    true" 2>/dev/null || true
+  q2_stop "$HOST" >/dev/null 2>&1 || true
 }
 trap bench_cleanup EXIT INT TERM
 
@@ -418,54 +417,42 @@ fi
 declare -a FPS
 for i in $(seq 1 $RUNS); do
   echo "[bench $TARGET $DEMO $RES] run $i/$RUNS"
-  # Kill any stale engine before each run. Same gentle TERM-grace-KILL
-  # pattern as the sister project's bench.sh — Panther's display LUT
-  # corrupts if Quake is hard-killed mid-fullscreen, so always send
-  # TERM first so SDL has a chance to restore display state.
-  # Poll with integer `sleep 1` — Panther's /bin/sleep is integer-only;
-  # fractional sleeps return instantly and would busy-spin.
-  # Engine path auto-detect: fat deploys ship Quake2.app/Contents/MacOS/quake2;
-  # per-target deploys ship a flat ./quake2 next to the binary. Both are
-  # invoked with CWD = /Applications/Quake2/ so basedir=. picks up ref_gl.so
-  # and baseq2/ in the parent directory either way.
-  host_exec "if killall -TERM quake2 2>/dev/null; then sleep 2; fi
-    killall -KILL quake2 2>/dev/null || true
-    sleep 1
-    cd /Applications/Quake2
-    rm -f ~/.yq2/baseq2/qconsole.log
-    if [ -x ./Quake2.app/Contents/MacOS/quake2 ]; then
-      ENGINE=./Quake2.app/Contents/MacOS/quake2
-    else
-      ENGINE=./quake2
-    fi
-    \$ENGINE -nolauncher \\
-      +set vid_fullscreen $VID_FS +set vid_desktopfullscreen $VID_DFS +set vid_gamma 1 \\
-      +set gl_mode -1 +set gl_customwidth $W +set gl_customheight $H \\
-      +set gl_swapinterval 0 \\
-      +set s_initsound 0 \\
-      +set logfile 2 \\
-      +set timedemo 1 \\
-      ${EXTRA:-} \\
-      +gl_bloom +gl_bloom_darken +gl_msaa_samples +gl_mode \\
-      +gl_customwidth +gl_customheight +vid_fullscreen \\
-      +vid_desktopfullscreen +gl_swapinterval \\
-      +demomap $DEMO.dm2 > /dev/null 2>&1 &
-    PID=\$!
-    j=0
+  # Engine path (fat Quake2.app vs flat ./quake2) and CWD are resolved by
+  # q2-launch.sh. TERM only, never KILL: Panther's display LUT corrupts if
+  # Quake is hard-killed mid-fullscreen, so SDL always gets to restore it.
+  # Launch through the shared launch-game.sh (#108): it refuses while any game
+  # is already up on the host, and the stop below is TERM only. The old inline
+  # `&` + killall -KILL is gone.
+  q2_pretidy "$HOST" || true
+  host_exec "rm -f ~/.yq2/baseq2/qconsole.log" || true
+  # shellcheck disable=SC2086 # EXTRA is a space-separated cvar list on purpose
+  q2_launch "$HOST" $((TIMEOUT + 120)) -nolauncher \
+    +set vid_fullscreen "$VID_FS" +set vid_desktopfullscreen "$VID_DFS" +set vid_gamma 1 \
+    +set gl_mode -1 +set gl_customwidth "$W" +set gl_customheight "$H" \
+    +set gl_swapinterval 0 \
+    +set s_initsound 0 \
+    +set logfile 2 \
+    +set timedemo 1 \
+    ${EXTRA:-} \
+    +gl_bloom +gl_bloom_darken +gl_msaa_samples +gl_mode \
+    +gl_customwidth +gl_customheight +vid_fullscreen \
+    +vid_desktopfullscreen +gl_swapinterval \
+    +demomap "$DEMO.dm2" || { echo "[bench $TARGET] launch refused or failed on $HOST (rc=$?)" >&2; exit 1; }
+  # Poll for the timedemo result on the host; one ssh, not one per second.
+  # Panther's /bin/sleep is integer-only.
+  host_exec "j=0
     while [ \$j -lt $TIMEOUT ]; do
       if [ -f ~/.yq2/baseq2/qconsole.log ] && \\
          grep -q 'frames.*seconds.*fps' ~/.yq2/baseq2/qconsole.log 2>/dev/null; then break; fi
+      kill -0 $Q2_PID 2>/dev/null || break
       sleep 1; j=\$((j+1))
     done
-    killall -TERM quake2 2>/dev/null
-    sleep 2
-    killall -KILL quake2 2>/dev/null
-    wait \$PID 2>/dev/null
-    # Post-run cooldown — gives the GPU driver time to restore display
-    # state. Critical on yosemite where the Rage 128 LUT can hang the
-    # machine if the next run starts before the driver settles.
-    sleep $COOLDOWN
     true" 2>&1 | grep -v "^$" | tail -3 || true
+  q2_stop "$HOST" || { echo "[bench $TARGET] engine ignored TERM on $HOST; NOT sending KILL, quit it by hand" >&2; exit 1; }
+  # Post-run cooldown: gives the GPU driver time to restore display state.
+  # Critical on yosemite where the Rage 128 LUT can hang the machine if the
+  # next run starts before the driver settles.
+  sleep "$COOLDOWN"
 
   LOG_NAME="${COMMIT}_${TARGET}_${DEMO}_${RES}${CVAR_TAG}_run${i}.log"
   host_fetch ".yq2/baseq2/qconsole.log" "$RAW_DIR/$LOG_NAME" || true

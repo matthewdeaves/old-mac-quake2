@@ -18,6 +18,7 @@ Can't be found in 30 seconds; violating one is expensive or irreversible.
 - A green check is not a correct picture: only `check-frames.sh` looks at an image. AltiVec `R_LerpVerts` once shipped a warped-model regression that read as a +4.3% fps win (issue #26). References live in `tests/frames/`, never `docs/screenshots/` (a curated gallery that deletes exactly what a correctness check needs).
 - `scripts/source-stamp.sh` is canonical in old-mac-build-host, not ours to edit; this repo's exclude list is `scripts/source-stamp-excludes.sh`.
 - `yosemite` / `yosemite-tiger` are ONE machine, two OS partitions, only one booted at a time — never assume both are up.
+- Never swap a test build into `/Applications/<Game>/` (no `.bak` copy either, even temporarily) — POLICY.md: that dir is release-build-and-data only on every Mac. Run a one-off test build from its own directory under `~/oldmac/` on the target, or point `basedir` at it.
 - This repo is PUBLIC. Never copy addresses, key material, tunnel tokens or `.env` content out of `retro-server-infra` into this repo, in code, docs or commit messages.
 
 ## Documentation Router

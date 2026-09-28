@@ -11,7 +11,7 @@
 # smoke-dmg.sh asserts an fps line exists in qconsole.log; bench.sh measures
 # frame rate; tests/test-repo.sh reads shell text. None looks at an image.
 #
-# That is not theoretical here. MISTAKES.md:400-418, commit 55bfeb8, reverted:
+# That is not theoretical here. docs/mistakes/altivec.md, commit 55bfeb8, reverted:
 # AltiVec R_LerpVerts rendered monster and viewmodel geometry warped on mini-g4
 # and the bench read +4.3% fps, because the broken vertex maths was cheaper than
 # the correct maths. A human caught it by looking. The instrumentation scored it

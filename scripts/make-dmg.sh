@@ -387,7 +387,7 @@ License: GPL-2.0-or-later (see the project repo).
 EOF
 
 # ---- build the .dmg on a Mac, with END-TO-END content verification -------
-# CRITICAL (learned the hard way — see MISTAKES.md 2026-05-31 "DMG byte-flip"):
+# CRITICAL (learned the hard way — see docs/mistakes/build-packaging-deploy.md 2026-05-31 "DMG byte-flip"):
 # `hdiutil verify` only checks the UDIF container's *internal* checksum — that
 # the compressed blocks decompress to whatever was stored. It does NOT verify
 # that what was stored matches our source. A single byte flipped anywhere in

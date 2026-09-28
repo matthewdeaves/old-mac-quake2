@@ -1,12 +1,8 @@
 # watchlink: live player-state UDP feed
 
-`src/client/cl_watchlink.c` pushes the marine's live in-game state out over UDP
-as newline-delimited JSON, so an external companion (the Apple Watch "tactical
-computer", or just `nc -ul` / `scripts/watchlink-listen.py`) can render
-health / armor / ammo / inventory / objectives on a second screen.
-
-The companion iPhone-relay + watchOS app lives in its own repo:
-**[quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch)**.
+`src/client/cl_watchlink.c` pushes the marine's live state (health, armor, ammo, inventory, objectives) over UDP as newline-delimited JSON for an external companion: the Apple Watch "tactical computer", or just `nc -ul` / `scripts/watchlink-listen.py`. Off by default and gated on `watch_enable`, so fleet builds, benchmarks and the DMG behave identically.
+The companion iPhone-relay + watchOS app is its own repo, **[quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch)** (see its `PLAN.md`).
+Sections: Off by default, Cvars, Wire format, Integration points, Desktop testing.
 
 <p align="center">
   <img src="watch/standby.png" width="24%" alt="STANDBY" />
@@ -14,10 +10,9 @@ The companion iPhone-relay + watchOS app lives in its own repo:
   <img src="watch/death.png" width="24%" alt="Flatline" />
 </p>
 
-**Off by default.** The whole feature is gated on the `watch_host` cvar: empty ⇒
-no socket touched, no per-frame work, no packets. The default fleet build,
-benchmarks and the DMG behave identically. This is a *runtime* opt-in, not a
-load-time change (see MISTAKES.md on "zero-risk load-time" traps).
+## Off by default
+
+The feature is gated on `watch_enable` (default 0) plus the `watch_host` cvar: nothing is sent and no per-frame work happens otherwise. This is a *runtime* opt-in, not a load-time change (see `docs/mistakes/` on "zero-risk load-time" traps).
 
 ## Cvars
 
@@ -29,7 +24,7 @@ load-time change (see MISTAKES.md on "zero-risk load-time" traps).
 | `watch_rate` | `10` | vitals heartbeat, Hz (floored to ≥1ms interval) |
 | `watch_events` | `1` | also emit discrete damage / centerprint events |
 
-**Off by default.** The bundled machine cfgs already set `watch_host "auto"`,
+The bundled machine cfgs already set `watch_host "auto"`,
 so turning the feed on takes one setting. Put this line in
 `~/.yq2/baseq2/config.cfg` while the game is not running, or type it at the
 console:
@@ -75,13 +70,9 @@ Sends reuse the engine's existing non-blocking UDP client socket via
 `NET_SendPacket`; no new socket is opened, and an unreachable `watch_host` never
 stalls the frame.
 
-## Desktop testing (Phase 0/1)
+## Desktop testing
 
 ```
 python3 scripts/watchlink-listen.py 27999      # in one terminal
 # then in-game:  set watch_host "127.0.0.1"
 ```
-
-The companion iPhone-relay + watchOS app lives in the separate
-[quake2-tactical-watch](https://github.com/matthewdeaves/quake2-tactical-watch)
-repo (see its `PLAN.md`).

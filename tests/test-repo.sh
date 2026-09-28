@@ -12,7 +12,7 @@
 # So each detector is first run against a known-BAD fixture, where it must fire,
 # and a known-GOOD one, where it must not. If a detector cannot catch the bug it
 # exists for, this script fails before it says anything about the repo.
-# See MISTAKES.md, "Testing build scripts".
+# See docs/mistakes/testing-build-scripts.md.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

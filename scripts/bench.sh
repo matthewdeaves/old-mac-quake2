@@ -293,7 +293,7 @@ TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 # BENCH_CSV/BENCH_RAW_DIR override the output paths. Both default to the
 # git-tracked historical record (benchmarks/results.csv, benchmarks/raw/),
 # where every row and log is committed alongside the narrated decision it
-# supports (never a bare number, see MISTAKES.md). An automated caller (e.g.
+# supports (never a bare number, see docs/mistakes/). An automated caller (e.g.
 # a Jenkins bench job) that has no human curating a commit per run should
 # point BOTH at a gitignored path instead — old-mac-build-host#28 caught
 # BENCH_CSV alone still leaving qconsole.log copies in the tracked

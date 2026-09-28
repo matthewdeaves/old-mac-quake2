@@ -1,0 +1,10 @@
+# Mistakes: AltiVec
+
+One shipped-then-reverted AltiVec regression: `R_LerpVerts` warped alias models while the bench read a win. Lessons: bench correctness is not visual correctness (guard is `tests/frames/` via `check-frames.sh`, issue #26); prefer aligned stack buffers over `(vector float){a,b,c,d}` on gcc-4.0. The stride-3 lightmap AltiVec dead end is in `dynamic-lights-geforce2.md`.
+
+## 2026-05-23 AltiVec `R_LerpVerts` produced warped alias-model geometry (commit `55bfeb8`, reverted)
+Each vertex's `lerp = move + ov->v * backv + v->v * frontv` reduced to two `vec_madd`s plus one `vec_st`, gated by `#ifdef __ALTIVEC__` so only the G4 slice took it; `s_lerped` is `static vec4_t s_lerped[MAX_VERTS]`, naturally 16-byte aligned.
+Monster alias models and the weapon viewmodel rendered with skewed, warped triangles on mini-g4; world BSP unaffected (`R_LerpVerts` runs only for alias models). **The user caught it visually. The bench reported +4.3% fps**, because the broken vertex maths was strictly cheaper than the correct maths.
+Second smoking gun: a mini-g4 bench at 1024x768 of the **same** binary read **103.30 fps** the first time and **17.50 fps** on retry, likely the GL driver dropping to software fallback after the warped geometry corrupted its state.
+Suspected root cause: `(vector float){a, b, c, d}` with `(float)byte` per-lane conversions. gcc-4.0 compiles it, but the lane-insertion codegen (3 byte loads + 3 sint-to-float + 3 vector inserts + literal 0) can go wrong if a stack temp is not 16-byte aligned or a `vec_ld` gets a wrong shift permute.
+Lessons: (1) always corroborate a +N% AltiVec win with a screenshot diff against the scalar reference, especially in per-vertex or per-luxel pipelines; (2) `(vector float){a,b,c,d}` with non-constant lanes is risky on gcc-4.0 PPC, prefer `float v[4] __attribute__((aligned(16)))` then `vec_ld(0, v)`; (3) a retry needs that aligned-stack pattern **plus** a visual A/B from a fixed camera angle, scalar vs AltiVec build; (4) fps degrading rapidly across runs suggests bad geometry putting the driver in a degraded mode.

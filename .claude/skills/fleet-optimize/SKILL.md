@@ -12,7 +12,7 @@ next. It is the optimization loop, not the build system.
 
 ## Read before touching anything
 
-- `MISTAKES.md`, what already broke. **Never re-chase a recorded negative.**
+- `MISTAKES.md` (index of `docs/mistakes/`), what already broke. **Never re-chase a recorded negative.**
 - `docs/adr/0009`, how to bench and smoke test safely, and the floors.
 - `docs/adr/0010`, the A/B rule and the measured cost of every shipped default.
 - `docs/adr/0008`, the iMac G5 hazard. It can take the machine down for good.
@@ -90,7 +90,7 @@ detail, present (`gl_swapinterval`, `cl_maxfps`), sound mix rate.
 
 **Code, when config is exhausted:** vertex arrays where the GPU supports them,
 gated by extension; AltiVec on profiled hot loops for ppc7400 and the G5, with
-codegen verified by `otool -tV`, but read the AltiVec entries in `MISTAKES.md`
+codegen verified by `otool -tV`, but read `docs/mistakes/altivec.md`
 first, two attempts were net-negative and one produced warped geometry that
 benched faster; cut overdraw and tighten culling; remove per-frame allocations;
 16-bit internal texture formats; heap sizing to avoid paging on 128-256 MB

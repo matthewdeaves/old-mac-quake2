@@ -1,303 +1,110 @@
 # Bug fixes
 
-## 2026-09-23 — A renderer that failed to start crashed the game
+History ledger, newest first, one entry per fix: grep a ticket (`grep -n '#85' BUGFIXES.md`) or a date, read that range, never read the whole file. Not a changelog: see `git log`. Entries older than 60 days move to `docs/archive/`.
 
-When `ref_gl.so`'s init failed, `VID_CheckChanges` fell back to `vid_ref gl`,
-which is already the only renderer, so nothing reloaded. The next frame then
-called through the freed renderer table: SIGSEGV in `SCR_UpdateScreen` and a
-macOS crash alert (imac-2019, forced scene-resolve failure on v2.13.0). It now
-stops with `Couldn't start the OpenGL renderer; see qconsole.log.`. Same
-forced failure: exit status 1, no crash report.
+## 2026-09-23 Renderer init failure crashed the game (e7226281)
+`VID_CheckChanges` fell back to `vid_ref gl`, the only renderer, so nothing reloaded and the next frame called through the freed renderer table: SIGSEGV in `SCR_UpdateScreen` plus a macOS crash alert (imac-2019, forced scene-resolve failure, v2.13.0).
+Now `Com_Error("Couldn't start the OpenGL renderer; see qconsole.log.")`. Same forced failure: exit status 1, no crash report.
 
-## 2026-09-23 — Fresh installs leaked the DMG mount on Panther
+## 2026-09-23 Fresh installs leaked the DMG mount on Panther (b57b242b)
+Panther's hdiutil detaches only by device; `deploy-dmg.sh`'s fresh-install path detached by mount path, so 10.3 kept the image attached.
+Now retries by path, forces, then detaches the whole-disk device, as `update-dmg.sh` already did (#77). Proved on the G3 under 10.3.9: path detach failed, the helper released the image. quake3 found the same bug.
 
-Panther's hdiutil detaches only by device. `deploy-dmg.sh`'s fresh-install
-path detached by mount path, so on 10.3 the image stayed attached (quake3 found
-the same bug in its own deploy). It now retries by path, forces, then detaches
-the whole-disk device, as `update-dmg.sh` already did (#77). Proved on the G3
-under 10.3.9: a path detach failed with the image attached; the new helper
-released it.
+## #85 Parallel DMG updates could silently skip a host (9a387c0a)
+`update-dmg.sh` attached `dist/<dmg>` on the orchestration Mac to verify; concurrent attaches of one image race in hdiutil ("Resource busy", 1 in 12 with four parallel `--preflight`). In the v2.13.0 rollout that aborted a g5-tiger update and the chained smoke tested the old install (caught by md5).
+Fix: each run mounts a private APFS clone, byte-compared to the original first. 20 of 20 parallel preflights passed, no leftover mounts.
+`update-dmg.sh workstation` now installs locally and keeps hand-added `autoexec-controls.cfg` lines.
 
-## 2026-09-23 — Parallel DMG updates could silently skip a host
+## #83 PowerPC Macs at Thousands of colors could not launch (cf3d518a)
+The ppc member of the bundled SDL 1.2.15 framework quit ~2 s after launch with "Couldn't init SDL video: Unsupported display mode" at Thousands of colors (matthewdeaves/SDL#5 reproduced on the G3, 10.3.9).
+Fix: replace only that member with release asset `retro/panther-ppc-sdl5-fix` (d298f453), sha256 `07cc046e…aac554401`, via `lipo -replace ppc` on a Lion mini. New ppc md5 `5f8cb597…` equals the asset.
+i386/x86_64/arm64 members byte-identical; 10.3 floor and install name unchanged; engine not rebuilt.
 
-`update-dmg.sh` verified each candidate by attaching `dist/<dmg>` on the
-orchestration Mac. Concurrent attaches of one image file race in hdiutil:
-four parallel `--preflight` runs failed 1 in 12 with "Resource busy". During
-the v2.13.0 rollout that aborted a g5-tiger update, and the chained smoke then
-tested the old install; it was caught by md5. Fix: each run mounts a private
-APFS clone (a plain copy elsewhere), byte-compared to the original first.
-After the fix, 20 of 20 parallel preflights passed with no leftover mounts.
-`update-dmg.sh workstation` now installs locally and keeps the user's
-hand-added `autoexec-controls.cfg` lines. Refs #85.
+## #69 Redundant framebuffer work on measured GPUs (dff140f3)
+Radeon 9200 cleared depth and stencil separately: opt-in `gl_clear_combined` issues them together (same depth range, z-trick phases, polygon offset; recorded GL-call tests cover all 64 state combos). mini-G4 demo1 1024x768 MSAA2 + projected shadows 40.60 to 55.70 fps (A/B/B/A), demo2 40.40 to 55.60.
+Bloom restored the whole captured scene though its passes only touched the bottom-left corner: opt-in `gl_bloom_fastrestore` restores that corner for full views (original path kept for reduced/offset views).
+GeForce 9400 demo1 1920x1080 bloom+MSAA2 about 42.7 to 49.9 fps, demo2 42.00 to 48.65. Captures match apart from small sampling differences; temporary renderer swaps, not the final DMG.
 
-## 2026-09-22 — PowerPC Macs at Thousands of colors could not launch
+## 2026-09-22 Current Apple lipo omitted valid PowerPC slices (7e58b5fb)
+The orchestration Mac's lipo reports thin PPC binaries as `big-endian-mach-o` and rejects PPC members of a valid fat binary, so the subtype check refused a correctly stamped G4 build.
+Build and package checks now read numeric CPU type/subtype via otool (tests: six engine slices, generic PPC, malformed headers, tool failures; real G4 build passed all four subtype checks).
+Native arm64 framework assembly uses LLVM lipo when Apple's cannot handle the PPC member; the arch list is verified via otool.
 
-The ppc member of the bundled `MacOSX/SDL.framework` (SDL 1.2.15) quit about
-2 s after launch with "Couldn't init SDL video: Unsupported display mode" on
-any PPC Mac whose desktop was at Thousands of colors, not Millions.
-matthewdeaves/SDL#5 reproduced it on the G3 under 10.3.9 with Quake II.
-Fix: that member only is replaced with the SDL-1.2 release asset
-`retro/panther-ppc-sdl5-fix` (d298f453, SDL#4's byte-identical rebuild plus
-upstream 61074e09), sha256 `07cc046e…aac554401`, done with `lipo -replace ppc`
-on a Lion mini. The i386, x86_64 and arm64 members are byte-identical to
-before; the new ppc member's md5 `5f8cb597…` equals the asset. The 10.3 floor
-(per SDL#5) and the install name are unchanged. Refs #83.
+## 2026-09-22 Linux CI could not exercise occupied-install rollback (93ae99d7)
+The installer fixture ran on Ubuntu but used Mac-only `md5`, `ditto` and BSD `stat` options. Helper now uses GNU equivalents on Linux, native Mac ops on the fleet; digest reads and device queries reject failed or malformed output.
+Update and rollback fixtures pass on macOS and Linux. ShellCheck failure on comma-containing linker flags fixed by quoting array elements (compiler arguments unchanged).
 
-## 2026-09-22 — Avoid redundant framebuffer work on measured GPUs
+## #33 Fixed-function bloom turned the Apple Silicon fullscreen image black (05abbc7f)
+sdl12-compat renders the SDL 1.2 surface through an internal multisample framebuffer and wraps `glCopyTexSubImage2D`/`glReadPixels` to resolve it; QGL loaded those from OpenGL before SDL created the context, so bloom copied the unresolved framebuffer.
+Fix: after `R_SetMode` creates the context, detect sdl12-compat by runtime symbol and replace both readbacks with `SDL_GL_GetProcAddress` addresses (real SDL 1.2 keeps its bindings).
+Passed on Apple M5 and Panther G5/Radeon 9600; Radeon Pro 580X rendered with zero GL errors; GMA 950 untested (headless captures invalid). M5 bloom 264.55 fps warm median at 1920x1080 4x MSAA, so arm64 enables it with `gl_bloom_darken 1`; G3/G4 stay off on cost.
+Evidence: `benchmarks/experiments/2026-09-12-bloom-readback/`.
 
-The Radeon 9200 path cleared depth and stencil separately. Opt-in
-`gl_clear_combined` issues the same requested buffer clears together, retaining
-the existing depth range, z-trick phases and polygon offset. Recorded GL-call
-tests cover all 64 boolean state combinations and both phases. On mini-G4,
-demo1 at 1024x768 with MSAA2 and projected shadows improved from 40.60 to
-55.70 fps in A/B/B/A runs; demo2 confirmed 40.40 to 55.60. Scene/HUD captures
-match after excluding screenshot notification text.
+## #67 Occupied installs had no rollback-safe update path (8096356b)
+The fresh deployer refused an existing `/Applications/Quake2`, leaving no bounded way to install a validated successor.
+`deploy-dmg.sh --update` preflights the exact DMG, copies the whole install to a same-volume stage, verifies preserved data and runtime, and promotes only after all pre-publish gates pass; success keeps the old install under a unique rollback name.
+A failed post-publish gate restores the original path and keeps the rejected candidate. Fixtures cover refusal, automatic restore, update and explicit restore.
 
-Bloom restored the entire captured scene even though its working passes only
-overwrote the bottom-left corner. Opt-in `gl_bloom_fastrestore` restores that
-corner for a full view, with the original path retained for reduced/offset
-views. Coordinate/fallback tests pass. GeForce 9400 demo1 at 1920x1080 with
-bloom and MSAA2 improved from about 42.7 to 49.9 fps; demo2 from 42.00 to
-48.65. Captures have small sampling differences, not exact pixel equality.
-These results used temporary renderer swaps, not the final candidate DMG.
+## #33 DMG with an arm64 executable shipped without SDL2, then pruned the last tested candidate (c96a9875)
+A config-only package took the six-slice executable from a tested DMG but omitted `libSDL2-2.0.0.dylib`; `make-dmg.sh` only warned, and after verification it pruned every older candidate (also breaks #67 rollback).
+Missing SDL2 is now fatal whenever arm64 is present, and older candidates are kept for explicit post-acceptance cleanup. The rejected image stayed under `/private/tmp`, never deployed.
 
-## 2026-09-22 — Current Apple lipo omitted valid PowerPC slices
+## #33 imac-2019 bloom cost -78% and drew nothing (422fb5e9)
+demo1 1920x1080 real hardware: 530.6 to 115.35 fps with zero visible pixels. `r_bloom.c` overbright compensation (e9a30c3a) divides the clamped 8-bit value by `gl_overbrightbits` before the `v0^(darken+1)` self-multiply, so at `gl_overbrightbits 4`, darken 4 a saturated pixel is `(0.25)^5`, 32x dimmer than g5-dual's `(0.5)^5`. ImageMagick RMSE off-vs-on 0.0000-0.0003 (noise floor).
+Fix: `gl_bloom_darken 1` in `autoexec-imac-2019.cfg`: RMSE 0.018-0.044, same cost (115.35 vs 115.20 fps), since the fullscreen capture/composite is the cost, not the darken passes. g5-dual `darken 4` untouched.
 
-The orchestration Mac's lipo reports thin PowerPC binaries as
-`big-endian-mach-o` and rejects the PPC members of a valid fat binary. This
-made the subtype check refuse a correctly stamped G4 build. Build and package
-checks now read numeric CPU types/subtypes through otool. Tests cover all six
-engine slices, generic PPC, malformed headers and tool failures; the real G4
-build also passed all four subtype checks. Native arm64 framework assembly uses
-LLVM lipo when Apple's tool cannot handle the existing PPC member, with the
-architecture listing verified independently through otool.
+## #56 imac-2019 g5 build: `Com_Printf` called `Con_Print(NULL)`, SIGSEGV in `S_Init` (7f629de1)
+`-S` diff, `-mcpu=970` vs `-mcpu=7400`, GCC14: at `-O2/-O3` 970 hoists `li r3,0` (setup for a later `Sys_ConsoleOutput(NULL)`) above the branch that falls through to `Con_Print(msg)`, so it runs with `r3 == 0`; 7400 keeps `msg` in a callee-saved register. Third file hit by this GCC14 register-allocation class (`filesystem.c` #53, `SDLMain.m`).
+Fix: `clientserver.c` added to `ppc-cc-wrapper-imac2019.sh`'s per-file `-O0` list. Real g5-tiger: crash gone, engine reaches `VID_LoadRefresh`/`ref_gl.so`, then a different crash (split to a new issue).
 
-## 2026-09-22 — Linux CI could not exercise occupied-install rollback
+## #55 IP bans did not survive a server restart (396dcf26)
+`sv addip`/`sv writeip` write `listip.cfg` (`game/g_svcmds.c`) but nothing execs it on startup; same shape as old-mac-half-life-1#31.
+Fix: `server.cfg` execs `listip.cfg` unconditionally (a harmless "couldn't exec" before the file exists, per `Cmd_Exec_f`). Documented in `server/README.md`.
 
-The installer fixture ran on Ubuntu but the installer used Mac-only `md5`,
-`ditto` and BSD `stat` options. The helper now uses GNU equivalents on Linux
-while retaining the native Mac operations on the fleet. Digest reads reject
-failed or malformed output, and restore rejects failed device queries.
-The real update and rollback fixtures pass on macOS and Linux. ShellCheck's
-separate failure on comma-containing linker flags was fixed by quoting those
-array elements, without changing the arguments passed to the compiler.
+## #44 `getaddrinfo()` on the main thread blocked first launch on Wi-Fi (671db998)
+imac-2019: app runs, no window, ignores SIGTERM. `SV_InitGame` (`sv_init.c:388`) resolves the dead id master IP on every server start (including the attract-loop server), and `NET_StringToSockaddr` (`network.c:411`) called plain `getaddrinfo()` even for a literal IP, which can block indefinitely on Wi-Fi with an unreachable target.
+Fix: try `AI_NUMERICHOST` first (never touches the network), real lookup only for a hostname. Hits any Wi-Fi fleet machine.
 
-## 2026-09-12 — Occupied installs had no rollback-safe update path
+## #44 Manual drag-and-drop installs never cleared quarantine (2bb6d8d9)
+Unlike the `deploy-dmg.sh` SSH path, a Safari-downloaded install never ran the quarantine-clearing step. `scripts/make-dmg.sh` now ships `Fix and Install.command` in the DMG, which runs `clear-launch-quarantine.sh` before first launch.
 
-The fresh DMG deployer correctly refused `/Applications/Quake2` when it already
-existed, but that also left no bounded way to install a validated successor.
-`deploy-dmg.sh --update` now preflights the exact DMG, copies the entire current
-install to a same-volume stage, verifies preserved data and replacement runtime,
-and promotes it only after all pre-publish gates pass. Success retains the whole
-old install under a unique rollback name. A failed post-publish gate restores
-the original path and retains the rejected candidate for diagnosis. Fixtures
-cover pre-publish refusal, automatic restoration, successful update and explicit
-restore. Refs #67.
+## #45 `build-fat.sh` lion leg shipped a v2.11.0 RC that segfaulted on real Lion
+The imac-2019 fast path (#41) used Sequoia clang/ld64, which emits `LC_MAIN`; 2011 Lion's dyld only understands `LC_UNIXTHREAD`, a gap no compiler flag closes. Confirmed with `otool -l` and a direct exec on mini-intel (exit 139, zero stdout).
+Fix: the lion leg builds on the pinned `BUILD_HOST` (real Xcode 4.6.x ld) by default; the imac-2019 path is opt-in (`QUAKE2_USE_IMAC2019_LION=1`) with a warning to verify `LC_UNIXTHREAD`.
 
-Running log of real bugs found and fixed in this repo. Not a changelog of every
-commit — see `git log` for that. One entry per bug: symptom, root cause, fix
-commit.
+## #47 A prior force-quit or crash hung the next launch forever
+No window, no qconsole.log, no crash report. AppKit window-state restoration raised a modal `-[NSAlert runModal]` ("reopen windows?") via `-[NSPersistentUIManager promptToIgnorePersistentState]` before `applicationDidFinishLaunching:`; `sample` showed the main thread parked there. WatchLink ruled out (`+set watch_host ""` hung identically).
+Fix: `NSQuitAlwaysKeepsWindows = false` in `Info.plist` (the real fix) plus `applicationSupportsSecureRestorableState:` returning `NO` in `SDLMain.m` (good practice, does not disable the prompt alone).
 
-## 2026-09-12
+## #43 `deploy.sh` had no `TARGET` case for the five G5-tower aliases (2026-08-29, 0b5456af)
+`g5-panther`/`g5-tiger`/`g5-desktop`/`quad-tiger`/`quad-leopard` never got game data: launch "opens then quits", `baseq2/` held only `game.so`. `deploy-dmg.sh` only preserves existing data and the aliases (added build-host#30) were never wired into `deploy.sh`; not the engine or the #42 floor fix.
+Added the five TARGET cases. Verified on g5-panther (10.3.9): real GL render, full demo, then a fullscreen bench point (153.8 fps at 1680x1050, desktop-capture, R300-safe).
 
-- **Enabling fixed-function bloom could turn the Apple Silicon fullscreen
-  image black.** sdl12-compat can render the SDL 1.2 logical surface through
-  an internal multisample framebuffer and supplies wrappers that resolve it
-  before `glCopyTexSubImage2D` or `glReadPixels`. QGL loaded those functions
-  directly from OpenGL before SDL created the context, so bloom copied from
-  the unresolved framebuffer. Fix: after `R_SetMode` creates the context,
-  detect sdl12-compat through its runtime symbol and replace both QGL readback
-  functions with the addresses returned by `SDL_GL_GetProcAddress`; genuine
-  SDL 1.2 keeps its original bindings. The user manually passed an earlier
-  candidate on Apple M5 and a Panther G5/Radeon 9600, with visible bloom and no
-  GL error in any bloom stage. The final candidate's G4 and G5 frames also
-  render correctly, but measured cost keeps bloom off on G3 and G4. The
-  display-backed Radeon Pro 580X control and candidate both rendered a textured
-  world after a bounded panel wake, with a visible bloom difference and zero GL
-  errors. The GMA 950 mini remains untested because its headless captures are
-  invalid and reproduce with bloom off and with an older build. Apple M5 ran
-  bloom at a 264.55 fps warm median at 1920x1080 with 4x MSAA, so the arm64
-  profile now enables the effect with `gl_bloom_darken 1`. Evidence:
-  `benchmarks/experiments/2026-09-12-bloom-readback/`. Refs #33.
+## #35 Double-click launch spun at 100% CPU on Intel, no window (c1cefca1)
+imac-2019, mini-intel, mini-intel2. SDLMain.m chdirs to the bundle parent only when `gFinderLaunch` is set, which SDL 1.2 sets only for a `-psn` argv that LaunchServices stopped passing ~10.9. So `dlopen("./ref_gl.so")` in `VID_LoadRefresh` failed silently and every renderer export stayed NULL.
+Cause: the arm64-only `OSX_ChdirToBundleParent()` guard was never extended to x86_64/i386. Fix in `yquake2/src/backends/unix/main.c`. PowerPC unaffected (Panther/Tiger still pass `-psn`; 10.3/10.4 SDKs cannot compile `_NSGetExecutablePath`).
+mini-sl "cannot create an OpenGL pixel format" (#29) was this same bug (NULL renderer table before pixel-format creation), fixed by the same commit.
 
-- **A DMG with an arm64 executable could be reported successful without its
-  required SDL2 companion, then delete the last tested candidate.** A
-  config-only package sourced its six-slice executable from a tested DMG but
-  initially omitted `libSDL2-2.0.0.dylib`; `make-dmg.sh` only warned even though
-  native Apple Silicon launch would fail. After content verification it also
-  pruned every older candidate, contrary to the current rollback requirement.
-  Missing SDL2 is now fatal whenever arm64 is present, and packaging retains
-  older candidates for an explicit post-acceptance cleanup. The rejected image
-  is retained under `/private/tmp` and was never deployed. Refs #33, #67.
+## #35 Release DMG `ditto` copy preserved `com.apple.quarantine` (07bdd420)
+The browser-downloaded DMG's quarantine flag was preserved into the installed bundle, so Gatekeeper blocked or warned on double-click (also #34).
+Fix: `scripts/clear-launch-quarantine.sh` (canonical from `old-mac-build-host`) strips it and force-re-registers with `lsregister`, run in `deploy-dmg.sh`'s remote install right after the byte-verified copy.
 
-## 2026-09-02
+## #37 quad-tiger could not deploy: `hdiutil attach` fails `0xE00002C9` (892d34e2)
+Kext-layer fault on that machine for every DMG (diagnosed at `old-mac-build-host#41`; survives reboot and power cycle).
+`deploy-dmg.sh` now falls back to mounting on a working host and rsyncing the extracted contents, triggered only on that hdiutil exit path (every other host unchanged).
 
-- **`getaddrinfo()` on the main thread blocked the first launch on Wi-Fi,
-  before any frame ever drew.** Symptom (imac-2019, user-reported):
-  app launches, process runs, no game window, unresponsive to SIGTERM.
-  Root cause: `SV_InitGame` (`sv_init.c:388`) resolves the hardcoded dead
-  id Software master server IP on every server start, including the
-  automatic attract-loop server at launch — unconditional, no timeout.
-  `NET_StringToSockaddr` (`network.c:411`) called plain `getaddrinfo()`
-  even for that literal IP; on macOS over Wi-Fi with an unreachable
-  target this can block indefinitely. Fix: try `AI_NUMERICHOST` first
-  (never touches the network for a literal IP), fall back to a real
-  lookup only for an actual hostname. Not imac-2019-specific — any fleet
-  machine on Wi-Fi hits this. Refs #44.
-- **Manual (Safari-downloaded, drag-and-drop) installs never ran the
-  quarantine-clearing step, unlike the `deploy-dmg.sh` SSH path.**
-  `scripts/make-dmg.sh` now ships a `Fix and Install.command` in the DMG
-  that runs the existing `clear-launch-quarantine.sh` before first
-  launch. Refs #44.
-- **`build-fat.sh`'s lion leg shipped a v2.11.0 release candidate that
-  segfaulted instantly on real Lion hardware.** Root cause: the leg's
-  imac-2019 fast path (issue #41) used imac-2019's Sequoia clang/ld64,
-  which emits `LC_MAIN`; real 2011 Lion's dyld only understands
-  `LC_UNIXTHREAD`, a linker-generation gap no compiler flag closes.
-  Confirmed via `otool -l` and a direct exec on mini-intel (exit 139,
-  zero stdout, before any of our code runs). Fix: the lion leg now
-  always builds on the pinned `BUILD_HOST` (real Xcode 4.6.x ld) by
-  default; the imac-2019 speedup is opt-in
-  (`QUAKE2_USE_IMAC2019_LION=1`) and comes with a warning to verify
-  `LC_UNIXTHREAD` before shipping. Refs #45.
-- **A prior force-quit or crash could hang the *next* launch forever**,
-  no window, no qconsole.log, no crash report. Root cause: AppKit's
-  window-state restoration puts up a modal `-[NSAlert runModal]`
-  ("reopen windows?") via `-[NSPersistentUIManager
-  promptToIgnorePersistentState]` *before*
-  `applicationDidFinishLaunching:` ever runs, and nothing was there to
-  dismiss it. Confirmed via `sample` (gdb couldn't parse the modern
-  toolchain's Mach-O to backtrace it) — main thread parked in exactly
-  that call chain. Ruled out WatchLink directly (`+set watch_host ""`
-  reproduced the identical hang). Fix: `NSQuitAlwaysKeepsWindows = false`
-  in `Info.plist` (the actual fix) plus
-  `applicationSupportsSecureRestorableState:` returning `NO` in
-  `SDLMain.m` (correct practice, doesn't by itself disable the prompt).
-  Refs #47.
+## #38 `smoke-dmg.sh` deleted `qconsole.log` before each launch (34ce29d4)
+A run that crashed before the engine flushed its log left nothing for the final `scp` ("no qconsole.log") and no prior transcript. Found first in halflife's identical bug (ADR 0018).
+Fix: rotate to `qconsole.prev.log` instead of deleting.
 
-## 2026-08-29
+## #23 Build-host lock released on process identity alone (12997f86)
+A sibling session's build could drop another session's live claim on the same Intel mini.
+Fix: claim with a nonce (`build-fat.sh`/`build.sh`/`pick-build-host.sh`) so a release only succeeds against the claim that made it.
 
-- **`deploy.sh` had no `TARGET` case for the five G5-tower aliases
-  (`g5-panther`/`g5-tiger`/`g5-desktop`/`quad-tiger`/`quad-leopard`), so
-  game data was never provisioned on any of them.** Symptom: double-click
-  launch on g5-panther "opens then quits, no errors." Root cause was not
-  the engine or the #42 floor fix — `~/Desktop/quake2/baseq2/` had only
-  `game.so`, no paks, because `deploy-dmg.sh` only preserves existing game
-  data and `deploy.sh` (the script that actually fetches it) didn't know
-  these aliases existed; they were added to the bench fleet later
-  (build-host#30) and never wired into game-data provisioning. Fixed:
-  added the five TARGET cases. Verified end to end on g5-panther, true
-  Panther 10.3.9 — real GL render, full demo playback, then a real
-  fullscreen bench point (153.8 fps @ 1680x1050, desktop-capture,
-  R300-safe). #43
+## #28 `deploy-dmg.sh` never cleared a stale `baseq2/autoexec.cfg` (45ca55f0)
+Unlike `deploy.sh`, a machine that once autoexec'd a debug/bench cfg kept re-applying it after every fresh DMG install ("launches but wrong", no code change). Folded into #35's launch-reliability sweep.
+Fix: clear it in the remote install step, matching `deploy.sh`.
 
-## 2026-08-28
-
-- **Double-click launch silently spun at 100% CPU on Intel (imac-2019,
-  mini-intel, mini-intel2), no window ever created.** SDLMain.m's own
-  chdir-to-bundle-parent only fires when `gFinderLaunch` is set, which SDL 1.2
-  sets only on an `argv[1]` starting `-psn` — the process-serial-number arg
-  LaunchServices stopped passing around 10.9. So a modern Finder/`open` launch
-  never chdirs, `VID_LoadRefresh`'s basedir `.` resolves against whatever cwd
-  LaunchServices handed the process, `dlopen("./ref_gl.so", ...)` fails
-  silently, and every renderer export stays NULL. Root cause: the existing
-  arm64-only `OSX_ChdirToBundleParent()` guard (added for sdl12-compat, which
-  skips SDLMain.m's Cocoa entry point) was never extended to x86_64/i386, which
-  hit the identical `gFinderLaunch` gap for a different reason. PowerPC is
-  unaffected — Panther/Tiger LaunchServices still passes `-psn`, and the
-  10.3/10.4 SDKs can't compile the `_NSGetExecutablePath` call this guard uses
-  anyway. Fix: `yquake2/src/backends/unix/main.c`, commit `c1cefca1`. Refs #35.
-
-- **A real release DMG carries `com.apple.quarantine` from the browser
-  download, and `deploy-dmg.sh`'s `ditto` copy preserved it into the installed
-  bundle** — Gatekeeper then blocks or warns on the human's double-click.
-  Fix: `scripts/clear-launch-quarantine.sh` (canonical from
-  `old-mac-build-host`) strips the flag and force-re-registers with
-  `lsregister`, wired into `deploy-dmg.sh`'s remote install step right after
-  the byte-verified copy. Commit `07bdd420`. Refs #35/#34.
-
-- **quad-tiger cannot deploy at all: `hdiutil attach` fails with `0xE00002C9`
-  on every DMG**, a kext-layer fault on that machine (exhaustively diagnosed at
-  `old-mac-build-host#41`; survives reboot and cold power-cycle). Fix:
-  `deploy-dmg.sh` now falls back to mounting the DMG on a working host and
-  rsyncing the extracted contents across, triggered only on hdiutil's specific
-  exit path (every other host's install is byte-for-byte unchanged). Commit
-  `892d34e2`. Refs #37.
-
-- **`smoke-dmg.sh` deleted `qconsole.log` before every launch as a "clean
-  slate"**, so a run that crashed before the engine wrote or flushed its own
-  log left nothing to pull back: the `scp` at the end fails with "no
-  qconsole.log", and there's no prior transcript to compare against either.
-  Cross-port finding from halflife's identical bug (ADR 0018). Fix: rotate to
-  `qconsole.prev.log` instead of deleting. Refs #38.
-
-- **The build-host lock was released on process identity alone, so a sibling
-  session's build could drop another session's live claim** on the same
-  Intel mini. Fix: claim with a nonce (`build-fat.sh`/`build.sh`/
-  `pick-build-host.sh`), so a release only succeeds against the claim that
-  made it. Commit `12997f86`. Refs #23.
-
-- **`deploy-dmg.sh` never cleared a stale `baseq2/autoexec.cfg` on install,
-  unlike `deploy.sh`**, so a machine that had ever had a debug/bench cfg
-  autoexec'd kept re-applying it after every fresh DMG install — a "launches
-  but wrong" report with no code change to explain it. Fix: clear it in the
-  remote install step, matching `deploy.sh`'s existing behaviour. Commit
-  `45ca55f0`. Refs #28 (folded into #35's launch-reliability sweep).
-
-- **Bloom rendered into `R_LoadPic`/`it_pic`, the 2D-UI pic-cache render
-  target**, the wrong texture path for a full-screen post-process effect —
-  correct on some paths by accident, wrong render target in general. Fix:
-  dedicated `qglTexImage2D` render targets for bloom instead of borrowing the
-  UI pic cache. Commit `d85a6281`. Refs #33. (Bloom itself stays off on weak
-  GPUs — GMA950 measured -43% — that's a perf/tier decision, not this bug.)
-
-- **mini-sl "cannot create an OpenGL pixel format" (#29) was the same root
-  cause as #35's chdir bug, not a separate GL/driver fault**: the engine spun
-  at 100% CPU with a NULL renderer table before ever reaching pixel-format
-  creation, which read like a GL failure from the console log alone. Confirmed
-  fixed by the same `c1cefca1` chdir fix — no GL-specific change needed.
-
-- **`sv addip`/`sv writeip` saved an IP ban to `listip.cfg`, but nothing ever
-  execed that file back in on server startup** (confirmed reading
-  `game/g_svcmds.c`, which only writes it) — an IP ban silently stopped
-  working the moment the server process restarted, same shape as
-  old-mac-half-life-1#31. Fix: `server.cfg` now execs `listip.cfg`
-  unconditionally at startup (harmless "couldn't exec" no-op before the file
-  exists, confirmed in `common/cmdparser.c`'s `Cmd_Exec_f`). Documented in
-  `server/README.md`. Refs #55.
-
-- **imac-2019 g5 build: `Com_Printf` calls `Con_Print(NULL)`, SIGSEGV in
-  `S_Init`** (issue #56, split out of #53). Root-caused with a real `-S`
-  assembly diff, `-mcpu=970` vs `-mcpu=7400`, same GCC14 toolchain:
-  `-mcpu=7400` keeps `msg`'s address (Com_Printf's local
-  `char[MAXPRINTMSG]`) alive in a callee-saved register across the whole
-  function; `-mcpu=970` at `-O2`/`-O3` instead lets the scheduler hoist
-  `li r3,0` -- the argument setup for a LATER, unrelated
-  `Sys_ConsoleOutput(NULL)` call -- up above the branch that falls through
-  to `Con_Print(msg)`, so it runs with `r3 == 0`. Same GCC14
-  register-allocation bug class as `filesystem.c` (#53) and `SDLMain.m`,
-  third file it has hit, first one pinned to the exact clobbering
-  instruction. Fix: `clientserver.c` added to
-  `ppc-cc-wrapper-imac2019.sh`'s per-file `-O0` list. Confirmed on real
-  g5-tiger hardware: this crash is gone, engine now gets past `S_Init` into
-  `VID_LoadRefresh`/`ref_gl.so` before hitting a DIFFERENT crash -- split
-  out as a new issue rather than expanding this one's scope. Refs #56.
-
-- **imac-2019: `gl_bloom` paid its full ~-78% fps cost (530.6 -> 115.35 fps,
-  demo1 1920x1080, real hardware) and produced ZERO visible pixels**
-  (issue #33). Root cause: `r_bloom.c`'s overbright compensation
-  (e9a30c3a) divides the already-clamped 8-bit backbuffer value by
-  `gl_overbrightbits` before the darken stage's self-multiply passes
-  (`v0^(darken+1)`), so a genuinely bright/saturated pixel is recovered as
-  only `1/overbrightbits` before being raised to that power. At
-  imac-2019's `gl_overbrightbits 4` (default darken 4, so `v0^5`) that is
-  `(0.25)^5` -- 32x dimmer than g5-dual's `overbrightbits 2` case
-  (`(0.5)^5`), which is why bloom is confirmed visible there but was
-  invisible here. Confirmed with ImageMagick RMSE across the whole demo1
-  frame set (off-vs-on: 0.0000-0.0003, noise floor) rather than eyeballed.
-  Fix: `gl_bloom_darken 1` for imac-2019 specifically (per-machine
-  override, `autoexec-imac-2019.cfg`) restores a real, visible,
-  non-overexposed glow (RMSE 0.018-0.044) at the SAME measured cost
-  (115.35 vs 115.20 fps) -- the darken pass count isn't what the GPU time
-  goes on, the fullscreen capture/composite is. g5-dual's own working
-  `darken 4`/`overbrightbits 2` combination is untouched. Refs #33.
+## #33 Bloom rendered into the `R_LoadPic`/`it_pic` 2D pic cache (d85a6281)
+The UI pic-cache target is the wrong texture path for a full-screen post-process (right only by accident).
+Fix: dedicated `qglTexImage2D` render targets for bloom. Bloom stays off on weak GPUs (GMA950 measured -43%): a tier decision, not this bug.

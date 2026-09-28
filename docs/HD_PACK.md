@@ -1,6 +1,9 @@
 # HD texture pack: install guide
 
-Why no pack ships, and how the bundle search path is wired: **ADR 0012**.
+How to install an HD texture pack (TGA/JPG replacements for the pak0 textures), which machines should run it, and how to verify and measure it. No pack ships in this repo; why, and how the bundle search path is wired: **ADR 0012**.
+Sections: How retexturing loads, Two install paths, Per-machine on/off, Candidate packs, Verifying and measuring, Not implemented.
+
+## How retexturing loads
 
 With `WITH_RETEXTURING=yes` (compiled into every slice since `3b594e1`) the
 engine looks for TGA/JPG replacements for every `.pcx` / `.wal` it loads from

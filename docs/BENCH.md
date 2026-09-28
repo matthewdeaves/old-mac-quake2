@@ -1,9 +1,8 @@
 # Benchmarking and smoke testing
 
-**Read ADR 0009 first.** It carries the rules: what a smoke test must be, the two
-banned methods, the TERM-then-KILL requirement, the timedemo specifics, the
-playability floors, and the `res=1` bench-integrity failure. This file is the
-operational surface.
+Operational surface for measuring fps and smoke-testing on the fleet. The rules (what a smoke test must be, banned methods, TERM-then-KILL, timedemo specifics, playability floors, the `res=1` integrity failure) are in **ADR 0009**: read it first.
+Results land in `benchmarks/results.csv` (canonical, never wipe mid-round). Shared scripts are reached through `scripts/shared.sh` (see `docs/BUILD.md`, Shared scripts). Row-schema gaps: `docs/BENCH-PROVENANCE.md`.
+Sections: Commands, Smoke test, Safety rails, Evidence bundles, Results.
 
 ## Commands
 
@@ -17,80 +16,35 @@ scripts/shared.sh bench-evidence.sh <machine> <round-label> [--requested k=v,...
 scripts/shared.sh bench-compare.sh --baseline B... --candidate C...                # verdict from bundles
 ```
 
-None of `pick-build-host.sh`, `pick-bench-host.sh`, `smoke-dmg.sh`,
-`bench-evidence.sh`, `bench-compare.sh`, `gui-precondition.sh` or
-`clear-launch-quarantine.sh` are real copies any more (build-host#105's pin
-model) — `pick-bench-host.sh` and `smoke-dmg.sh` are kept as thin shims at
-their old path (Jenkins invokes them by fixed path, build-host#119), so call
-them exactly as above; the rest have no such caller and go through
-`scripts/shared.sh <name>.sh [args...]` — see docs/BUILD.md.
+`pick-bench-host.sh` and `smoke-dmg.sh` are path-stable shims: call them exactly as shown. Machines: `yosemite`, `yosemite-tiger`, `sawtooth`, `quicksilver`, `mini-g4`, `imac-g5`, `mini-intel`, `imac-2019`.
 
-Machines: `yosemite`, `yosemite-tiger`, `sawtooth`, `quicksilver`, `mini-g4`,
-`imac-g5`, `mini-intel`, `imac-2019`.
+## Smoke test
 
-A smoke test is `scripts/bench.sh <machine> demo1 <WxH> 1`, or
-`scripts/smoke-dmg.sh <machine>` for the shipped artifact. `bench.sh` runs
-`+set timedemo 1 +demomap demo1.dm2`, polls `qconsole.log` for the `frames …
-seconds … fps` line, then kills.
+`scripts/bench.sh <machine> demo1 <WxH> 1`, or `scripts/smoke-dmg.sh <machine>` for the shipped artifact. `bench.sh` runs `+set timedemo 1 +demomap demo1.dm2`, polls `qconsole.log` for the `frames … seconds … fps` line, then kills.
 
-## Safety rails the scripts enforce
+## Safety rails
 
-- **`imac-g5`**: `bench.sh` refuses fullscreen at any non-native resolution
-  (`exit 3`) and defaults to a native same-mode capture. `G5_WINDOWED=1` gives
-  safe windowed iteration. `parallel-bench.sh` benches the G5 leg at native
-  1440x900. **ADR 0008, never bypass this.**
-- **`yosemite` / `yosemite-tiger`** are one machine on one IP with two OS
-  partitions, only one booted at a time. `parallel-bench.sh` refuses to run both
-  legs. Switch with
-  `ssh yosemite 'sudo bless --mount "/Volumes/<vol>" --setBoot'` then reboot with
-  plain `sudo /sbin/reboot </dev/null`, **not** `sudo -n`, which Tiger's and
-  Panther's sudo 1.6.x reject outright.
+Enforced by the scripts:
+
+- **`imac-g5`**: `bench.sh` refuses fullscreen at any non-native resolution (`exit 3`) and defaults to a native same-mode capture. `G5_WINDOWED=1` gives safe windowed iteration. `parallel-bench.sh` benches the G5 leg at native 1440x900. **ADR 0008, never bypass this.**
+- **`yosemite` / `yosemite-tiger`** are one machine on one IP with two OS partitions, only one booted at a time. `parallel-bench.sh` refuses to run both legs. Switch with `ssh yosemite 'sudo bless --mount "/Volumes/<vol>" --setBoot'` then reboot with plain `sudo /sbin/reboot </dev/null`, **not** `sudo -n`, which Tiger's and Panther's sudo 1.6.x reject outright.
 - Every run is TERM, sleep, KILL. Never a bare KILL.
 - A malformed resolution is rejected rather than benched.
 
-## Evidence bundles (build-host#104)
+## Evidence bundles
 
-`scripts/shared.sh bench-evidence.sh <machine> <round-label> [--requested k=v,...]`
-drives ONE run through `scripts/bench-adapter.sh` (this port's own,
-port-owned wrapper around `bench.sh`, passed via `BENCH_ADAPTER` since the
-fetched copy would otherwise look for it next to itself in the pin cache —
-see docs/BUILD.md) and captures a bundle under
-`~/oldmac/evidence/quake2/<UTC-stamp>/` on the workstation: `meta.json`,
-`log.txt`, `stats.txt`/`stats.unit`, `effective.txt`, `requested.txt`,
-`verdict.txt` (`VALID` or `INVALID: <reasons>`). Exit 0 valid, 1 invalid, 2
-usage/config. Full contract: `old-mac-build-host/docs/bench-evidence.md`.
+`scripts/shared.sh bench-evidence.sh <machine> <round-label> [--requested k=v,...]` (build-host#104) drives ONE run through `scripts/bench-adapter.sh`, this port's own wrapper around `bench.sh`. It is passed via `BENCH_ADAPTER` because the fetched copy would otherwise look for it next to itself in the pin's read-only cache (the same gap alephone#43 found for `DMG_PORT_CONF`; the `deploy-dmg.sh`/`smoke-dmg.sh` shims work around their half internally). The bundle goes under `~/oldmac/evidence/quake2/<UTC-stamp>/` on the workstation: `meta.json`, `log.txt`, `stats.txt`/`stats.unit`, `effective.txt`, `requested.txt`, `verdict.txt` (`VALID` or `INVALID: <reasons>`). Exit 0 valid, 1 invalid, 2 usage/config. Full contract: `old-mac-build-host/docs/bench-evidence.md`.
 
-Required env: `BENCH_ADAPTER="$REPO_ROOT/scripts/bench-adapter.sh"`,
-`BENCH_ARTEFACT=<path to the local binary matching what's installed on the
-target>` (hashed on the workstation and compared against the installed
-binary — mismatch is INVALID, not "not checked"; PPC builds are not
-byte-reproducible, so this must be the exact deployed bits, e.g. extracted
-from the promoted DMG, not a fresh local build), `BENCH_RES=<WxH>` (forwarded
-to `bench.sh`'s own required resolution arg and its imac-g5 native-mode
-guard), optionally `BENCH_DEMO` (default `demo1`).
+Required env: `BENCH_ADAPTER="$REPO_ROOT/scripts/bench-adapter.sh"`; `BENCH_ARTEFACT=<local binary matching what is installed on the target>` (hashed on the workstation and compared against the installed binary: mismatch is INVALID, not "not checked"; PPC builds are not byte-reproducible, so use the exact deployed bits, e.g. extracted from the promoted DMG, not a fresh local build); `BENCH_RES=<WxH>` (forwarded to `bench.sh` and its imac-g5 native-mode guard); optionally `BENCH_DEMO` (default `demo1`).
 
-Because this adapter is synchronous (`bench.sh` always blocks until the run
-finishes), the bundle's frame-capture and liveness checks are always "not
-checked" here, never a false VALID/INVALID — this is expected, not a gap
-(build-host#109).
+The adapter is synchronous (`bench.sh` blocks until done), so the bundle's frame-capture and liveness checks are always "not checked", never a false VALID/INVALID: expected, not a gap (build-host#109).
 
-Run several rounds back-to-back (a shell loop, one `bench-evidence.sh` call
-per round) to separate cold-start effects or intermittent GPU variance from
-a real trend; the CSV path (`bench.sh` itself) only ever keeps 3 run columns
-per invocation, so a 4+-round variance check belongs here, not there.
+Run several rounds back-to-back (a shell loop, one `bench-evidence.sh` per round) to separate cold-start effects or intermittent GPU variance from a real trend; the CSV path keeps only 3 run columns per invocation, so a 4+-round variance check belongs here.
 
-`scripts/shared.sh bench-compare.sh --baseline <bundle...> --candidate <bundle...>`
-prints the verdict to quote (`BETTER`/`WORSE`/`INCONCLUSIVE`) from two or
-more bundles' `stats.txt`. Needs 2+ rounds per side for its cold-start
-discard to fire (build-host#114) — a single round per side reads a
-confident verdict off of pure noise.
+`scripts/shared.sh bench-compare.sh --baseline <bundle...> --candidate <bundle...>` prints the verdict to quote (`BETTER`/`WORSE`/`INCONCLUSIVE`) from two or more bundles' `stats.txt`. It needs 2+ rounds per side for its cold-start discard to fire (build-host#114); a single round per side reads a confident verdict off pure noise.
 
 ## Results
 
-`benchmarks/results.csv` is the canonical numeric record: one row per
-(commit, machine, demo, resolution) with three run columns and the median, plus
-the raw `qconsole.log` per run. **Never wipe it mid-round.** Three runs, median
-of runs 2 and 3.
+`benchmarks/results.csv` is the canonical numeric record: one row per (commit, machine, demo, resolution) with three run columns and the median, plus the raw `qconsole.log` per run. **Never wipe it mid-round.** Three runs, median of runs 2 and 3.
 
-Recovery for a wedged Mac: `ssh <machine> '~/bin/qsreboot.sh'`, then confirm it
-cycles.
+Recovery for a wedged Mac: `ssh <machine> '~/bin/qsreboot.sh'`, then confirm it cycles.

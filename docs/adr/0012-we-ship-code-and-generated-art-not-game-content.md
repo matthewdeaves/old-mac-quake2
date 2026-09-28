@@ -74,7 +74,7 @@ the ICNS without re-running background removal.
 - **Any texture created once at init and held in a global must be added to the
   `R_FreeUnusedImages` protect block**, the same way `r_notexture` and
   `r_particletexture` are, or it is freed at the next map load and the feature
-  path then binds a deleted texnum (see `MISTAKES.md`, 2026-05-29).
+  path then binds a deleted texnum (see `docs/mistakes/renderer-features.md`, 2026-05-29).
 
 ## Amendment, 2026-08-28: the arm64 workstation may hold game assets for QA
 

@@ -1,6 +1,16 @@
-# Bug fixes
+# Bugfixes
 
-History ledger, newest first, one entry per fix: grep a ticket (`grep -n '#85' BUGFIXES.md`) or a date, read that range, never read the whole file. Not a changelog: see `git log`. Entries older than 60 days move to `docs/archive/`.
+Search by ticket or date; entries are newest first.
+Archive: `docs/archive/`.
+Dates added to undated accounts identify their recorded evidence or first Git record, not a newly inferred incident date.
+
+## #45 `build-fat.sh` lion leg shipped a v2.11.0 RC that segfaulted on real Lion
+The imac-2019 fast path (#41) used Sequoia clang/ld64, which emits `LC_MAIN`; 2011 Lion's dyld only understands `LC_UNIXTHREAD`, a gap no compiler flag closes. Confirmed with `otool -l` and a direct exec on mini-intel (exit 139, zero stdout).
+Fix: the lion leg builds on the pinned `BUILD_HOST` (real Xcode 4.6.x ld) by default; the imac-2019 path is opt-in (`QUAKE2_USE_IMAC2019_LION=1`) with a warning to verify `LC_UNIXTHREAD`.
+
+## #47 A prior force-quit or crash hung the next launch forever
+No window, no qconsole.log, no crash report. AppKit window-state restoration raised a modal `-[NSAlert runModal]` ("reopen windows?") via `-[NSPersistentUIManager promptToIgnorePersistentState]` before `applicationDidFinishLaunching:`; `sample` showed the main thread parked there. WatchLink ruled out (`+set watch_host ""` hung identically).
+Fix: `NSQuitAlwaysKeepsWindows = false` in `Info.plist` (the real fix) plus `applicationSupportsSecureRestorableState:` returning `NO` in `SDLMain.m` (good practice, does not disable the prompt alone).
 
 ## 2026-09-23 Renderer init failure crashed the game (e7226281)
 `VID_CheckChanges` fell back to `vid_ref gl`, the only renderer, so nothing reloaded and the next frame called through the freed renderer table: SIGSEGV in `SCR_UpdateScreen` plus a macOS crash alert (imac-2019, forced scene-resolve failure, v2.13.0).
@@ -68,14 +78,6 @@ Fix: try `AI_NUMERICHOST` first (never touches the network), real lookup only fo
 ## #44 Manual drag-and-drop installs never cleared quarantine (2bb6d8d9)
 Unlike the `deploy-dmg.sh` SSH path, a Safari-downloaded install never ran the quarantine-clearing step. `scripts/make-dmg.sh` now ships `Fix and Install.command` in the DMG, which runs `clear-launch-quarantine.sh` before first launch.
 
-## #45 `build-fat.sh` lion leg shipped a v2.11.0 RC that segfaulted on real Lion
-The imac-2019 fast path (#41) used Sequoia clang/ld64, which emits `LC_MAIN`; 2011 Lion's dyld only understands `LC_UNIXTHREAD`, a gap no compiler flag closes. Confirmed with `otool -l` and a direct exec on mini-intel (exit 139, zero stdout).
-Fix: the lion leg builds on the pinned `BUILD_HOST` (real Xcode 4.6.x ld) by default; the imac-2019 path is opt-in (`QUAKE2_USE_IMAC2019_LION=1`) with a warning to verify `LC_UNIXTHREAD`.
-
-## #47 A prior force-quit or crash hung the next launch forever
-No window, no qconsole.log, no crash report. AppKit window-state restoration raised a modal `-[NSAlert runModal]` ("reopen windows?") via `-[NSPersistentUIManager promptToIgnorePersistentState]` before `applicationDidFinishLaunching:`; `sample` showed the main thread parked there. WatchLink ruled out (`+set watch_host ""` hung identically).
-Fix: `NSQuitAlwaysKeepsWindows = false` in `Info.plist` (the real fix) plus `applicationSupportsSecureRestorableState:` returning `NO` in `SDLMain.m` (good practice, does not disable the prompt alone).
-
 ## #43 `deploy.sh` had no `TARGET` case for the five G5-tower aliases (2026-08-29, 0b5456af)
 `g5-panther`/`g5-tiger`/`g5-desktop`/`quad-tiger`/`quad-leopard` never got game data: launch "opens then quits", `baseq2/` held only `game.so`. `deploy-dmg.sh` only preserves existing data and the aliases (added build-host#30) were never wired into `deploy.sh`; not the engine or the #42 floor fix.
 Added the five TARGET cases. Verified on g5-panther (10.3.9): real GL render, full demo, then a fullscreen bench point (153.8 fps at 1680x1050, desktop-capture, R300-safe).
@@ -97,10 +99,6 @@ Kext-layer fault on that machine for every DMG (diagnosed at `old-mac-build-host
 A run that crashed before the engine flushed its log left nothing for the final `scp` ("no qconsole.log") and no prior transcript. Found first in halflife's identical bug (ADR 0018).
 Fix: rotate to `qconsole.prev.log` instead of deleting.
 
-## #23 Build-host lock released on process identity alone (12997f86)
-A sibling session's build could drop another session's live claim on the same Intel mini.
-Fix: claim with a nonce (`build-fat.sh`/`build.sh`/`pick-build-host.sh`) so a release only succeeds against the claim that made it.
-
 ## #28 `deploy-dmg.sh` never cleared a stale `baseq2/autoexec.cfg` (45ca55f0)
 Unlike `deploy.sh`, a machine that once autoexec'd a debug/bench cfg kept re-applying it after every fresh DMG install ("launches but wrong", no code change). Folded into #35's launch-reliability sweep.
 Fix: clear it in the remote install step, matching `deploy.sh`.
@@ -108,3 +106,7 @@ Fix: clear it in the remote install step, matching `deploy.sh`.
 ## #33 Bloom rendered into the `R_LoadPic`/`it_pic` 2D pic cache (d85a6281)
 The UI pic-cache target is the wrong texture path for a full-screen post-process (right only by accident).
 Fix: dedicated `qglTexImage2D` render targets for bloom. Bloom stays off on weak GPUs (GMA950 measured -43%): a tier decision, not this bug.
+
+## #23 Build-host lock released on process identity alone (12997f86)
+A sibling session's build could drop another session's live claim on the same Intel mini.
+Fix: claim with a nonce (`build-fat.sh`/`build.sh`/`pick-build-host.sh`) so a release only succeeds against the claim that made it.

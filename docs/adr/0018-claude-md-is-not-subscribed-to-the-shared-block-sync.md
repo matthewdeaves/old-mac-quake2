@@ -1,5 +1,9 @@
 # 0018. CLAUDE.md is not subscribed to the shared block sync
 
+Recorded decision: This repo's `CLAUDE.md` is maintained by hand and carries no sync markers.
+Record status: see the dated decision below. Date: 2026-08-22.
+Sections: Status, Context, Decision, Consequences, Addendum, 2026-08-22, same evening, Addendum, second: what canonical had wrong about US.
+
 Date: 2026-08-22
 
 ## Status

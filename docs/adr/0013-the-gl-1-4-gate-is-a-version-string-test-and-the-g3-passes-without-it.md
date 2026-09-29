@@ -1,5 +1,9 @@
 # 13. The GL 1.4 gate is a version-string test, and the G3 runs fine without it
 
+Recorded decision: Treat the 1.4 gate as a version-string test, not a capability test, and relax both instances if this port moves to a current engine.
+Record status: accepted (measured on hardware). Date: 2026-08-20.
+Sections: Context, What was measured, Decision, Four portability fixes the bump needs, all small, The one architectural problem, and it is not small, Consequences.
+
 Date: 2026-08-20
 Status: accepted (measured on hardware)
 

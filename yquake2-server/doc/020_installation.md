@@ -1,5 +1,11 @@
 # Installation
 
+Installation instructions for the vendored Yamagi Quake II server tree.
+The upstream guide covers supported platforms and full or demo game data.
+The Mac client’s build and deployment instructions are separate, under the repo’s `docs/`.
+
+## Overview
+
 This guide shows how to install Yamagi Quake II from scratch. All fully
 supported platforms, both the full and the demo version are covered.
 

@@ -1,5 +1,9 @@
 # 10. Every per-machine visual default is an A/B on that machine
 
+Recorded decision: Every visual or performance knob is a cvar, defaulted per machine in `scripts/bundle/autoexec-<machine>.cfg`, and no default is set without an A/B benchmark on that machine.
+Record status: accepted. Date: 2026-08-20 (records practice from 2026-05-19 onward).
+Sections: Context, Decision, Measured costs behind the shipped defaults, Reference points, Consequences.
+
 Date: 2026-08-20 (records practice from 2026-05-19 onward)
 Status: accepted
 

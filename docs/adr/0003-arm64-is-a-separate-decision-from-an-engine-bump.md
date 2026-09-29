@@ -1,5 +1,9 @@
 # 3. arm64 is a separate decision from an engine bump
 
+Recorded decision: Record the two as separate questions with separate justifications, and stop citing the engine pin as the reason arm64 is closed.
+Record status: accepted (as a correction); superseded for implementation by ADR 0015. Date: 2026-08-20.
+Sections: Context, Decision, Historical status.
+
 Date: 2026-08-20
 Status: accepted (as a correction); superseded for implementation by ADR 0015
 

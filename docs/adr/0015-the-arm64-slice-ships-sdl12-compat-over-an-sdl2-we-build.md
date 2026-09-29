@@ -1,5 +1,9 @@
 # 15. The arm64 slice ships sdl12-compat over an SDL2 we build
 
+Recorded decision: Ship an arm64 slice, in all FOUR shipped Mach-O products: `quake2`, `q2ded`, `ref_gl.so` and `baseq2/game.so`.
+Record status: accepted. Supersedes the conclusion of. Date: 2026-08-20.
+Sections: Context, Decision, The ObjC class collision this needed, Consequences, Two measurements that were wrong first, and must not be repeated, What is still open.
+
 Date: 2026-08-20
 
 Status: accepted. Supersedes the conclusion of

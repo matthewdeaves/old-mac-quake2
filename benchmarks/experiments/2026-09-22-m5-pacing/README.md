@@ -1,5 +1,9 @@
 # M5 periodic gameplay pauses
 
+An Apple M5 gameplay pause recurred about once a second while G3 gameplay stayed smooth.
+This record separates the diagnosis, permanent change and installed acceptance evidence.
+Read the named artifact and conditions with each observation.
+
 User report: smooth movement interrupted by a short freeze roughly every
 second on Apple M5/macOS 26.6.2. G3 gameplay remained smooth.
 

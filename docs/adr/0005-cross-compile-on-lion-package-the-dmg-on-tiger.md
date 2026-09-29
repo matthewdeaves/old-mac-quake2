@@ -1,5 +1,9 @@
 # 5. Cross-compile every slice on an Intel Lion mini: package the disk image on a Tiger G4
 
+Recorded decision: The PPC and Intel slices cross-compile on an Intel Lion mini.
+Record status: accepted. Date: 2026-08-20 (records decisions taken 2026-05-11 and 2026-05-31).
+Sections: Context, Decision, Alternatives rejected, Consequences.
+
 Date: 2026-08-20 (records decisions taken 2026-05-11 and 2026-05-31)
 Status: accepted
 

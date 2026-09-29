@@ -1,13 +1,10 @@
 # Quake II dedicated server: Linux
 
-A headless Quake II server built from the same yquake2 tree as the Mac fat
-binary, for Linux (glibc 2.31+, x86_64 or aarch64). No packages to install;
-you supply your own `pak0.pak`/`pak1.pak`.
-Biggest traps: `game.so` has no architecture in its name (check with `file`),
-the UDP firewall allowlist is not optional (query amplification), and
-`systemctl is-active` is not a health check.
-Sections: tarball contents, requirements, install, changing the map, banning
-IPs, network and firewall, connecting, tuning, building it yourself.
+A headless Quake II server built from the same yquake2 tree as the Mac fat binary, for Linux (glibc 2.31+, x86_64 or aarch64). No
+packages to install; you supply your own `pak0.pak`/`pak1.pak`. Biggest traps: `game.so` has no architecture in its name (check with
+`file`), the UDP firewall allowlist is not optional (query amplification), and `systemctl is-active` is not a health check. Sections:
+tarball contents, requirements, install, changing the map, banning IPs, network and firewall, connecting, tuning, building it
+yourself.
 
 ## What is in the tarball
 

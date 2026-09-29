@@ -1,5 +1,9 @@
 # 6. Never trust exit 0: verify the artifact, and verify the bytes that ship
 
+Recorded decision: Verify the property you care about on the artifact itself, at the last hop the user runs.
+Record status: accepted. Date: 2026-08-20 (records decisions taken 2026-05-31 and 2026-07-25).
+Sections: Context, Decision, Implementation gotchas in the verify path, Consequences.
+
 Date: 2026-08-20 (records decisions taken 2026-05-31 and 2026-07-25)
 Status: accepted
 

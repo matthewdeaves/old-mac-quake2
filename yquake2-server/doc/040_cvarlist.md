@@ -1,5 +1,11 @@
 # Yamagi Quake II Console Variables
 
+Console-variable reference for the vendored Yamagi Quake II server tree.
+Variables use subsystem prefixes and can be set through the console or command line.
+This upstream catalogue also describes client renderers; it is not the Mac client’s support matrix.
+
+## Overview
+
 This lists explains most console variables (cvars) added by Yamagi
 Quake II. Most of the original clients (Vanilla Quake II) cvars are
 still in place, however due to architectural changes some of them

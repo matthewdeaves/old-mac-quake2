@@ -1,5 +1,9 @@
 # 7. Bundle config is three layers: applied before the renderer initialises
 
+Recorded decision: Ship the configuration inside `Quake2.app/Contents/Resources/` and execute it in three layers, all of them before `CL_Init()` / `VID_Init`.
+Record status: accepted. Date: 2026-08-20 (records decisions taken 2026-05-31).
+Sections: Context, Decision, The call site is load-bearing, Cfgs ship comment-stripped, The machine map, and where it deliberately differs from the sister ports, Alternatives rejected, Consequences.
+
 Date: 2026-08-20 (records decisions taken 2026-05-31)
 Status: accepted
 

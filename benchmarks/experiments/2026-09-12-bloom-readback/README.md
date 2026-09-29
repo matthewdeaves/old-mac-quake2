@@ -1,5 +1,9 @@
 # Bloom framebuffer readback investigation
 
+Issue #33 investigates a black image after enabling bloom on Apple Silicon.
+The account distinguishes the cause, candidate images, performance and shipped-profile checks.
+The installation and release-gate matrix records which artifact and target were actually checked.
+
 Issue #33, 2026-09-12. The user reported a black screen after enabling
 `gl_bloom` on the current Apple Silicon Mac.
 

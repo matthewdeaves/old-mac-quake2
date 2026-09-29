@@ -1,5 +1,11 @@
 # Multiplayer Servers
 
+Multiplayer-server additions and differences from vanilla Quake II.
+The upstream guide records a 49-day restart limit from the protocol’s 32-bit clock.
+These notes belong to the vendored server tree; the port’s operational entry point is `server/README.md`.
+
+## Overview
+
 In general running a Yamagi Quake II server is the same as running a
 Vanilla Quake2 server, so the old guides should still apply.
 

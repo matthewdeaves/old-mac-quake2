@@ -1,5 +1,11 @@
 # Quake II: old-Mac port
 
+Quake II uses yquake2 5.11 in one six-slice fat app for PowerPC, Intel and Apple Silicon.
+The app loads shared, per-architecture and per-machine configuration layers.
+The Linux dedicated server builds from the separate `yquake2-server/` tree.
+
+## Overview
+
 [![License: GPL v2](https://img.shields.io/badge/License-GPL_v2-blue.svg)](yquake2/LICENSE)
 [![Platform: PPC + Intel + Apple Silicon macOS](https://img.shields.io/badge/Platform-PPC%20%7C%20Intel%20%7C%20Apple%20Silicon-lightgrey.svg)](#tested-machines)
 [![macOS: 10.3.9 → 26](https://img.shields.io/badge/macOS-10.3.9%20%E2%86%92%2026-success.svg)](#tested-machines)

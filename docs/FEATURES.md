@@ -1,5 +1,9 @@
 # Feature inventory
 
+Inventory of renderer and engine changes shipped by this fork.
+`docs/CONFIG.md` holds current cvar defaults; ADR 0010 records measured default selection.
+The table names implementation commits; release state is in `docs/STATUS.md`.
+
 Each row is a shipped renderer or engine feature with the commit that landed it. Cvars and their per-machine defaults are in `docs/CONFIG.md` (one place for defaults); measured costs that drove a default are in ADR 0010. Release-by-release history: `docs/STATUS.md` and `docs/archive/RELEASE-HISTORY.md`.
 
 ## Inventory

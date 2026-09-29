@@ -1,5 +1,9 @@
 # 16. The Linux server builds from a newer engine than the Mac client
 
+Recorded decision: The Linux dedicated server builds from `yquake2-server/`, a flattened yquake2 8.70, plus this port's own server fixes.
+Record status: accepted. Supersedes the "same tree" half of [ADR 0011](0011-the-linux-dedicated-server-ships-from-the-same-tree.md); the rest of 0011 stands.. Date: 2026-08-22.
+Sections: Context, Decision, Consequences, Alternatives rejected.
+
 Date: 2026-08-22
 Status: accepted. Supersedes the "same tree" half of [ADR 0011](0011-the-linux-dedicated-server-ships-from-the-same-tree.md); the rest of 0011 stands.
 

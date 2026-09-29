@@ -1,5 +1,9 @@
 # 2. The engine is pinned at yquake2 5.11, and that means SDL 1.2
 
+Recorded decision: Base the port on yquake2 at the `QUAKE2_5_11` tag, commit `033550cd` (2013-05-20), vendored in-tree under `yquake2/` and edited directly on this repo's own history.
+Record status: accepted. Date: 2026-08-20 (records a decision taken 2026-05-11).
+Sections: Context, Decision, This tree has ONE renderer, and it is not upstream's gl1/gl3 split, Alternatives rejected, Consequences, Addendum: 2026-08-20: the "current yquake2 loses the G3" objection is smaller than it looked.
+
 Date: 2026-08-20 (records a decision taken 2026-05-11)
 Status: accepted
 

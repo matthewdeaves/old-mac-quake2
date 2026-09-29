@@ -1,5 +1,11 @@
 # #69 imac-g5 baseline, 2026-09-25
 
+Issue #69 baseline on the iMac G5 at native 1440x900 using v2.15.0.
+The shipped profile measured 46.6–46.9 fps; a smaller 3D view showed the run was fill-bound.
+The follow-up below retains shipped quality settings and records evidence limits.
+
+## Overview
+
 imac-g5 (PowerMac8,2, ATI Radeon 9600 128MB, native 1440x900) was off for
 every prior #69 pass; user booted it this session. Distinct physical unit
 from g5-tiger/g5-panther/g5-desktop (already baselined) and from #66's imac-g5

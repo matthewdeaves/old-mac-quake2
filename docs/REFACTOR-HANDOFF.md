@@ -1,5 +1,9 @@
 # Renderer refactor candidate
 
+Three optional renderer experiments cover world geometry, indexed MD2 and dynamic-light caching.
+All switches default to zero; no machine profile changes are implied.
+The linked NEXT-MODEL handoff supersedes build/deploy status here; sections cover switches, changes and validation.
+
 Design notes for three experimental renderer switches (world geometry, indexed MD2, dynamic-light cache), all defaulting to zero, with no machine profile changed. Paused state, completed fleet measurements and next steps are in `benchmarks/experiments/2026-09-08-refactor-isolation/NEXT-MODEL.md`, which supersedes any build/deploy status. The stale session narrative and next-session plan are in `docs/archive/REFACTOR-HANDOFF-2026-09-08.md`.
 Sections: Switches, What changed, Local validation.
 

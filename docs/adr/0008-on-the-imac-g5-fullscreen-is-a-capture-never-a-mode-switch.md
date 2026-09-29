@@ -1,5 +1,9 @@
 # 8. On the iMac G5: fullscreen is a same-mode capture, never a mode switch
 
+Recorded decision: Request fullscreen at the exact current desktop resolution and depth, so SDL does a same-mode display CAPTURE with no resolution change.
+Record status: accepted. Date: 2026-08-20 (records a decision taken 2026-05-31).
+Sections: HAZARD, Decision, Killing a fullscreen G5 run: TERM first: always, What does NOT apply here, Measured cost of the resulting configuration, Consequences.
+
 Date: 2026-08-20 (records a decision taken 2026-05-31)
 Status: accepted
 

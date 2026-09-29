@@ -1,5 +1,9 @@
 # Resume here — 2026-09-08
 
+Paused renderer-refactor investigation, with builds and measurements recorded below.
+The pause notice supersedes the running-test notes; no pending process is implied.
+Sections cover candidate builds, G3 recovery, recorded runs and next actions.
+
 ## PAUSED BY USER — supersedes running-test notes below
 
 User requested commit and pause. All active benchmark processes were stopped;

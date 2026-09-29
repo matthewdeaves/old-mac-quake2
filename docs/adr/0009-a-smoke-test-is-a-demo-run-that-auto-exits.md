@@ -1,5 +1,9 @@
 # 9. A smoke test is a demo run that auto-exits, and a benchmark states its conditions
 
+Recorded decision: A smoke test is an actual demo run that auto-exits.
+Record status: accepted. Date: 2026-08-20 (records decisions taken 2026-05-31 and 2026-07-25).
+Sections: Decision, Two launch modes, and which one to use, Q2 timedemo specifics, Cadence and record-keeping, Playability floors, The bench-integrity failure that made this ADR necessary, Machine state can move between runs, and it is not always the code, Consequences.
+
 Date: 2026-08-20 (records decisions taken 2026-05-31 and 2026-07-25)
 Status: accepted
 

@@ -1,5 +1,9 @@
 # 12. We ship code and generated art, not game content
 
+Recorded decision: No id Software content ever ships from this repo.
+Record status: accepted. Date: 2026-08-20 (records practice from 2026-05-11 onward).
+Sections: Decision, Retexturing is plumbed, but no pack ships, The app icon is a legacy ICNS, and stops at "good enough", Consequences, Amendment, 2026-08-28: the arm64 workstation may hold game assets for QA.
+
 Date: 2026-08-20 (records practice from 2026-05-11 onward)
 Status: accepted
 
